@@ -1,22 +1,21 @@
 USE BugHouse;
--- Administrators
+
 INSERT INTO Administrator (adminID, Name, Email) VALUES
 (1, 'Alice Johnson', 'alice.johnson@bughouse.edu'),
 (2, 'Bob Smith', 'bob.smith@bughouse.edu'),
 (3, 'Carol Lee', 'carol.lee@bughouse.edu');
 
--- Tutors (Qualifications now match subjects they will be assigned to)
 INSERT INTO Tutor (tutorID, tutorName, tutorEmail, tutorBiography, tutorQualifications, Administrator_adminID) VALUES
-(1, 'Tutor One', 'tutor1@bughouse.edu', 'Bio 1', 'Calculus I', 1),
-(2, 'Tutor Two', 'tutor2@bughouse.edu', 'Bio 2', 'Calculus II', 1),
-(3, 'Tutor Three', 'tutor3@bughouse.edu', 'Bio 3', 'Calculus III', 2),
-(4, 'Tutor Four', 'tutor4@bughouse.edu', 'Bio 4', 'Physics I', 2),
-(5, 'Tutor Five', 'tutor5@bughouse.edu', 'Bio 5', 'Algorithms & Datastructures', 2),
-(6, 'Tutor Six', 'tutor6@bughouse.edu', 'Bio 6', 'Organic Chemistry', 3),
-(7, 'Tutor Seven', 'tutor7@bughouse.edu', 'Bio 7', 'Art History', 3),
-(8, 'Tutor Eight', 'tutor8@bughouse.edu', 'Bio 8', 'Statistics', 1),
-(9, 'Tutor Nine', 'tutor9@bughouse.edu', 'Bio 9', 'Algorithms & Datastructures', 2),
-(10, 'Tutor Ten', 'tutor10@bughouse.edu', 'Bio 10', 'Calculus I', 3);
+(1, 'Tutor A', 'tutor1@bughouse.edu', 'Bio 1', 'Calculus I', 1),
+(2, 'Tutor B', 'tutor2@bughouse.edu', 'Bio 2', 'Calculus II', 1),
+(3, 'Tutor C', 'tutor3@bughouse.edu', 'Bio 3', 'Calculus III', 2),
+(4, 'Tutor D', 'tutor4@bughouse.edu', 'Bio 4', 'Physics I', 2),
+(5, 'Tutor E', 'tutor5@bughouse.edu', 'Bio 5', 'Algorithms & Datastructures', 2),
+(6, 'Tutor F', 'tutor6@bughouse.edu', 'Bio 6', 'Organic Chemistry', 3),
+(7, 'Tutor G', 'tutor7@bughouse.edu', 'Bio 7', 'Art History', 3),
+(8, 'Tutor H', 'tutor8@bughouse.edu', 'Bio 8', 'Statistics', 1),
+(9, 'Tutor I', 'tutor9@bughouse.edu', 'Bio 9', 'Algorithms & Datastructures', 2),
+(10, 'Tutor J', 'tutor10@bughouse.edu', 'Bio 10', 'Calculus I', 3);
 
 INSERT INTO Tutor_Availability (availabilityID, Tutor_tutorID, dayOfWeek, startTime, endTime) VALUES
 -- Tutor 1
@@ -59,7 +58,6 @@ INSERT INTO Tutor_Availability (availabilityID, Tutor_tutorID, dayOfWeek, startT
 (19, 10, 1, '09:00:00', '11:00:00'),
 (20, 10, 2, '14:00:00', '16:00:00');
 
--- Students (Learning goals now match actual subject names)
 INSERT INTO Student (studentID, studentName, studentEmail, Administrator_adminID, studentID_Card, studentLearning_Goals) VALUES
 (1, 'Student A', 'studentA@bughouse.edu', 1, 'ID001', 'Calculus I'),
 (2, 'Student B', 'studentB@bughouse.edu', 1, 'ID002', 'Physics I'),
@@ -72,7 +70,6 @@ INSERT INTO Student (studentID, studentName, studentEmail, Administrator_adminID
 (9, 'Student I', 'studentI@bughouse.edu', 3, 'ID009', 'Physics I'),
 (10, 'Student J', 'studentJ@bughouse.edu', 1, 'ID010', 'Calculus I');
 
--- Subjects (updated full subject list)
 INSERT INTO Academic_Subject (subjectID, subjectName) VALUES
 (1, 'Calculus I'),
 (2, 'Calculus II'),
@@ -83,7 +80,6 @@ INSERT INTO Academic_Subject (subjectID, subjectName) VALUES
 (7, 'Art History'),
 (8, 'Statistics');
 
--- Schedule
 INSERT INTO Daily_Schedule (scheduleID, scheduleDate, Administrator_adminID) VALUES
 (1, '2025-08-01', 1);
 
