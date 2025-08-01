@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
 
 function Login({ onLogin }) {
@@ -11,7 +12,7 @@ function Login({ onLogin }) {
     setMessage('');
 
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/login', {
+      const res = await axios.post('http://localhost:8000/api/auth/login', {
         email,
         password,
       });
@@ -29,13 +30,62 @@ function Login({ onLogin }) {
     <div style={{ maxWidth: '400px', margin: '2rem auto' }}>
       <h2>Sign In</h2>
       <form onSubmit={handleLogin}>
-        <input type="email" placeholder="Email" value={email}
-          onChange={e => setEmail(e.target.value)} required /><br /><br />
-        <input type="password" placeholder="Password" value={password}
-          onChange={e => setPassword(e.target.value)} required /><br /><br />
-        <button type="submit">Login</button>
+        <input 
+          type="email" 
+          placeholder="Email" 
+          value={email}
+          onChange={e => setEmail(e.target.value)} 
+          required 
+          style={{ width: '100%', padding: '8px', marginBottom: '10px' }}
+        />
+        
+        <input 
+          type="password" 
+          placeholder="Password" 
+          value={password}
+          onChange={e => setPassword(e.target.value)} 
+          required 
+          style={{ width: '100%', padding: '8px', marginBottom: '10px' }}
+        />
+        
+        <button 
+          type="submit"
+          style={{
+            width: '100%',
+            padding: '10px',
+            backgroundColor: '#4CAF50',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            marginBottom: '10px'
+          }}
+        >
+          Login
+        </button>
       </form>
-      {message && <p style={{ color: 'red' }}>{message}</p>}
+      
+      {message && <p style={{ color: 'red', textAlign: 'center' }}>{message}</p>}
+      
+      <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+        <p>Don't have an account?</p>
+        <Link to="/signup">
+          <button 
+            style={{
+              width: '100%',
+              padding: '10px',
+              backgroundColor: '#2196F3',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              textDecoration: 'none'
+            }}
+          >
+            Create Account
+          </button>
+        </Link>
+      </div>
     </div>
   );
 }

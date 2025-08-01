@@ -1,32 +1,40 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './Login';
-
-function Dashboard({ role }) {
-  return (
-    <div>
-      <h2>Welcome, {role}!</h2>
-      <button onClick={() => {
-        localStorage.clear();
-        window.location.href = '/';
-      }}>Sign Out</button>
-    </div>
-  );
-}
+import Signup from './Signup';
+import './App.css';
 
 function App() {
-  const token = localStorage.getItem('token');
-  const role = localStorage.getItem('role');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  const handleLogin = () => {
+    setIsLoggedIn(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    setIsLoggedIn(false);
+  };
 
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={!token ? <Login onLogin={() => window.location.reload()} /> : <Navigate to={`/${role}-dashboard`} />} />
-        <Route path="/student-dashboard" element={<Dashboard role="student" />} />
-        <Route path="/admin-dashboard" element={<Dashboard role="admin" />} />
-        <Route path="/tutor-dashboard" element={<Dashboard role="tutor" />} />
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
+      <div className="App">
+        <header className="App-header">
+          {isLoggedIn ? (
+            <div>
+              <h1>Welcome to BugHouse!</h1>
+              <button onClick={handleLogout}>Logout</button>
+            </div>
+          ) : (
+            <Routes>
+              <Route path="/login" element={<Login onLogin={handleLogin} />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/" element={<Navigate to="/login" />} />
+            </Routes>
+          )}
+        </header>
+      </div>
     </Router>
   );
 }
