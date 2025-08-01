@@ -1,74 +1,82 @@
 USE BugHouse;
 
-INSERT INTO Administrator (adminID, adminName, adminEmail,password) VALUES
-(1, 'Admin A', 'adminA@bughouse.edu','adminpasswordA'),
-(2, 'Admin B', 'adminB@bughouse.edu','adminpasswordB'),
-(3, 'Admin C', 'adminC@bughouse.edu','adminpasswordC');
+INSERT INTO System_User (userID, userFirstname, userLastname, userEmail, userPassword, userRole) VALUES
+(1, 'Admin', 'A', 'adminA@bughouse.edu', 'adminpasswordA', 'admin'),
+(2, 'Admin', 'B', 'adminB@bughouse.edu', 'adminpasswordB', 'admin'),
+(3, 'Admin', 'C', 'adminC@bughouse.edu', 'adminpasswordC', 'admin'),
 
-INSERT INTO Tutor (tutorID, tutorName, tutorEmail, tutorBiography, tutorQualifications, Administrator_adminID,password) VALUES
-(1, 'Tutor A', 'tutorA@bughouse.edu', 'Bio 1', 'Calculus I', 1,'tutorpasswordA'),
-(2, 'Tutor B', 'tutorB@bughouse.edu', 'Bio 2', 'Calculus II', 1,'tutorpasswordB'),
-(3, 'Tutor C', 'tutorC@bughouse.edu', 'Bio 3', 'Calculus III', 2,'tutorpasswordC'),
-(4, 'Tutor D', 'tutorD@bughouse.edu', 'Bio 4', 'Physics I', 2,'tutorpasswordD'),
-(5, 'Tutor E', 'tutorE@bughouse.edu', 'Bio 5', 'Algorithms & Datastructures', 2,'tutorpasswordE'),
-(6, 'Tutor F', 'tutorF@bughouse.edu', 'Bio 6', 'Organic Chemistry', 3,'tutorpasswordF'),
-(7, 'Tutor G', 'tutorG@bughouse.edu', 'Bio 7', 'Art History', 3,'tutorpasswordG'),
-(8, 'Tutor H', 'tutorH@bughouse.edu', 'Bio 8', 'Statistics', 1,'tutorpasswordH'),
-(9, 'Tutor I', 'tutorI@bughouse.edu', 'Bio 9', 'Algorithms & Datastructures', 2,'tutorpasswordI'),
-(10,'Tutor J', 'tutorJ@bughouse.edu', 'Bio 10', 'Calculus I', 3,'tutorpasswordJ');
+(4, 'Tutor', 'A', 'tutorA@bughouse.edu', 'tutorpasswordA', 'tutor'),
+(5, 'Tutor', 'B', 'tutorB@bughouse.edu', 'tutorpasswordB', 'tutor'),
+(6, 'Tutor', 'C', 'tutorC@bughouse.edu', 'tutorpasswordC', 'tutor'),
+(7, 'Tutor', 'D', 'tutorD@bughouse.edu', 'tutorpasswordD', 'tutor'),
+(8, 'Tutor', 'E', 'tutorE@bughouse.edu', 'tutorpasswordE', 'tutor'),
+(9, 'Tutor', 'F', 'tutorF@bughouse.edu', 'tutorpasswordF', 'tutor'),
+(10, 'Tutor', 'G', 'tutorG@bughouse.edu', 'tutorpasswordG', 'tutor'),
+(11, 'Tutor', 'H', 'tutorH@bughouse.edu', 'tutorpasswordH', 'tutor'),
+(12, 'Tutor', 'I', 'tutorI@bughouse.edu', 'tutorpasswordI', 'tutor'),
+(13, 'Tutor', 'J', 'tutorJ@bughouse.edu', 'tutorpasswordJ', 'tutor'),
 
-INSERT INTO Tutor_Availability (availabilityID, Tutor_tutorID, dayOfWeek, startTime, endTime) VALUES
--- Tutor 1
-(1, 1, 1, '09:00:00', '11:00:00'),
-(2, 1, 3, '14:00:00', '16:00:00'),
+(14, 'Student', 'A', 'studentA@bughouse.edu', 'studentpasswordA', 'student'),
+(15, 'Student', 'B', 'studentB@bughouse.edu', 'studentpasswordB', 'student'),
+(16, 'Student', 'C', 'studentC@bughouse.edu', 'studentpasswordC', 'student'),
+(17, 'Student', 'D', 'studentD@bughouse.edu', 'studentpasswordD', 'student'),
+(18, 'Student', 'E', 'studentE@bughouse.edu', 'studentpasswordE', 'student'),
+(19, 'Student', 'F', 'studentF@bughouse.edu', 'studentpasswordF', 'student'),
+(20, 'Student', 'G', 'studentG@bughouse.edu', 'studentpasswordG', 'student'),
+(21, 'Student', 'H', 'studentH@bughouse.edu', 'studentpasswordH', 'student'),
+(22, 'Student', 'I', 'studentI@bughouse.edu', 'studentpasswordI', 'student'),
+(23, 'Student', 'J', 'studentJ@bughouse.edu', 'studentpasswordJ', 'student');
 
--- Tutor 2
-(3, 2, 2, '10:00:00', '12:00:00'),
-(4, 2, 3, '13:00:00', '15:00:00'),
+INSERT INTO Administrator (System_User_userID, accessLevel) VALUES
+(1, 1),
+(2, 1),
+(3, 1);
 
--- Tutor 3
-(5, 3, 4, '11:00:00', '13:00:00'),
-(6, 3, 5, '15:00:00', '17:00:00'),
+INSERT INTO Tutor (System_User_userID, tutorBiography, tutorQualifications) VALUES
+(4, 'Bio 1', 'Calculus I'),
+(5, 'Bio 2', 'Calculus II'),
+(6, 'Bio 3', 'Calculus III'),
+(7, 'Bio 4', 'Physics I'),
+(8, 'Bio 5', 'Algorithms & Datastructures'),
+(9, 'Bio 6', 'Organic Chemistry'),
+(10, 'Bio 7', 'Art History'),
+(11, 'Bio 8', 'Statistics'),
+(12, 'Bio 9', 'Algorithms & Datastructures'),
+(13, 'Bio 10', 'Calculus I');
 
--- Tutor 4
-(7, 4, 2, '09:00:00', '11:00:00'),
-(8, 4, 3, '14:00:00', '16:00:00'),
+INSERT INTO Tutor_Availability (availabilityID, Tutor_System_User_userID, dayOfWeek, startTime, endTime) VALUES
+(1, 4, 1, '09:00:00', '11:00:00'),
+(2, 4, 3, '14:00:00', '16:00:00'),
+(3, 5, 2, '10:00:00', '12:00:00'),
+(4, 5, 3, '13:00:00', '15:00:00'),
+(5, 6, 4, '11:00:00', '13:00:00'),
+(6, 6, 5, '15:00:00', '17:00:00'),
+(7, 7, 2, '09:00:00', '11:00:00'),
+(8, 7, 3, '14:00:00', '16:00:00'),
+(9, 8, 4, '10:00:00', '12:00:00'),
+(10, 8, 6, '13:00:00', '15:00:00'),
+(11, 9, 6, '11:00:00', '13:00:00'),
+(12, 9, 7, '15:00:00', '17:00:00'),
+(13, 10, 2, '09:00:00', '11:00:00'),
+(14, 10, 5, '14:00:00', '16:00:00'),
+(15, 11, 2, '10:00:00', '12:00:00'),
+(16, 11, 3, '13:00:00', '15:00:00'),
+(17, 12, 1, '11:00:00', '13:00:00'),
+(18, 12, 4, '15:00:00', '17:00:00'),
+(19, 13, 1, '09:00:00', '11:00:00'),
+(20, 13, 2, '14:00:00', '16:00:00');
 
--- Tutor 5
-(9, 5, 4, '10:00:00', '12:00:00'),
-(10, 5, 6, '13:00:00', '15:00:00'),
-
--- Tutor 6
-(11, 6, 6, '11:00:00', '13:00:00'),
-(12, 6, 7, '15:00:00', '17:00:00'),
-
--- Tutor 7
-(13, 7, 2, '09:00:00', '11:00:00'),
-(14, 7, 5, '14:00:00', '16:00:00'),
-
--- Tutor 8
-(15, 8, 2, '10:00:00', '12:00:00'),
-(16, 8, 3, '13:00:00', '15:00:00'),
-
--- Tutor 9
-(17, 9, 1, '11:00:00', '13:00:00'),
-(18, 9, 4, '15:00:00', '17:00:00'),
-
--- Tutor 10
-(19, 10, 1, '09:00:00', '11:00:00'),
-(20, 10, 2, '14:00:00', '16:00:00');
-
-INSERT INTO Student (studentID, studentName, studentEmail, Administrator_adminID, studentID_Card, studentLearning_Goals,password) VALUES
-(1, 'Student A', 'studentA@bughouse.edu', 1, 'ID001', 'Calculus I','studentpasswordA'),
-(2, 'Student B', 'studentB@bughouse.edu', 1, 'ID002', 'Physics I','studentpasswordB'),
-(3, 'Student C', 'studentC@bughouse.edu', 1, 'ID003', 'Calculus III','studentpasswordC'),
-(4, 'Student D', 'studentD@bughouse.edu', 2, 'ID004', 'Algorithms & Datastructures','studentpasswordD'),
-(5, 'Student E', 'studentE@bughouse.edu', 2, 'ID005', 'Art History','studentpasswordE'),
-(6, 'Student F', 'studentF@bughouse.edu', 2, 'ID006', 'Calculus II','studentpasswordF'),
-(7, 'Student G', 'studentG@bughouse.edu', 3, 'ID007', 'Statistics','studentpasswordG'),
-(8, 'Student H', 'studentH@bughouse.edu', 3, 'ID008', 'Organic Chemistry','studentpasswordH'),
-(9, 'Student I', 'studentI@bughouse.edu', 3, 'ID009', 'Physics I','studentpasswordI'),
-(10, 'Student J', 'studentJ@bughouse.edu', 1, 'ID010', 'Calculus I','studentpasswordJ');
+INSERT INTO Student (System_User_userID, studentIDCard, studentLearningGoals) VALUES
+(14, 'ID001', 'Calculus I'),
+(15, 'ID002', 'Physics I'),
+(16, 'ID003', 'Calculus III'),
+(17, 'ID004', 'Algorithms & Datastructures'),
+(18, 'ID005', 'Art History'),
+(19, 'ID006', 'Calculus II'),
+(20, 'ID007', 'Statistics'),
+(21, 'ID008', 'Organic Chemistry'),
+(22, 'ID009', 'Physics I'),
+(23, 'ID010', 'Calculus I');
 
 INSERT INTO Academic_Subject (subjectID, subjectName) VALUES
 (1, 'Calculus I'),
@@ -80,105 +88,45 @@ INSERT INTO Academic_Subject (subjectID, subjectName) VALUES
 (7, 'Art History'),
 (8, 'Statistics');
 
-INSERT INTO Daily_Schedule (scheduleID, scheduleDate, Administrator_adminID) VALUES
+INSERT INTO Daily_Schedule (scheduleID, scheduleDate, Administrator_System_User_userID) VALUES
 (1, '2025-08-01', 1);
 
-INSERT INTO Timeslot (timeslotID, Daily_Schedule_scheduleID, Tutor_tutorID, Academic_Subject_subjectID) VALUES
-(1, 1, 1, 1),
-(2, 1, 10, 1),
-(3, 1, 1, 1),
-(4, 1, 10, 1),
-(5, 1, 10, 1),
-(6, 1, 10, 1),
-(7, 1, 10, 1),
-(8, 1, 10, 1),
-(9, 1, 2, 2),
-(10, 1, 2, 2),
-(11, 1, 2, 2),
-(12, 1, 2, 2),
-(13, 1, 2, 2),
-(14, 1, 2, 2),
-(15, 1, 2, 2),
-(16, 1, 2, 2),
-(17, 1, 3, 3),
-(18, 1, 3, 3),
-(19, 1, 3, 3),
-(20, 1, 3, 3),
-(21, 1, 3, 3),
-(22, 1, 3, 3),
-(23, 1, 3, 3),
-(24, 1, 3, 3),
-(25, 1, 4, 4),
-(26, 1, 4, 4),
-(27, 1, 4, 4),
-(28, 1, 4, 4),
-(29, 1, 4, 4),
-(30, 1, 4, 4),
-(31, 1, 4, 4),
-(32, 1, 4, 4),
-(33, 1, 9, 5),
-(34, 1, 5, 5),
-(35, 1, 5, 5),
-(36, 1, 5, 5),
-(37, 1, 9, 5),
-(38, 1, 5, 5),
-(39, 1, 5, 5),
-(40, 1, 9, 5),
-(41, 1, 6, 6),
-(42, 1, 6, 6),
-(43, 1, 6, 6),
-(44, 1, 6, 6),
-(45, 1, 6, 6),
-(46, 1, 6, 6),
-(47, 1, 6, 6),
-(48, 1, 6, 6),
-(49, 1, 7, 7),
-(50, 1, 7, 7),
-(51, 1, 7, 7),
-(52, 1, 7, 7),
-(53, 1, 7, 7),
-(54, 1, 7, 7),
-(55, 1, 7, 7),
-(56, 1, 7, 7),
-(57, 1, 8, 8),
-(58, 1, 8, 8),
-(59, 1, 8, 8),
-(60, 1, 8, 8),
-(61, 1, 8, 8),
-(62, 1, 8, 8),
-(63, 1, 8, 8),
-(64, 1, 8, 8);
+INSERT INTO Timeslot (timeslotID, Daily_Schedule_scheduleID, Academic_Subject_subjectID, Tutor_System_User_userID) VALUES
+(1, 1, 8, 4),
+(2, 1, 7, 6),
+(3, 1, 1, 8),
+(4, 1, 7, 8),
+(5, 1, 1, 7),
+(6, 1, 7, 9),
+(7, 1, 1, 4),
+(8, 1, 1, 10),
+(9, 1, 2, 5),
+(10, 1, 2, 5),
+(11, 1, 2, 8),
+(12, 1, 2, 13),
+(13, 1, 2, 12),
+(14, 1, 2, 6),
+(15, 1, 2, 5),
+(16, 1, 2, 8),
+(17, 1, 3, 6),
+(18, 1, 3, 10),
+(19, 1, 3, 11),
+(20, 1, 3, 7);
 
-INSERT INTO Tutor_Session (sessionID, Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Tutor_tutorID, Student_studentID, sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating) VALUES
-(1, 1, 1, 1, 5, '2025-08-01 08:00:00', '2025-08-01 08:50:00', 'Session on Calculus I', 5),
-(2, 3, 1, 1, 7, '2025-08-01 10:00:00', '2025-08-01 10:50:00', 'Session on Calculus I', 4),
-(3, 5, 1, 10, 9, '2025-08-01 12:00:00', '2025-08-01 12:50:00', 'Session on Calculus I', 5),
-(4, 7, 1, 10, 7, '2025-08-01 14:00:00', '2025-08-01 14:50:00', 'Session on Calculus I', 4),
-(5, 9, 1, 2, 3, '2025-08-01 08:00:00', '2025-08-01 08:50:00', 'Session on Calculus II', 4),
-(6, 11, 1, 2, 1, '2025-08-01 10:00:00', '2025-08-01 10:50:00', 'Session on Calculus II', 5),
-(7, 13, 1, 2, 10, '2025-08-01 12:00:00', '2025-08-01 12:50:00', 'Session on Calculus II', 5),
-(8, 15, 1, 2, 4, '2025-08-01 14:00:00', '2025-08-01 14:50:00', 'Session on Calculus II', 3),
-(9, 17, 1, 3, 8, '2025-08-01 08:00:00', '2025-08-01 08:50:00', 'Session on Calculus III', 4),
-(10, 19, 1, 3, 5, '2025-08-01 10:00:00', '2025-08-01 10:50:00', 'Session on Calculus III', 3),
-(11, 21, 1, 3, 7, '2025-08-01 12:00:00', '2025-08-01 12:50:00', 'Session on Calculus III', 4),
-(12, 23, 1, 3, 9, '2025-08-01 14:00:00', '2025-08-01 14:50:00', 'Session on Calculus III', 4),
-(13, 25, 1, 4, 1, '2025-08-01 08:00:00', '2025-08-01 08:50:00', 'Session on Physics I', 5),
-(14, 27, 1, 4, 1, '2025-08-01 10:00:00', '2025-08-01 10:50:00', 'Session on Physics I', 4),
-(15, 29, 1, 4, 9, '2025-08-01 12:00:00', '2025-08-01 12:50:00', 'Session on Physics I', 5),
-(16, 31, 1, 4, 8, '2025-08-01 14:00:00', '2025-08-01 14:50:00', 'Session on Physics I', 3),
-(17, 33, 1, 9, 6, '2025-08-01 08:00:00', '2025-08-01 08:50:00', 'Session on Algorithms & Datastructures', 5),
-(18, 35, 1, 5, 2, '2025-08-01 10:00:00', '2025-08-01 10:50:00', 'Session on Algorithms & Datastructures', 5),
-(19, 37, 1, 9, 5, '2025-08-01 12:00:00', '2025-08-01 12:50:00', 'Session on Algorithms & Datastructures', 3),
-(20, 39, 1, 5, 7, '2025-08-01 14:00:00', '2025-08-01 14:50:00', 'Session on Algorithms & Datastructures', 5),
-(21, 41, 1, 6, 1, '2025-08-01 08:00:00', '2025-08-01 08:50:00', 'Session on Organic Chemistry', 4),
-(22, 43, 1, 6, 4, '2025-08-01 10:00:00', '2025-08-01 10:50:00', 'Session on Organic Chemistry', 3),
-(23, 45, 1, 6, 4, '2025-08-01 12:00:00', '2025-08-01 12:50:00', 'Session on Organic Chemistry', 4),
-(24, 47, 1, 6, 7, '2025-08-01 14:00:00', '2025-08-01 14:50:00', 'Session on Organic Chemistry', 5),
-(25, 49, 1, 7, 8, '2025-08-01 08:00:00', '2025-08-01 08:50:00', 'Session on Art History', 4),
-(26, 51, 1, 7, 4, '2025-08-01 10:00:00', '2025-08-01 10:50:00', 'Session on Art History', 4),
-(27, 53, 1, 7, 4, '2025-08-01 12:00:00', '2025-08-01 12:50:00', 'Session on Art History', 5),
-(28, 55, 1, 7, 4, '2025-08-01 14:00:00', '2025-08-01 14:50:00', 'Session on Art History', 4),
-(29, 57, 1, 8, 10, '2025-08-01 08:00:00', '2025-08-01 08:50:00', 'Session on Statistics', 4),
-(30, 59, 1, 8, 2, '2025-08-01 10:00:00', '2025-08-01 10:50:00', 'Session on Statistics', 5),
-(31, 61, 1, 8, 9, '2025-08-01 12:00:00', '2025-08-01 12:50:00', 'Session on Statistics', 5),
-(32, 63, 1, 8, 6, '2025-08-01 14:00:00', '2025-08-01 14:50:00', 'Session on Statistics', 4);
+
+INSERT INTO Tutor_Session (sessionID, Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID, Tutor_System_User_userID, Student_System_User_userID, sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating) VALUES
+(1, 1, 1, 8, 4, 14, '2025-08-01 08:00:00', '2025-08-01 08:50:00', 'Session on Statistics', 5),
+(2, 3, 1, 1, 4, 15, '2025-08-01 10:00:00', '2025-08-01 10:50:00', 'Session on Calculus I', 4),
+(3, 5, 1, 1, 7, 16, '2025-08-01 12:00:00', '2025-08-01 12:50:00', 'Session on Calculus I', 5),
+(4, 7, 1, 1, 4, 17, '2025-08-01 14:00:00', '2025-08-01 14:50:00', 'Session on Calculus I', 4),
+(5, 9, 1, 2, 5, 18, '2025-08-01 08:00:00', '2025-08-01 08:50:00', 'Session on Calculus II', 4),
+(6, 11, 1, 2, 8, 19, '2025-08-01 10:00:00', '2025-08-01 10:50:00', 'Session on Calculus II', 5),
+(7, 13, 1, 2, 12, 20, '2025-08-01 12:00:00', '2025-08-01 12:50:00', 'Session on Calculus II', 5),
+(8, 15, 1, 2, 5, 21, '2025-08-01 14:00:00', '2025-08-01 14:50:00', 'Session on Calculus II', 3),
+(9, 17, 1, 3, 6, 22, '2025-08-01 08:00:00', '2025-08-01 08:50:00', 'Session on Calculus III', 4),
+(10, 19, 1, 3, 11, 23, '2025-08-01 10:00:00', '2025-08-01 10:50:00', 'Session on Calculus III', 3),
+(11, 20, 1, 3, 7, 14, '2025-08-01 12:00:00', '2025-08-01 12:50:00', 'Session on Calculus III', 4),
+(12, 18, 1, 3, 10, 15, '2025-08-01 14:00:00', '2025-08-01 14:50:00', 'Session on Calculus III', 4),
+(13, 2, 1, 7, 4, 16, '2025-08-01 08:00:00', '2025-08-01 08:50:00', 'Session on Art History', 5),
+(14, 4, 1, 7, 4, 17, '2025-08-01 10:00:00', '2025-08-01 10:50:00', 'Session on Art History', 4),
+(15, 6, 1, 7, 4, 18, '2025-08-01 12:00:00', '2025-08-01 12:50:00', 'Session on Art History', 5);
