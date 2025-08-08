@@ -187,7 +187,7 @@ function Signup({ onLogin }) {
         }}>
           <p><strong>We sent a verification link to:</strong></p>
           <p style={{ 
-            backgroundColor: '#e3f2fd', 
+            backgroundColor: '#000203ff', 
             padding: '10px', 
             borderRadius: '4px',
             fontFamily: 'monospace',
@@ -211,7 +211,7 @@ function Signup({ onLogin }) {
           textAlign: 'center', 
           margin: '20px 0',
           padding: '15px',
-          backgroundColor: '#fff3cd',
+          backgroundColor: '#000000ff',
           border: '1px solid #ffeaa7',
           borderRadius: '4px'
         }}>
@@ -255,7 +255,7 @@ function Signup({ onLogin }) {
           <div style={{
             padding: '10px',
             marginTop: '10px',
-            backgroundColor: message.includes('✅') ? '#d4edda' : '#f8d7da',
+            backgroundColor: message.includes('✅') ? '#000000ff' : '#050404ff',
             border: `1px solid ${message.includes('✅') ? '#c3e6cb' : '#f5c6cb'}`,
             borderRadius: '4px'
           }}>
