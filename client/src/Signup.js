@@ -179,7 +179,7 @@ function Signup({ onLogin }) {
       <div style={{ maxWidth: '400px', margin: '2rem auto', padding: '20px' }}>
         <h2>🔥 Check Your Email</h2>
         <div style={{ 
-          backgroundColor: '#f8f9fa', 
+          backgroundColor: '#000000ff', 
           padding: '20px', 
           borderRadius: '8px', 
           marginBottom: '20px',
