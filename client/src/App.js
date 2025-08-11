@@ -29,7 +29,7 @@ function App() {
           ) : (
             <Routes>
               <Route path="/login" element={<Login onLogin={handleLogin} />} />
-              <Route path="/signup" element={<Signup />} />
+              <Route path="/signup" element={<Signup onLogin={handleLogin} />} />
               { <Route path="/" element={<Navigate to="/login" />} />}
             </Routes>
           )}

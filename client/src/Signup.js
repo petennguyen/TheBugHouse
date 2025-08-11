@@ -122,15 +122,30 @@ function Signup({ onLogin }) {
 
   const handleEmailVerified = async (user) => {
     try {
+      console.log('🔄 handleEmailVerified called with user:', user);
+      console.log('🔄 firebaseUser state:', firebaseUser);
+      
+      // ✅ Get user data from state OR fallback to Firebase user info
+      const userData = firebaseUser || {
+        name: user.displayName || formData.name || 'Unknown User',
+        role: formData.role || 'student',
+        email: user.email
+      };
+      
+      console.log('📤 Sending to complete-signup:', userData);
+
       // Send user data to your server for database storage
       const response = await axios.post('http://localhost:8000/api/auth/complete-signup', {
         firebaseUID: user.uid,
-        name: firebaseUser.name,
+        name: userData.name,
         email: user.email,
-        role: firebaseUser.role
+        role: userData.role
       });
 
       localStorage.setItem('token', response.data.token);
+      localStorage.setItem('role', response.data.role);
+      localStorage.setItem('userID', response.data.userID);
+      
       setMessage('✅ Email verified! Logging you in...');
       
       setTimeout(() => {
@@ -139,7 +154,7 @@ function Signup({ onLogin }) {
       
     } catch (error) {
       console.error('Complete signup error:', error);
-      setMessage('❌ Verification failed: ' + (error.response?.data?.message || 'Unknown error'));
+      setMessage('❌ Verification failed: ' + (error.response?.data?.message || error.message));
     }
   };
 

@@ -24,68 +24,82 @@ const pool = mysql.createPool(dbConfig);
 app.post('/api/auth/complete-signup', async (req, res) => {
   const { firebaseUID, name, email, role } = req.body;
   
-  console.log(`🔍 COMPLETE SIGNUP: ${firebaseUID}`);
+  console.log('📝 Complete signup request:', { firebaseUID, name, email, role });
   
   try {
-    // Check if user already exists in database
+    // ✅ Use lowercase table name (system_user not System_User)
     const [existingUsers] = await pool.execute(
-      'SELECT userID FROM System_User WHERE firebaseUID = ? OR userEmail = ?',
-      [firebaseUID, email]
+      'SELECT userID FROM System_User WHERE userEmail = ?', // ✅ Changed from system_user
+      [email]
     );
-
+    
     if (existingUsers.length > 0) {
-      return res.status(400).json({ 
-        message: 'User already exists in database' 
+      console.log('❌ User already exists:', email);
+      return res.status(400).json({
+        message: 'User already exists in database'
       });
     }
 
-    // Split name into first and last name
-    const nameParts = name.trim().split(' ');
-    const firstName = nameParts[0];
+    // Parse name into first and last name
+    const nameParts = name.split(' ');
+    const firstName = nameParts[0] || name;
     const lastName = nameParts.slice(1).join(' ') || '';
-
-    // Insert into System_User table
-    const [userResult] = await pool.execute(
-      'INSERT INTO System_User (userFirstname, userLastname, userEmail, userPassword, userRole, firebaseUID) VALUES (?, ?, ?, ?, ?, ?)',
-      [firstName, lastName, email, 'firebase_managed', role, firebaseUID]
+    
+    console.log('💾 Inserting user into database:', { firstName, lastName, email, role });
+    
+    // ✅ Insert into lowercase table with correct column names
+    const [insertResult] = await pool.execute(
+      'INSERT INTO System_User (userFirstName, userLastName, userEmail, userPassword, userRole, firebaseUID) VALUES (?, ?, ?, ?, ?, ?)', // ✅ Changed from system_user
+      [firstName, lastName, email, 'firebase_auth', role, firebaseUID]
     );
-
-    const systemUserID = userResult.insertId;
-    console.log('✅ User inserted into System_User with ID:', systemUserID);
-
+    
+    const userID = insertResult.insertId;
+    console.log('✅ User inserted with ID:', userID);
+    
     // Insert into role-specific table
-    if (role === 'student') {
+    if (role.toLowerCase() === 'student') {
       await pool.execute(
-        'INSERT INTO Student (System_User_userID, studentIDCard, studentLearningGoals) VALUES (?, ?, ?)',
-        [systemUserID, `ID${systemUserID.toString().padStart(3, '0')}`, 'General Studies']
+        'INSERT INTO student (System_User_userID, studentIDCard, studentLearningGoals) VALUES (?, ?, ?)',
+        [userID, 'TBD', 'General tutoring']
       );
       console.log('✅ Student record created');
-    } else if (role === 'tutor') {
+    } else if (role.toLowerCase() === 'tutor') {
       await pool.execute(
-        'INSERT INTO Tutor (System_User_userID, tutorBiography, tutorQualifications) VALUES (?, ?, ?)',
-        [systemUserID, 'New tutor biography', 'Qualifications to be updated']
+        'INSERT INTO tutor (System_User_userID, tutorBiography, tutorQualifications) VALUES (?, ?, ?)',
+        [userID, 'New tutor', 'To be updated']
       );
       console.log('✅ Tutor record created');
     }
-
-    // Generate login token
-    const loginToken = jwt.sign(
-      { email: email, role: role, userID: systemUserID, firebaseUID: firebaseUID },
+    
+    // Generate JWT token
+    const token = jwt.sign(
+      { email: email, role: role, userID: userID, firebaseUID: firebaseUID },
       'secretKey',
       { expiresIn: '2h' }
     );
-
-    res.json({ 
-      message: 'Signup completed successfully!',
-      token: loginToken,
+    
+    console.log('✅ Complete signup successful for:', email);
+    
+    res.json({
+      message: 'User setup completed successfully',
+      token: token,
       role: role,
-      userID: systemUserID
+      userID: userID
     });
-
+    
   } catch (error) {
-    console.error('Complete signup error:', error);
-    res.status(500).json({ 
-      message: 'Failed to complete signup: ' + error.message
+    console.error('❌ Complete signup error:', error);
+    console.error('❌ Error details:', {
+      code: error.code,
+      errno: error.errno,
+      sqlMessage: error.sqlMessage,
+      sql: error.sql
+    });
+    
+    res.status(500).json({
+      message: 'Database error during signup completion',
+      error: error.message,
+      details: error.sqlMessage || 'Unknown database error'
     });
   }
 });
@@ -131,18 +145,30 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// ✅ POST /api/auth/login-database-first - Login using direct database check
+
 app.post('/api/auth/login-database-first', async (req, res) => {
   const { email, password } = req.body;
   
   console.log(`🔍 DATABASE-FIRST LOGIN: ${email}`);
+  console.log(`🔍 PASSWORD: ${password}`);
 
   try {
-    // Direct database check (no Firebase)
+    // First, test the connection
+    console.log('🔍 Testing database connection...');
+    
+    // ✅ Try lowercase table name first
     const [users] = await pool.execute(
-      'SELECT userID, userFirstname, userLastname, userEmail, userRole FROM System_User WHERE userEmail = ? AND userPassword = ?',
+      'SELECT userID, userFirstName, userLastName, userEmail, userRole FROM System_User WHERE userEmail = ? AND userPassword = ?', // ✅ Changed from system_user
       [email, password]
     );
+
+    console.log(`🔍 QUERY EXECUTED. FOUND ${users.length} users`);
+    
+    if (users.length > 0) {
+      console.log(`✅ USER FOUND:`, users[0]);
+    } else {
+      console.log(`❌ NO USER FOUND with email: ${email}`);
+    }
 
     if (users.length === 0) {
       return res.status(401).json({ 
@@ -153,12 +179,13 @@ app.post('/api/auth/login-database-first', async (req, res) => {
 
     const user = users[0];
 
-    // Generate JWT token
     const token = jwt.sign(
       { email: user.userEmail, role: user.userRole, userID: user.userID, isTestUser: true },
       'secretKey',
       { expiresIn: '2h' }
     );
+
+    console.log(`✅ LOGIN SUCCESSFUL for user: ${user.userEmail}`);
 
     res.json({ 
       success: true,
@@ -169,10 +196,14 @@ app.post('/api/auth/login-database-first', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Database login error:', error);
+    console.error('❌ DATABASE LOGIN ERROR:', error);
+    console.error('❌ ERROR CODE:', error.code);
+    console.error('❌ SQL MESSAGE:', error.sqlMessage);
+    
     res.status(500).json({ 
       success: false,
-      message: 'Database error: ' + error.message
+      message: 'Database error: ' + error.message,
+      details: error.sqlMessage || 'Unknown database error'
     });
   }
 });
