@@ -3,6 +3,10 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { auth } from './firebase-config';
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import { sendPasswordResetEmail } from 'firebase/auth';
+
+
+
 
 function Login({ onLogin }) {
   const [email, setEmail] = useState('');
@@ -41,7 +45,7 @@ function Login({ onLogin }) {
       }
 
     } catch (dbError) {
-      // Database failed, try Firebase as backup
+
       console.log('Database login failed, trying Firebase...');
       
       try {
@@ -80,9 +84,60 @@ function Login({ onLogin }) {
     setIsLoading(false);
   };
 
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setMessage('❌ Please enter your email first');
+      return;
+    }
+
+    setIsLoading(true);
+    setMessage('');
+
+    try {
+      if (email.includes('@mavs.uta.edu') || email.includes('@uta.edu')) {
+        console.log('🔥 Sending Firebase password reset for:', email);
+        
+        // ✅ Add custom action code settings to reduce Outlook scanning
+        const actionCodeSettings = {
+          url: window.location.origin + '/login?message=password-reset-complete',
+          // Handle the reset in the browser, not your app
+          handleCodeInApp: false,
+        };
+        
+        // Send password reset email with custom settings
+        await sendPasswordResetEmail(auth, email, actionCodeSettings);
+        
+        setMessage(`✅ Password reset email sent to ${email}!`);
+        
+      } else if (email.includes('@bughouse.edu')) {
+        console.log('🗄️ Database user reset request for:', email);
+        
+        
+      } 
+      
+    } catch (error) {
+      console.error('Password reset error:', error);
+      
+      if (error.code === 'auth/user-not-found') {
+        setMessage(`❌ No Firebase account found for ${email}
+
+Please either:
+• Sign up first if you're a new user  
+• Use a test account like studentA@bughouse.edu`);
+      } else if (error.code === 'auth/too-many-requests') {
+        setMessage('❌ Too many reset attempts. Please wait 15 minutes and try again.');
+      } else {
+        setMessage('❌ Failed to send reset email: ' + error.message);
+      }
+    }
+    
+    setIsLoading(false);
+  };
+
   return (
     <div style={{ maxWidth: '400px', margin: '2rem auto', padding: '20px' }}>
-      <h2>🐛 Sign In to BugHouse</h2>
+      <h2>Sign In to The BugHouse</h2>
       
       <form onSubmit={handleLogin}>
         <input 
@@ -133,13 +188,32 @@ function Login({ onLogin }) {
         </button>
       </form>
       
+      {/* ✅ Add Forgot Password Button */}
+      <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+        <button 
+          type="button" 
+          onClick={handleForgotPassword}
+          disabled={isLoading}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: '#007bff',
+            cursor: 'pointer',
+            textDecoration: 'underline'
+          }}
+        >
+          Forgot Password?
+        </button>
+      </div>
+      
       {message && (
         <div style={{
           padding: '12px',
-          marginBottom: '20px',
+          marginTop: '1rem',
           backgroundColor: message.includes('✅') ? '#d4edda' : '#f8d7da',
           border: `1px solid ${message.includes('✅') ? '#c3e6cb' : '#f5c6cb'}`,
-          borderRadius: '4px'
+          borderRadius: '4px',
+          whiteSpace: 'pre-line'
         }}>
           {message}
         </div>
