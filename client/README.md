@@ -74,4 +74,26 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/t
 run both client/app.js and server/server.js together
 
 
-Service use for sending verification code: nodemailer cryto
+Service use for sending verification link: firebase 
+
+download mysql on machine
+
+database password: bughouse123
+
+link schema.sql with database
+mysql -u root -p BugHouse < Path: \BugHouse\TheBugHouse\database\sql\schema.sql
+
+Import data
+mysql -u root -p BugHouse <  path: \BugHouse\TheBugHouse\database\sql\data.sql
+
+
+
+test: http://localhost:8000/test-db
+should be {"message":"Database connected successfully!"}"
+
+
+
+Unknown column 'firebaseUID' error
+
+Fix: ALTER TABLE System_User
+ADD COLUMN firebaseUID VARCHAR(128);

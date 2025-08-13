@@ -1,4 +1,3 @@
-// server/server.js - Use correct capitalized table names
 require('dotenv').config();
 
 const express = require('express');

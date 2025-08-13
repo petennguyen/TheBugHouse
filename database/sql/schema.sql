@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS `BugHouse`.`System_User` (
   `userEmail` VARCHAR(255) NOT NULL,
   `userPassword` VARCHAR(255) NOT NULL,
   `userRole` ENUM('Admin', 'Tutor', 'Student') NOT NULL,
+  `firebaseUID` VARCHAR(128),
   PRIMARY KEY (`userID`),
   UNIQUE INDEX `userEmail_UNIQUE` (`userEmail` ASC) VISIBLE)
 ENGINE = InnoDB;
