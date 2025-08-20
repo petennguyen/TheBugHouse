@@ -28,7 +28,7 @@ app.post('/api/auth/complete-signup', async (req, res) => {
   try {
     // ✅ Use lowercase table name (system_user not System_User)
     const [existingUsers] = await pool.execute(
-      'SELECT userID FROM System_User WHERE userEmail = ?', // ✅ Changed from system_user
+      'SELECT userID FROM System_User WHERE userEmail = ?',
       [email]
     );
     
@@ -39,14 +39,14 @@ app.post('/api/auth/complete-signup', async (req, res) => {
       });
     }
 
-    // Parse name into first and last name
+
     const nameParts = name.split(' ');
     const firstName = nameParts[0] || name;
     const lastName = nameParts.slice(1).join(' ') || '';
     
     console.log('💾 Inserting user into database:', { firstName, lastName, email, role });
     
-    // ✅ Insert into lowercase table with correct column names
+
     const [insertResult] = await pool.execute(
       'INSERT INTO System_User (userFirstName, userLastName, userEmail, userPassword, userRole, firebaseUID) VALUES (?, ?, ?, ?, ?, ?)', // ✅ Changed from system_user
       [firstName, lastName, email, 'firebase_auth', role, firebaseUID]
@@ -70,7 +70,7 @@ app.post('/api/auth/complete-signup', async (req, res) => {
       console.log('✅ Tutor record created');
     }
     
-    // Generate JWT token
+
     const token = jwt.sign(
       { email: email, role: role, userID: userID, firebaseUID: firebaseUID },
       'secretKey',
@@ -147,27 +147,20 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.post('/api/auth/login-database-first', async (req, res) => {
   const { email, password } = req.body;
-  
-  console.log(`🔍 DATABASE-FIRST LOGIN: ${email}`);
-  console.log(`🔍 PASSWORD: ${password}`);
+ 
 
   try {
     // First, test the connection
     console.log('🔍 Testing database connection...');
     
-    // ✅ Try lowercase table name first
+    // Try lowercase table name first
     const [users] = await pool.execute(
       'SELECT userID, userFirstName, userLastName, userEmail, userRole FROM System_User WHERE userEmail = ? AND userPassword = ?', // ✅ Changed from system_user
       [email, password]
     );
 
-    console.log(`🔍 QUERY EXECUTED. FOUND ${users.length} users`);
     
-    if (users.length > 0) {
-      console.log(`✅ USER FOUND:`, users[0]);
-    } else {
-      console.log(`❌ NO USER FOUND with email: ${email}`);
-    }
+  
 
     if (users.length === 0) {
       return res.status(401).json({ 
@@ -184,7 +177,7 @@ app.post('/api/auth/login-database-first', async (req, res) => {
       { expiresIn: '2h' }
     );
 
-    console.log(`✅ LOGIN SUCCESSFUL for user: ${user.userEmail}`);
+    console.log(`LOGIN SUCCESSFUL for user: ${user.userEmail}`);
 
     res.json({ 
       success: true,
@@ -207,7 +200,7 @@ app.post('/api/auth/login-database-first', async (req, res) => {
   }
 });
 
-// ✅ GET /api/auth/check-user - Check if user exists in database
+
 app.get('/api/auth/check-user/:firebaseUID', async (req, res) => {
   const { firebaseUID } = req.params;
   
@@ -245,6 +238,34 @@ app.get('/test-db', async (req, res) => {
   } catch (error) {
     console.error('Database error:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/user/profile - returns profile based on JWT in Authorization header
+app.get('/api/user/profile', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.split(' ')[1];
+    if (!token) return res.status(401).json({ message: 'No token provided' });
+
+    // Verify token (use your JWT secret)
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretKey');
+
+    // Adjust this to match the claim you put into the token (email or uid)
+    const email = decoded.email;
+    if (!email) return res.status(400).json({ message: 'Invalid token payload' });
+
+    const [rows] = await pool.execute(
+      'SELECT userID, userFirstName, userLastName, userEmail, userRole FROM System_User WHERE userEmail = ?',
+      [email]
+    );
+
+    if (!rows || rows.length === 0) return res.status(404).json({ message: 'User not found' });
+
+    res.json({ user: rows[0] });
+  } catch (err) {
+    console.error('GET /api/user/profile error:', err);
+    res.status(500).json({ message: 'Failed to fetch profile' });
   }
 });
 
