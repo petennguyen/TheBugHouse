@@ -17,16 +17,16 @@ function Signup({ onLogin }) {
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // ✅ Add URL parameter handling
+  // Add URL parameter handling
   const [searchParams] = useSearchParams();
 
-  // ✅ Memoize handleEmailVerified to fix useEffect dependency
+  // Memoize handleEmailVerified to fix useEffect dependency
   const handleEmailVerified = useCallback(async (user) => {
     try {
       console.log('🔄 handleEmailVerified called with user:', user);
       console.log('🔄 firebaseUser state:', firebaseUser);
       
-      // ✅ Get user data from state OR fallback to Firebase user info
+      // Get user data from state OR fallback to Firebase user info
       const userData = firebaseUser || {
         name: user.displayName || formData.name || 'Unknown User',
         role: formData.role || 'student',
@@ -187,7 +187,7 @@ function Signup({ onLogin }) {
     }, 600000);
   };
 
-  // ✅ Simplified verification UI without manual check button
+
   if (step === 'verify') {
     return (
       <div style={{ maxWidth: '400px', margin: '2rem auto', padding: '20px' }}>

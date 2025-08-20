@@ -188,7 +188,7 @@ Please either:
         </button>
       </form>
       
-      {/* ✅ Add Forgot Password Button */}
+      {/* Forgot password button*/}
       <div style={{ marginTop: '1rem', textAlign: 'center' }}>
         <button 
           type="button" 
