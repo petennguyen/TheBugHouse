@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate} from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import axios from 'axios';
 import Login from './Login';
 import Signup from './Signup';
+import Dashboard from './Dashboard';
 import bg from './assets/uta.jpg';
 import './App.css';
 
@@ -10,6 +11,7 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [, setUserRole] = useState('');
   const [userFirstName, setUserFirstName] = useState('');
+  const [redirectToDashboard, setRedirectToDashboard] = useState(false);
 
   // fetch profile helper
   const fetchProfile = async () => {
@@ -46,6 +48,8 @@ function App() {
     setIsLoggedIn(true);
     setUserRole(role || '');
     fetchProfile();
+    // trigger client-side redirect (handled inside Router render)
+    setRedirectToDashboard(true);
   };
 
   const handleLogout = () => {
@@ -68,6 +72,8 @@ function App() {
     <Router>
       <div className="App" style={bgStyle}>
         <div className="overlay">
+          {/* redirect after login */}
+          {redirectToDashboard && <Navigate to="/dashboard" replace />}
           <header className="App-header">
             {isLoggedIn ? (
               <div>
@@ -78,6 +84,7 @@ function App() {
               <Routes>
                 <Route path="/login" element={<Login onLogin={handleLogin} />} />
                 <Route path="/signup" element={<Signup onLogin={handleLogin} />} />
+                <Route path="/dashboard" element={isLoggedIn ? <Dashboard userFirstName={userFirstName} onLogout={handleLogout} /> : <Navigate to="/login" replace />} />
                 { <Route path="/" element={<Navigate to="/login" />} />}
               </Routes>
             )}
