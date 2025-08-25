@@ -1,132 +1,238 @@
 USE BugHouse;
 
-INSERT INTO System_User (userID, userFirstname, userLastname, userEmail, userPassword, userRole) VALUES
-(1, 'Admin', 'A', 'adminA@bughouse.edu', 'adminpasswordA', 'admin'),
-(2, 'Admin', 'B', 'adminB@bughouse.edu', 'adminpasswordB', 'admin'),
-(3, 'Admin', 'C', 'adminC@bughouse.edu', 'adminpasswordC', 'admin'),
+-- =====================================================
+-- 1) Subjects
+-- =====================================================
+INSERT INTO Academic_Subject (subjectName) VALUES
+('Calculus I'), ('Calculus II'), ('Calculus III'),
+('Physics I'), ('Algorithms & Datastructures'),
+('Organic Chemistry'), ('Art History'), ('Statistics')
+ON DUPLICATE KEY UPDATE subjectName = VALUES(subjectName);
 
-(4, 'Tutor', 'A', 'tutorA@bughouse.edu', 'tutorpasswordA', 'tutor'),
-(5, 'Tutor', 'B', 'tutorB@bughouse.edu', 'tutorpasswordB', 'tutor'),
-(6, 'Tutor', 'C', 'tutorC@bughouse.edu', 'tutorpasswordC', 'tutor'),
-(7, 'Tutor', 'D', 'tutorD@bughouse.edu', 'tutorpasswordD', 'tutor'),
-(8, 'Tutor', 'E', 'tutorE@bughouse.edu', 'tutorpasswordE', 'tutor'),
-(9, 'Tutor', 'F', 'tutorF@bughouse.edu', 'tutorpasswordF', 'tutor'),
-(10, 'Tutor', 'G', 'tutorG@bughouse.edu', 'tutorpasswordG', 'tutor'),
-(11, 'Tutor', 'H', 'tutorH@bughouse.edu', 'tutorpasswordH', 'tutor'),
-(12, 'Tutor', 'I', 'tutorI@bughouse.edu', 'tutorpasswordI', 'tutor'),
-(13, 'Tutor', 'J', 'tutorJ@bughouse.edu', 'tutorpasswordJ', 'tutor'),
+-- =====================================================
+-- 2) System users (no explicit IDs)
+-- =====================================================
+INSERT INTO System_User (userFirstName, userLastName, userEmail, userPassword, userRole) VALUES
+('Admin','A','adminA@bughouse.edu','adminpasswordA','Admin'),
+('Admin','B','adminB@bughouse.edu','adminpasswordB','Admin'),
+('Admin','C','adminC@bughouse.edu','adminpasswordC','Admin'),
 
-(14, 'Student', 'A', 'studentA@bughouse.edu', 'studentpasswordA', 'student'),
-(15, 'Student', 'B', 'studentB@bughouse.edu', 'studentpasswordB', 'student'),
-(16, 'Student', 'C', 'studentC@bughouse.edu', 'studentpasswordC', 'student'),
-(17, 'Student', 'D', 'studentD@bughouse.edu', 'studentpasswordD', 'student'),
-(18, 'Student', 'E', 'studentE@bughouse.edu', 'studentpasswordE', 'student'),
-(19, 'Student', 'F', 'studentF@bughouse.edu', 'studentpasswordF', 'student'),
-(20, 'Student', 'G', 'studentG@bughouse.edu', 'studentpasswordG', 'student'),
-(21, 'Student', 'H', 'studentH@bughouse.edu', 'studentpasswordH', 'student'),
-(22, 'Student', 'I', 'studentI@bughouse.edu', 'studentpasswordI', 'student'),
-(23, 'Student', 'J', 'studentJ@bughouse.edu', 'studentpasswordJ', 'student');
+('Tutor','A','tutorA@bughouse.edu','tutorpasswordA','Tutor'),
+('Tutor','B','tutorB@bughouse.edu','tutorpasswordB','Tutor'),
+('Tutor','C','tutorC@bughouse.edu','tutorpasswordC','Tutor'),
+('Tutor','D','tutorD@bughouse.edu','tutorpasswordD','Tutor'),
+('Tutor','E','tutorE@bughouse.edu','tutorpasswordE','Tutor'),
+('Tutor','F','tutorF@bughouse.edu','tutorpasswordF','Tutor'),
+('Tutor','G','tutorG@bughouse.edu','tutorpasswordG','Tutor'),
+('Tutor','H','tutorH@bughouse.edu','tutorpasswordH','Tutor'),
+('Tutor','I','tutorI@bughouse.edu','tutorpasswordI','Tutor'),
+('Tutor','J','tutorJ@bughouse.edu','tutorpasswordJ','Tutor'),
 
-INSERT INTO Administrator (System_User_userID, accessLevel) VALUES
-(1, 1),
-(2, 1),
-(3, 1);
+('Student','A','studentA@bughouse.edu','studentpasswordA','Student'),
+('Student','B','studentB@bughouse.edu','studentpasswordB','Student'),
+('Student','C','studentC@bughouse.edu','studentpasswordC','Student'),
+('Student','D','studentD@bughouse.edu','studentpasswordD','Student'),
+('Student','E','studentE@bughouse.edu','studentpasswordE','Student'),
+('Student','F','studentF@bughouse.edu','studentpasswordF','Student'),
+('Student','G','studentG@bughouse.edu','studentpasswordG','Student'),
+('Student','H','studentH@bughouse.edu','studentpasswordH','Student'),
+('Student','I','studentI@bughouse.edu','studentpasswordI','Student'),
+('Student','J','studentJ@bughouse.edu','studentpasswordJ','Student')
+ON DUPLICATE KEY UPDATE userPassword = VALUES(userPassword), userRole = VALUES(userRole);
 
-INSERT INTO Tutor (System_User_userID, tutorBiography, tutorQualifications) VALUES
-(4, 'Bio 1', 'Calculus I'),
-(5, 'Bio 2', 'Calculus II'),
-(6, 'Bio 3', 'Calculus III'),
-(7, 'Bio 4', 'Physics I'),
-(8, 'Bio 5', 'Algorithms & Datastructures'),
-(9, 'Bio 6', 'Organic Chemistry'),
-(10, 'Bio 7', 'Art History'),
-(11, 'Bio 8', 'Statistics'),
-(12, 'Bio 9', 'Algorithms & Datastructures'),
-(13, 'Bio 10', 'Calculus I');
+-- =====================================================
+-- 3) Role tables
+-- =====================================================
+-- Admins
+INSERT INTO Administrator (System_User_userID, accessLevel)
+SELECT userID, 1 FROM System_User WHERE userEmail IN ('adminA@bughouse.edu','adminB@bughouse.edu','adminC@bughouse.edu')
+ON DUPLICATE KEY UPDATE accessLevel = VALUES(accessLevel);
 
-INSERT INTO Tutor_Availability (availabilityID, Tutor_System_User_userID, dayOfWeek, startTime, endTime) VALUES
-(1, 4, 1, '09:00:00', '11:00:00'),
-(2, 4, 3, '14:00:00', '16:00:00'),
-(3, 5, 2, '10:00:00', '12:00:00'),
-(4, 5, 3, '13:00:00', '15:00:00'),
-(5, 6, 4, '11:00:00', '13:00:00'),
-(6, 6, 5, '15:00:00', '17:00:00'),
-(7, 7, 2, '09:00:00', '11:00:00'),
-(8, 7, 3, '14:00:00', '16:00:00'),
-(9, 8, 4, '10:00:00', '12:00:00'),
-(10, 8, 6, '13:00:00', '15:00:00'),
-(11, 9, 6, '11:00:00', '13:00:00'),
-(12, 9, 7, '15:00:00', '17:00:00'),
-(13, 10, 2, '09:00:00', '11:00:00'),
-(14, 10, 5, '14:00:00', '16:00:00'),
-(15, 11, 2, '10:00:00', '12:00:00'),
-(16, 11, 3, '13:00:00', '15:00:00'),
-(17, 12, 1, '11:00:00', '13:00:00'),
-(18, 12, 4, '15:00:00', '17:00:00'),
-(19, 13, 1, '09:00:00', '11:00:00'),
-(20, 13, 2, '14:00:00', '16:00:00');
+-- Tutors
+INSERT INTO Tutor (System_User_userID, tutorBiography, tutorQualifications)
+SELECT userID, 'Experienced in teaching', 'Calculus I'  FROM System_User WHERE userEmail = 'tutorA@bughouse.edu'
+ON DUPLICATE KEY UPDATE tutorBiography=VALUES(tutorBiography), tutorQualifications=VALUES(tutorQualifications);
+INSERT INTO Tutor (System_User_userID, tutorBiography, tutorQualifications)
+SELECT userID, 'Experienced in teaching', 'Calculus II' FROM System_User WHERE userEmail = 'tutorB@bughouse.edu'
+ON DUPLICATE KEY UPDATE tutorBiography=VALUES(tutorBiography), tutorQualifications=VALUES(tutorQualifications);
+INSERT INTO Tutor (System_User_userID, tutorBiography, tutorQualifications)
+SELECT userID, 'Experienced in teaching', 'Calculus III' FROM System_User WHERE userEmail = 'tutorC@bughouse.edu'
+ON DUPLICATE KEY UPDATE tutorBiography=VALUES(tutorBiography), tutorQualifications=VALUES(tutorQualifications);
+INSERT INTO Tutor (System_User_userID, tutorBiography, tutorQualifications)
+SELECT userID, 'Experienced in teaching', 'Physics I' FROM System_User WHERE userEmail = 'tutorD@bughouse.edu'
+ON DUPLICATE KEY UPDATE tutorBiography=VALUES(tutorBiography), tutorQualifications=VALUES(tutorQualifications);
+INSERT INTO Tutor (System_User_userID, tutorBiography, tutorQualifications)
+SELECT userID, 'Experienced in teaching', 'Algorithms & Datastructures' FROM System_User WHERE userEmail = 'tutorE@bughouse.edu'
+ON DUPLICATE KEY UPDATE tutorBiography=VALUES(tutorBiography), tutorQualifications=VALUES(tutorQualifications);
+INSERT INTO Tutor (System_User_userID, tutorBiography, tutorQualifications)
+SELECT userID, 'Experienced in teaching', 'Organic Chemistry' FROM System_User WHERE userEmail = 'tutorF@bughouse.edu'
+ON DUPLICATE KEY UPDATE tutorBiography=VALUES(tutorBiography), tutorQualifications=VALUES(tutorQualifications);
+INSERT INTO Tutor (System_User_userID, tutorBiography, tutorQualifications)
+SELECT userID, 'Experienced in teaching', 'Art History' FROM System_User WHERE userEmail = 'tutorG@bughouse.edu'
+ON DUPLICATE KEY UPDATE tutorBiography=VALUES(tutorBiography), tutorQualifications=VALUES(tutorQualifications);
+INSERT INTO Tutor (System_User_userID, tutorBiography, tutorQualifications)
+SELECT userID, 'Experienced in teaching', 'Statistics' FROM System_User WHERE userEmail = 'tutorH@bughouse.edu'
+ON DUPLICATE KEY UPDATE tutorBiography=VALUES(tutorBiography), tutorQualifications=VALUES(tutorQualifications);
+INSERT INTO Tutor (System_User_userID, tutorBiography, tutorQualifications)
+SELECT userID, 'Experienced in teaching', 'Algorithms & Datastructures' FROM System_User WHERE userEmail = 'tutorI@bughouse.edu'
+ON DUPLICATE KEY UPDATE tutorBiography=VALUES(tutorBiography), tutorQualifications=VALUES(tutorQualifications);
+INSERT INTO Tutor (System_User_userID, tutorBiography, tutorQualifications)
+SELECT userID, 'Experienced in teaching', 'Calculus I' FROM System_User WHERE userEmail = 'tutorJ@bughouse.edu'
+ON DUPLICATE KEY UPDATE tutorBiography=VALUES(tutorBiography), tutorQualifications=VALUES(tutorQualifications);
 
-INSERT INTO Student (System_User_userID, studentIDCard, studentLearningGoals) VALUES
-(14, 'ID001', 'Calculus I'),
-(15, 'ID002', 'Physics I'),
-(16, 'ID003', 'Calculus III'),
-(17, 'ID004', 'Algorithms & Datastructures'),
-(18, 'ID005', 'Art History'),
-(19, 'ID006', 'Calculus II'),
-(20, 'ID007', 'Statistics'),
-(21, 'ID008', 'Organic Chemistry'),
-(22, 'ID009', 'Physics I'),
-(23, 'ID010', 'Calculus I');
+-- Students
+INSERT INTO Student (System_User_userID, studentIDCard, studentLearningGoals)
+SELECT userID, 'ID001', 'Calculus I' FROM System_User WHERE userEmail = 'studentA@bughouse.edu'
+ON DUPLICATE KEY UPDATE studentIDCard=VALUES(studentIDCard), studentLearningGoals=VALUES(studentLearningGoals);
+INSERT INTO Student (System_User_userID, studentIDCard, studentLearningGoals)
+SELECT userID, 'ID002', 'Physics I' FROM System_User WHERE userEmail = 'studentB@bughouse.edu'
+ON DUPLICATE KEY UPDATE studentIDCard=VALUES(studentIDCard), studentLearningGoals=VALUES(studentLearningGoals);
+INSERT INTO Student (System_User_userID, studentIDCard, studentLearningGoals)
+SELECT userID, 'ID003', 'Calculus III' FROM System_User WHERE userEmail = 'studentC@bughouse.edu'
+ON DUPLICATE KEY UPDATE studentIDCard=VALUES(studentIDCard), studentLearningGoals=VALUES(studentLearningGoals);
+INSERT INTO Student (System_User_userID, studentIDCard, studentLearningGoals)
+SELECT userID, 'ID004', 'Algorithms & Datastructures' FROM System_User WHERE userEmail = 'studentD@bughouse.edu'
+ON DUPLICATE KEY UPDATE studentIDCard=VALUES(studentIDCard), studentLearningGoals=VALUES(studentLearningGoals);
+INSERT INTO Student (System_User_userID, studentIDCard, studentLearningGoals)
+SELECT userID, 'ID005', 'Art History' FROM System_User WHERE userEmail = 'studentE@bughouse.edu'
+ON DUPLICATE KEY UPDATE studentIDCard=VALUES(studentIDCard), studentLearningGoals=VALUES(studentLearningGoals);
+INSERT INTO Student (System_User_userID, studentIDCard, studentLearningGoals)
+SELECT userID, 'ID006', 'Calculus II' FROM System_User WHERE userEmail = 'studentF@bughouse.edu'
+ON DUPLICATE KEY UPDATE studentIDCard=VALUES(studentIDCard), studentLearningGoals=VALUES(studentLearningGoals);
+INSERT INTO Student (System_User_userID, studentIDCard, studentLearningGoals)
+SELECT userID, 'ID007', 'Statistics' FROM System_User WHERE userEmail = 'studentG@bughouse.edu'
+ON DUPLICATE KEY UPDATE studentIDCard=VALUES(studentIDCard), studentLearningGoals=VALUES(studentLearningGoals);
+INSERT INTO Student (System_User_userID, studentIDCard, studentLearningGoals)
+SELECT userID, 'ID008', 'Organic Chemistry' FROM System_User WHERE userEmail = 'studentH@bughouse.edu'
+ON DUPLICATE KEY UPDATE studentIDCard=VALUES(studentIDCard), studentLearningGoals=VALUES(studentLearningGoals);
+INSERT INTO Student (System_User_userID, studentIDCard, studentLearningGoals)
+SELECT userID, 'ID009', 'Physics I' FROM System_User WHERE userEmail = 'studentI@bughouse.edu'
+ON DUPLICATE KEY UPDATE studentIDCard=VALUES(studentIDCard), studentLearningGoals=VALUES(studentLearningGoals);
+INSERT INTO Student (System_User_userID, studentIDCard, studentLearningGoals)
+SELECT userID, 'ID010', 'Calculus I' FROM System_User WHERE userEmail = 'studentJ@bughouse.edu'
+ON DUPLICATE KEY UPDATE studentIDCard=VALUES(studentIDCard), studentLearningGoals=VALUES(studentLearningGoals);
 
-INSERT INTO Academic_Subject (subjectID, subjectName) VALUES
-(1, 'Calculus I'),
-(2, 'Calculus II'),
-(3, 'Calculus III'),
-(4, 'Physics I'),
-(5, 'Algorithms & Datastructures'),
-(6, 'Organic Chemistry'),
-(7, 'Art History'),
-(8, 'Statistics');
+-- =====================================================
+-- 4) Schedules (AUTO_INCREMENT IDs)
+-- =====================================================
+INSERT INTO Daily_Schedule (Administrator_System_User_userID, scheduleDate)
+SELECT userID, '2025-08-01' FROM System_User WHERE userEmail='adminA@bughouse.edu';
+INSERT INTO Daily_Schedule (Administrator_System_User_userID, scheduleDate)
+SELECT userID, '2025-08-02' FROM System_User WHERE userEmail='adminB@bughouse.edu';
+INSERT INTO Daily_Schedule (Administrator_System_User_userID, scheduleDate)
+SELECT userID, '2025-08-03' FROM System_User WHERE userEmail='adminC@bughouse.edu';
 
-INSERT INTO Daily_Schedule (scheduleID, scheduleDate, Administrator_System_User_userID) VALUES
-(1, '2025-08-01', 1);
+-- =====================================================
+-- 5) Timeslots (AUTO_INCREMENT first column; composite PK kept)
+--    We reference schedules by date to grab their IDs.
+-- =====================================================
+-- helper to fetch IDs
+-- (no stored variables needed; use inline SELECTs)
 
-INSERT INTO Timeslot (timeslotID, Daily_Schedule_scheduleID, Academic_Subject_subjectID, Tutor_System_User_userID) VALUES
-(1, 1, 8, 4),
-(2, 1, 7, 6),
-(3, 1, 1, 8),
-(4, 1, 7, 8),
-(5, 1, 1, 7),
-(6, 1, 7, 9),
-(7, 1, 1, 4),
-(8, 1, 1, 10),
-(9, 1, 2, 5),
-(10, 1, 2, 5),
-(11, 1, 2, 8),
-(12, 1, 2, 13),
-(13, 1, 2, 12),
-(14, 1, 2, 6),
-(15, 1, 2, 5),
-(16, 1, 2, 8),
-(17, 1, 3, 6),
-(18, 1, 3, 10),
-(19, 1, 3, 11),
-(20, 1, 3, 7);
+INSERT INTO Timeslot (Daily_Schedule_scheduleID, Academic_Subject_subjectID, Tutor_System_User_userID)
+SELECT ds.scheduleID, s.subjectID, t.userID
+FROM Daily_Schedule ds
+JOIN Academic_Subject s ON s.subjectName='Calculus I'
+JOIN System_User t ON t.userEmail='tutorA@bughouse.edu'
+WHERE ds.scheduleDate='2025-08-01';
 
+INSERT INTO Timeslot (Daily_Schedule_scheduleID, Academic_Subject_subjectID, Tutor_System_User_userID)
+SELECT ds.scheduleID, s.subjectID, t.userID
+FROM Daily_Schedule ds
+JOIN Academic_Subject s ON s.subjectName='Physics I'
+JOIN System_User t ON t.userEmail='tutorB@bughouse.edu'
+WHERE ds.scheduleDate='2025-08-01';
 
-INSERT INTO Tutor_Session (sessionID, Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID, Tutor_System_User_userID, Student_System_User_userID, sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating) VALUES
-(1, 1, 1, 8, 4, 14, '2025-08-01 08:00:00', '2025-08-01 08:50:00', 'Session on Statistics', 5),
-(2, 3, 1, 1, 4, 15, '2025-08-01 10:00:00', '2025-08-01 10:50:00', 'Session on Calculus I', 4),
-(3, 5, 1, 1, 7, 16, '2025-08-01 12:00:00', '2025-08-01 12:50:00', 'Session on Calculus I', 5),
-(4, 7, 1, 1, 4, 17, '2025-08-01 14:00:00', '2025-08-01 14:50:00', 'Session on Calculus I', 4),
-(5, 9, 1, 2, 5, 18, '2025-08-01 08:00:00', '2025-08-01 08:50:00', 'Session on Calculus II', 4),
-(6, 11, 1, 2, 8, 19, '2025-08-01 10:00:00', '2025-08-01 10:50:00', 'Session on Calculus II', 5),
-(7, 13, 1, 2, 12, 20, '2025-08-01 12:00:00', '2025-08-01 12:50:00', 'Session on Calculus II', 5),
-(8, 15, 1, 2, 5, 21, '2025-08-01 14:00:00', '2025-08-01 14:50:00', 'Session on Calculus II', 3),
-(9, 17, 1, 3, 6, 22, '2025-08-01 08:00:00', '2025-08-01 08:50:00', 'Session on Calculus III', 4),
-(10, 19, 1, 3, 11, 23, '2025-08-01 10:00:00', '2025-08-01 10:50:00', 'Session on Calculus III', 3),
-(11, 20, 1, 3, 7, 14, '2025-08-01 12:00:00', '2025-08-01 12:50:00', 'Session on Calculus III', 4),
-(12, 18, 1, 3, 10, 15, '2025-08-01 14:00:00', '2025-08-01 14:50:00', 'Session on Calculus III', 4),
-(13, 2, 1, 7, 4, 16, '2025-08-01 08:00:00', '2025-08-01 08:50:00', 'Session on Art History', 5),
-(14, 4, 1, 7, 4, 17, '2025-08-01 10:00:00', '2025-08-01 10:50:00', 'Session on Art History', 4),
-(15, 6, 1, 7, 4, 18, '2025-08-01 12:00:00', '2025-08-01 12:50:00', 'Session on Art History', 5);
+INSERT INTO Timeslot (Daily_Schedule_scheduleID, Academic_Subject_subjectID, Tutor_System_User_userID)
+SELECT ds.scheduleID, s.subjectID, t.userID
+FROM Daily_Schedule ds
+JOIN Academic_Subject s ON s.subjectName='Statistics'
+JOIN System_User t ON t.userEmail='tutorC@bughouse.edu'
+WHERE ds.scheduleDate='2025-08-02';
+
+-- =====================================================
+-- 6) Sessions (AUTO_INCREMENT sessionID; references composite timeslot)
+-- =====================================================
+-- Session 1: Calculus I with tutorA and studentA on 2025-08-01 (uses the first timeslot of that day)
+INSERT INTO Tutor_Session (
+  Timeslot_timeslotID,
+  Timeslot_Daily_Schedule_scheduleID,
+  Academic_Subject_subjectID,
+  Tutor_System_User_userID,
+  Student_System_User_userID,
+  sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating
+)
+SELECT
+  tl.timeslotID,
+  tl.Daily_Schedule_scheduleID,
+  tl.Academic_Subject_subjectID,
+  tl.Tutor_System_User_userID,
+  stu.userID,
+  '2025-08-01 09:00:00', '2025-08-01 10:00:00', 'Great session!', 5
+FROM Timeslot tl
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN System_User stu ON stu.userEmail='studentA@bughouse.edu'
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+WHERE ds.scheduleDate='2025-08-01' AND subj.subjectName='Calculus I'
+LIMIT 1;
+
+-- Session 2: Physics I with tutorB and studentB on 2025-08-01
+INSERT INTO Tutor_Session (
+  Timeslot_timeslotID,
+  Timeslot_Daily_Schedule_scheduleID,
+  Academic_Subject_subjectID,
+  Tutor_System_User_userID,
+  Student_System_User_userID,
+  sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating
+)
+SELECT
+  tl.timeslotID,
+  tl.Daily_Schedule_scheduleID,
+  tl.Academic_Subject_subjectID,
+  tl.Tutor_System_User_userID,
+  stu.userID,
+  '2025-08-01 11:00:00', '2025-08-01 12:00:00', 'Helpful session.', 4
+FROM Timeslot tl
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN System_User stu ON stu.userEmail='studentB@bughouse.edu'
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+WHERE ds.scheduleDate='2025-08-01' AND subj.subjectName='Physics I'
+LIMIT 1;
+
+-- Session 3: Statistics with tutorC and studentC on 2025-08-02
+INSERT INTO Tutor_Session (
+  Timeslot_timeslotID,
+  Timeslot_Daily_Schedule_scheduleID,
+  Academic_Subject_subjectID,
+  Tutor_System_User_userID,
+  Student_System_User_userID,
+  sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating
+)
+SELECT
+  tl.timeslotID,
+  tl.Daily_Schedule_scheduleID,
+  tl.Academic_Subject_subjectID,
+  tl.Tutor_System_User_userID,
+  stu.userID,
+  '2025-08-02 14:00:00', '2025-08-02 15:00:00', 'Very informative.', 5
+FROM Timeslot tl
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN System_User stu ON stu.userEmail='studentC@bughouse.edu'
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+WHERE ds.scheduleDate='2025-08-02' AND subj.subjectName='Statistics'
+LIMIT 1;
+
+-- =====================================================
+-- 7) Tutor Availability (examples)
+-- =====================================================
+INSERT INTO Tutor_Availability (Tutor_System_User_userID, dayOfWeek, startTime, endTime)
+SELECT userID, 'Mon', '09:00:00', '12:00:00' FROM System_User WHERE userEmail='tutorA@bughouse.edu'
+ON DUPLICATE KEY UPDATE startTime=VALUES(startTime), endTime=VALUES(endTime);
+
+INSERT INTO Tutor_Availability (Tutor_System_User_userID, dayOfWeek, startTime, endTime)
+SELECT userID, 'Wed', '13:00:00', '16:00:00' FROM System_User WHERE userEmail='tutorB@bughouse.edu'
+ON DUPLICATE KEY UPDATE startTime=VALUES(startTime), endTime=VALUES(endTime);
+
+INSERT INTO Tutor_Availability (Tutor_System_User_userID, dayOfWeek, startTime, endTime)
+SELECT userID, 'Fri', '10:00:00', '12:00:00' FROM System_User WHERE userEmail='tutorC@bughouse.edu'
+ON DUPLICATE KEY UPDATE startTime=VALUES(startTime), endTime=VALUES(endTime);

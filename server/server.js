@@ -11,10 +11,11 @@ app.use(express.json());
 
 // ✅ MySQL Database Connection
 const dbConfig = {
-  host: 'localhost',
-  user: 'root',
-  password: 'bughouse123',
-  database: 'BugHouse'
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASS,
+  database: process.env.DB_NAME,
+   port: process.env.DB_PORT || 3306,
 };
 
 const pool = mysql.createPool(dbConfig);
@@ -72,10 +73,10 @@ app.post('/api/auth/complete-signup', async (req, res) => {
     
 
     const token = jwt.sign(
-      { email: email, role: role, userID: userID, firebaseUID: firebaseUID },
-      'secretKey',
-      { expiresIn: '2h' }
-    );
+  { email, role, userID, firebaseUID },
+  process.env.JWT_SECRET || 'change_me_now',
+  { expiresIn: '2h' }
+);
     
     console.log('✅ Complete signup successful for:', email);
     
@@ -110,7 +111,7 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     // Check System_User table for existing users
     const [users] = await pool.execute(
-      'SELECT userID, userFirstname, userLastname, userEmail, userRole, firebaseUID FROM System_User WHERE userEmail = ? OR firebaseUID = ?',
+      'SELECT userID, userFirstName, userLastName, userEmail, userRole, firebaseUID FROM System_User WHERE userEmail = ? OR firebaseUID = ?',
       [email, firebaseUID]
     );
 
@@ -124,10 +125,10 @@ app.post('/api/auth/login', async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign(
-      { email: user.userEmail, role: user.userRole, userID: user.userID, firebaseUID: user.firebaseUID },
-      'secretKey',
-      { expiresIn: '2h' }
-    );
+  { email: user.userEmail, role: user.userRole, userID: user.userID, firebaseUID: user.firebaseUID },
+  process.env.JWT_SECRET || 'change_me_now',
+  { expiresIn: '2h' }
+);
 
     res.json({ 
       message: 'Login successful',
@@ -172,10 +173,11 @@ app.post('/api/auth/login-database-first', async (req, res) => {
     const user = users[0];
 
     const token = jwt.sign(
-      { email: user.userEmail, role: user.userRole, userID: user.userID, isTestUser: true },
-      'secretKey',
-      { expiresIn: '2h' }
-    );
+  { email: user.userEmail, role: user.userRole, userID: user.userID, isTestUser: true },
+  process.env.JWT_SECRET || 'change_me_now',
+  { expiresIn: '2h' }
+);
+
 
     console.log(`LOGIN SUCCESSFUL for user: ${user.userEmail}`);
 
@@ -249,7 +251,8 @@ app.get('/api/user/profile', async (req, res) => {
     if (!token) return res.status(401).json({ message: 'No token provided' });
 
     // Verify token (use your JWT secret)
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretKey');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'change_me_now');
+
 
     // Adjust this to match the claim you put into the token (email or uid)
     const email = decoded.email;

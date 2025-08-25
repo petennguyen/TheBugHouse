@@ -1,184 +1,106 @@
-SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0;
-SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;
-SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+USE BugHouse;
 
--- -----------------------------------------------------
--- Schema BugHouse
--- -----------------------------------------------------
-
--- -----------------------------------------------------
--- Schema BugHouse
--- -----------------------------------------------------
-CREATE SCHEMA IF NOT EXISTS `BugHouse` DEFAULT CHARACTER SET utf8 ;
-USE `BugHouse` ;
-USE `BugHouse` ;
-
--- -----------------------------------------------------
--- View `BugHouse`.`student_session_count`
--- -----------------------------------------------------
-USE `BugHouse`;
-CREATE  OR REPLACE VIEW `student_session_count` AS
+-- Sessions per student
+DROP VIEW IF EXISTS student_session_count;
+CREATE VIEW student_session_count AS
 SELECT
-    su.userID,
-    su.userFirstName,
-    su.userLastName,
-    COUNT(ts.sessionID) AS session_count
-FROM
-    System_User su
-JOIN 
-	Student s ON s.System_User_userID = su.userID
-LEFT JOIN 
-	Tutor_Session ts ON ts.Student_System_User_userID = su.userID
-WHERE
-    su.userRole = 'Student'
-GROUP BY
-    su.userID, su.userFirstName, su.userLastName;
+  su.userID AS studentUserID,
+  su.userFirstName,
+  su.userLastName,
+  COUNT(tsn.sessionID) AS sessionCount
+FROM Student s
+JOIN System_User su ON su.userID = s.System_User_userID
+LEFT JOIN Tutor_Session tsn ON tsn.Student_System_User_userID = su.userID
+GROUP BY su.userID, su.userFirstName, su.userLastName;
 
--- -----------------------------------------------------
--- View `BugHouse`.`tutor_session_count`
--- -----------------------------------------------------
-USE `BugHouse`;
-CREATE  OR REPLACE VIEW `tutor_session_count` AS
+-- Sessions per tutor
+DROP VIEW IF EXISTS tutor_session_count;
+CREATE VIEW tutor_session_count AS
 SELECT
-    su.userID,
-    su.userFirstName,
-    su.userLastName,
-    COUNT(ts.sessionID) AS session_count
-FROM
-    System_User su
-JOIN 
-	Tutor t ON t.System_User_userID = su.userID
-LEFT JOIN 
-	Tutor_Session ts ON ts.Tutor_System_User_userID = su.userID
-WHERE
-    su.userRole = 'Tutor'
-GROUP BY
-    su.userID, su.userFirstName, su.userLastName;
+  su.userID AS tutorUserID,
+  su.userFirstName,
+  su.userLastName,
+  COUNT(tsn.sessionID) AS sessionCount
+FROM Tutor t
+JOIN System_User su ON su.userID = t.System_User_userID
+LEFT JOIN Tutor_Session tsn ON tsn.Tutor_System_User_userID = su.userID
+GROUP BY su.userID, su.userFirstName, su.userLastName;
 
--- -----------------------------------------------------
--- View `BugHouse`.`tutor_average_ratings`
--- -----------------------------------------------------
-USE `BugHouse`;
-CREATE  OR REPLACE VIEW `tutor_average_ratings` AS
+-- Average ratings per tutor
+DROP VIEW IF EXISTS tutor_average_ratings;
+CREATE VIEW tutor_average_ratings AS
 SELECT
-    su.userID,
-    su.userFirstName,
-    su.userLastName,
-    AVG(ts.sessionRating) AS avg_session_rating
-FROM
-    System_User su
-JOIN 
-	Tutor t ON t.System_User_userID = su.userID
-LEFT JOIN 
-	Tutor_Session ts ON ts.Tutor_System_User_userID = su.userID
-WHERE
-    su.userRole = 'Tutor'
-GROUP BY
-    su.userID, su.userFirstName, su.userLastName;
+  su.userID AS tutorUserID,
+  su.userFirstName,
+  su.userLastName,
+  AVG(tsn.sessionRating) AS averageRating,
+  COUNT(tsn.sessionID) AS ratingsCount
+FROM Tutor t
+JOIN System_User su ON su.userID = t.System_User_userID
+LEFT JOIN Tutor_Session tsn ON tsn.Tutor_System_User_userID = su.userID
+GROUP BY su.userID, su.userFirstName, su.userLastName;
 
--- -----------------------------------------------------
--- View `BugHouse`.`view_schedule`
--- -----------------------------------------------------
-USE `BugHouse`;
-CREATE  OR REPLACE VIEW `view_schedule` AS
-SELECT 
-    su_student.userFirstName AS studentFirstName,
-    su_student.userLastName AS studentLastName,
-    su_tutor.userFirstName AS tutorFirstName,
-    su_tutor.userLastName AS tutorLastName,
-
-    ts.timeslotID,
-    ds.scheduleID,
-    ds.scheduleDate,
-    subj.subjectID,
-    subj.subjectName,
-
-    sess.sessionID,
-    sess.sessionSignInTime,
-    sess.sessionSignOutTime
-FROM 
-    Timeslot ts
-JOIN 
-    Daily_Schedule ds ON ts.Daily_Schedule_scheduleID = ds.scheduleID
-JOIN 
-    Academic_Subject subj ON ts.Academic_Subject_subjectID = subj.subjectID
-
-JOIN 
-    Tutor t ON ts.Tutor_System_User_userID = t.System_User_userID
-JOIN 
-    System_User su_tutor ON t.System_User_userID = su_tutor.userID
-
-LEFT JOIN 
-    Tutor_Session sess ON ts.timeslotID = sess.Timeslot_timeslotID AND ts.Daily_Schedule_scheduleID = sess.Timeslot_Daily_Schedule_scheduleID
-LEFT JOIN 
-    Student s ON sess.Student_System_User_userID = s.System_User_userID
-LEFT JOIN 
-    System_User su_student ON s.System_User_userID = su_student.userID;
-
--- -----------------------------------------------------
--- View `BugHouse`.`tutor_view_availability`
--- -----------------------------------------------------
-USE `BugHouse`;
-CREATE  OR REPLACE VIEW `tutor_view_availability` AS
+-- Human-friendly schedule view
+DROP VIEW IF EXISTS view_schedule;
+CREATE VIEW view_schedule AS
 SELECT
-    su.userID,
-    su.userFirstName,
-    su.userLastName,
-    ta.dayOfWeek,
-    ta.startTime,
-    ta.endTime
-FROM
-    Tutor t
-JOIN 
-	System_User su ON t.System_User_userID = su.userID
-JOIN 
-	Tutor_Availability ta ON ta.Tutor_System_User_userID = t.System_User_userID;
+  ds.scheduleID,
+  ds.scheduleDate,
+  a.System_User_userID AS adminUserID,
+  sa.userFirstName AS adminFirstName,
+  sa.userLastName  AS adminLastName,
+  tl.timeslotID,
+  subj.subjectName,
+  tt.System_User_userID AS tutorUserID,
+  st.userFirstName  AS tutorFirstName,
+  st.userLastName   AS tutorLastName,
+  sess.sessionID,
+  sess.sessionSignInTime,
+  sess.sessionSignOutTime,
+  sess.sessionFeedback,
+  sess.sessionRating
+FROM Daily_Schedule ds
+JOIN Administrator a ON a.System_User_userID = ds.Administrator_System_User_userID
+JOIN System_User sa ON sa.userID = a.System_User_userID
+LEFT JOIN Timeslot tl ON tl.Daily_Schedule_scheduleID = ds.scheduleID
+LEFT JOIN Tutor tt ON tt.System_User_userID = tl.Tutor_System_User_userID
+LEFT JOIN System_User st ON st.userID = tt.System_User_userID
+LEFT JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+LEFT JOIN Tutor_Session sess
+  ON sess.Timeslot_timeslotID = tl.timeslotID
+ AND sess.Timeslot_Daily_Schedule_scheduleID = tl.Daily_Schedule_scheduleID;
 
--- -----------------------------------------------------
--- View `BugHouse`.`view_available_timeslots`
--- -----------------------------------------------------
-USE `BugHouse`;
-CREATE  OR REPLACE VIEW `view_available_timeslots` AS
-SELECT 
-    su_tutor.userID AS tutorID,
-    su_tutor.userFirstName AS tutorFirstName,
-    su_tutor.userLastName AS tutorLastName,
+-- Tutor availability view
+DROP VIEW IF EXISTS tutor_view_availability;
+CREATE VIEW tutor_view_availability AS
+SELECT
+  t.System_User_userID AS tutorUserID,
+  su.userFirstName,
+  su.userLastName,
+  ta.dayOfWeek,
+  ta.startTime,
+  ta.endTime
+FROM Tutor t
+JOIN System_User su ON su.userID = t.System_User_userID
+JOIN Tutor_Availability ta ON ta.Tutor_System_User_userID = t.System_User_userID
+ORDER BY su.userLastName, su.userFirstName, FIELD(ta.dayOfWeek,'Mon','Tue','Wed','Thu','Fri','Sat','Sun'), ta.startTime;
 
-    ts.timeslotID,
-    sched.scheduleID,
-    sched.scheduleDate,
-    subj.subjectID,
-    subj.subjectName,
-
-    sess.sessionID,
-    sess.sessionSignInTime,
-    sess.sessionSignOutTime,
-
-    su_student.userFirstName AS studentFirstName,
-    su_student.userLastName AS studentLastName
-
-FROM 
-    Timeslot ts
-JOIN 
-	Tutor t ON ts.Tutor_System_User_userID = t.System_User_userID
-JOIN 
-	System_User su_tutor ON t.System_User_userID = su_tutor.userID
-
-JOIN 
-	Daily_Schedule sched ON ts.Daily_Schedule_scheduleID = sched.scheduleID
-JOIN 
-	Academic_Subject subj ON ts.Academic_Subject_subjectID = subj.subjectID
-
-LEFT JOIN 
-	Tutor_Session sess ON ts.timeslotID = sess.Timeslot_timeslotID AND ts.Daily_Schedule_scheduleID = sess.Timeslot_Daily_Schedule_scheduleID
-
-LEFT JOIN 
-	Student s ON sess.Student_System_User_userID = s.System_User_userID
-LEFT JOIN 
-	System_User su_student ON s.System_User_userID = su_student.userID
-
+-- Open timeslots (no assigned student)
+DROP VIEW IF EXISTS view_available_timeslots;
+CREATE VIEW view_available_timeslots AS
+SELECT
+  ds.scheduleDate,
+  tl.Daily_Schedule_scheduleID AS scheduleID,
+  tl.timeslotID,
+  subj.subjectName,
+  su.userFirstName AS tutorFirstName,
+  su.userLastName  AS tutorLastName
+FROM Timeslot tl
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+JOIN Tutor t ON t.System_User_userID = tl.Tutor_System_User_userID
+JOIN System_User su ON su.userID = t.System_User_userID
+LEFT JOIN Tutor_Session sess
+  ON sess.Timeslot_timeslotID = tl.timeslotID
+ AND sess.Timeslot_Daily_Schedule_scheduleID = tl.Daily_Schedule_scheduleID
 WHERE sess.sessionID IS NULL;
-
-SET SQL_MODE=@OLD_SQL_MODE;
-SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
-SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
