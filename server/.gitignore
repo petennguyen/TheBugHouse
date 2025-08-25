@@ -1,2 +1,5 @@
 .envserver/.env
 server/.env
+
+
+.env

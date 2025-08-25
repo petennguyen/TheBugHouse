@@ -97,3 +97,42 @@ Unknown column 'firebaseUID' error
 
 Fix: ALTER TABLE System_User
 ADD COLUMN firebaseUID VARCHAR(128);
+
+
+
+
+SET @email_pattern = '%pgn4608%';
+SELECT @uid := (SELECT userID FROM System_User WHERE userEmail LIKE @email_pattern LIMIT 1);
+SELECT @uid; -- verify
+
+START TRANSACTION;
+
+DELETE FROM Tutor_Session
+ WHERE Tutor_System_User_userID = @uid
+    OR Student_System_User_userID = @uid;
+
+DELETE FROM Timeslot
+ WHERE Tutor_System_User_userID = @uid;
+
+DELETE FROM Tutor_Availability
+ WHERE Tutor_System_User_userID = @uid;
+
+DELETE FROM Tutor
+ WHERE System_User_userID = @uid;
+
+DELETE FROM Student
+ WHERE System_User_userID = @uid;
+
+DELETE FROM Administrator
+ WHERE System_User_userID = @uid;
+
+DELETE FROM System_User
+ WHERE userID = @uid;
+
+-- verify deletions
+SELECT COUNT(*) AS remaining FROM System_User WHERE userID = @uid;
+
+COMMIT;
+
+
+
