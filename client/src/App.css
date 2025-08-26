@@ -263,3 +263,34 @@ input:focus, select:focus, textarea:focus {
 .match-hint { font-size: 12px; margin-top: 6px; }
 .match-ok { color: #16a34a; }
 .match-bad { color: #dc2626; }
+
+/* Input adornments (eye icon) */
+.input-wrap { position: relative; }
+.input-wrap input { padding-right: 44px; }
+
+.eye-btn{
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  padding: 6px;
+  cursor: pointer;
+  border-radius: 8px;
+  /* 👇 ensure it’s visible and above the input */
+  color: #111827;            /* icon stroke color */
+  line-height: 0;            /* remove extra vertical space */
+  z-index: 2;
+  opacity: .9;
+}
+.eye-btn:hover{ opacity: 1; background: rgba(0,0,0,.05); }
+
+.eye-btn svg{
+  width: 20px;
+  height: 20px;
+  display: block;
+  stroke: currentColor;      /* make sure stroke inherits color */
+  fill: none;
+  stroke-width: 2;
+}

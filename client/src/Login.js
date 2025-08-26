@@ -14,6 +14,25 @@ function Login({ onLogin }) {
   const [msgType, setMsgType] = useState('error'); // 'success' | 'error'
   const [isLoading, setIsLoading] = useState(false);
 
+  // 👇 show/hide password state
+  const [showPwd, setShowPwd] = useState(false);
+
+  // 👇 inline SVG icons (same as Signup)
+  const Eye = (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </svg>
+  );
+  const EyeOff = (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a21.8 21.8 0 0 1 5.06-6.04"/>
+      <path d="M1 1l22 22"/>
+      <path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a21.8 21.8 0 0 1-3.22 4.31"/>
+      <path d="M14.12 14.12A3 3 0 0 1 9.88 9.88"/>
+    </svg>
+  );
+
   const finishLogin = (payload) => {
     if (payload?.token) localStorage.setItem('token', payload.token);
     if (payload?.role) localStorage.setItem('role', payload.role);
@@ -153,6 +172,7 @@ function Login({ onLogin }) {
       <div className="card auth-card">
         <div className="auth-title">Sign in to The BugHouse</div>
 
+        {/* 👇 updated form with show/hide password */}
         <form onSubmit={handleLogin} noValidate className="auth-actions">
           <input
             type="email"
@@ -162,14 +182,27 @@ function Login({ onLogin }) {
             autoComplete="email"
             required
           />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-            required
-          />
+
+          <div className="input-wrap">
+            <input
+              type={showPwd ? 'text' : 'password'}
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              required
+            />
+            <button
+              type="button"
+              className="eye-btn"
+              aria-label={showPwd ? 'Hide password' : 'Show password'}
+              aria-pressed={showPwd}
+              onClick={() => setShowPwd((v) => !v)}
+            >
+              {showPwd ? EyeOff : Eye}
+            </button>
+          </div>
+
           <button type="submit" className="btn success" disabled={isLoading}>
             {isLoading ? 'Signing in…' : 'Sign In'}
           </button>
