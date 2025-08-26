@@ -82,7 +82,7 @@ function App() {
           <header className="navbar">
             <div className="brand">
               <span className="dot" />
-              BugHouse {userFirstName ? `· Hi, ${userFirstName}` : ''}
+              BugHouse {userFirstName ? `· Hello, ${userFirstName}` : ''}
             </div>
 
             <nav className="nav-links">

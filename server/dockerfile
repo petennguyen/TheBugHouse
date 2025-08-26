@@ -1,0 +1,15 @@
+FROM node:18-alpine
+
+WORKDIR /usr/src/server
+
+# install deps
+COPY package*.json ./
+RUN npm ci --production
+
+# copy source
+COPY . .
+
+ENV NODE_ENV=production
+EXPOSE 8000
+
+CMD ["node", "server.js"]

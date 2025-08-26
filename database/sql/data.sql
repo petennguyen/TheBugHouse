@@ -6,7 +6,7 @@ USE BugHouse;
 INSERT INTO Academic_Subject (subjectName) VALUES
 ('Calculus I'), ('Calculus II'), ('Calculus III'),
 ('Physics I'), ('Algorithms & Datastructures'),
-('Organic Chemistry'), ('Art History'), ('Statistics')
+('Organic Chemistry'), ('Art History'), ('Statistics') , ('Robotics')
 ON DUPLICATE KEY UPDATE subjectName = VALUES(subjectName);
 
 -- =====================================================

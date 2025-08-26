@@ -25,4 +25,6 @@ firebase-service-account-key.json
 serviceAccountKey.json
 
 
+client/.env
+
 .env

@@ -1,3 +1,5 @@
+
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
@@ -136,3 +138,17 @@ COMMIT;
 
 
 
+Dockerfile instructions:
+install docker
+https://www.docker.com/products/docker-desktop
+
+verify install:
+docker --version
+
+After Docker is running, from repo root run:
+
+docker compose up --build -d
+
+
+visit http://localhost:3000/login
+and web should be running
