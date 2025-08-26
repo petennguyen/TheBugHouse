@@ -196,3 +196,53 @@ input:focus, select:focus, textarea:focus {
   color: var(--muted);
   font-size: 12px;
 }
+/* ===== Auth Page polish ===== */
+.auth-wrap {
+  min-height: calc(100vh - 64px); /* below navbar */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(16px, 4vw, 40px);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+}
+
+.auth-title {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 4px 0 14px 0;
+}
+
+.auth-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.auth-meta {
+  text-align: center;
+  margin: 10px 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.link-inline {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--brand);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.alert {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  border: 1px solid rgba(0,0,0,.08);
+}
+.alert.success { background: #e9f7ef; border-color: #c9eed8; }
+.alert.error   { background: #fdeaea; border-color: #f7c8c8; }
