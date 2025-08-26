@@ -246,3 +246,20 @@ input:focus, select:focus, textarea:focus {
 }
 .alert.success { background: #e9f7ef; border-color: #c9eed8; }
 .alert.error   { background: #fdeaea; border-color: #f7c8c8; }
+
+/* ===== Password checklist & confirm hint ===== */
+.pwd-reqs { margin-top: 6px; padding-left: 0; list-style: none; }
+.pwd-reqs li {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--muted);
+  padding: 2px 0;
+}
+.pwd-reqs li.ok { color: #16a34a; }
+.pwd-reqs .dot {
+  width: 8px; height: 8px; border-radius: 50%; background: #d1d5db;
+}
+.pwd-reqs li.ok .dot { background: #16a34a; }
+
+.match-hint { font-size: 12px; margin-top: 6px; }
+.match-ok { color: #16a34a; }
+.match-bad { color: #dc2626; }
