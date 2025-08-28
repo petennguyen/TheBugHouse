@@ -28,7 +28,6 @@ INSERT INTO System_User (userFirstName, userLastName, userEmail, userPassword, u
 ('Tutor','I','tutorI@bughouse.edu','tutorpasswordI','Tutor'),
 ('Tutor','J','tutorJ@bughouse.edu','tutorpasswordJ','Tutor'),
 
-('Student','A','studentA@bughouse.edu','studentpasswordA','Student'),
 ('Student','B','studentB@bughouse.edu','studentpasswordB','Student'),
 ('Student','C','studentC@bughouse.edu','studentpasswordC','Student'),
 ('Student','D','studentD@bughouse.edu','studentpasswordD','Student'),

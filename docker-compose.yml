@@ -1,10 +1,9 @@
-version: "3.8"
 services:
   db:
     image: mysql:8.0
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change_me}
+      MYSQL_ROOT_PASSWORD: "bughouse123"
       MYSQL_DATABASE: ${MYSQL_DATABASE:-BugHouse}
     ports:
       - "3306:3306"
