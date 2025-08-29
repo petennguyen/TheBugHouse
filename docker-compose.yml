@@ -6,9 +6,10 @@ services:
       MYSQL_ROOT_PASSWORD: "bughouse123"
       MYSQL_DATABASE: ${MYSQL_DATABASE:-BugHouse}
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - db_data:/var/lib/mysql
+      - ./database/sql:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
@@ -32,6 +33,7 @@ services:
       - "8000:8000"
     volumes:
       - ./server:/usr/src/server
+      - .:/app
 
   client:
     build:
