@@ -51,6 +51,7 @@ or open shell inside the container to import schema/data (Windows method)
 docker compose exec db sh
 mysql -uroot -p"bughouse123" BugHouse < /docker-entrypoint-initdb.d/schema.sql
 mysql -uroot -p"bughouse123" BugHouse < /docker-entrypoint-initdb.d/data.sql
+verify:
 docker compose exec db mysql -uroot -p"bughouse123" -e "SELECT * FROM BugHouse.System_User LIMIT 5;"
 
 After Docker is running, from repo root run:
