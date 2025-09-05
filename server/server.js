@@ -15,11 +15,15 @@ const dbConfig = {
   user: process.env.DB_USER,
   password: process.env.DB_PASS,
   database: process.env.DB_NAME,
-   port: process.env.DB_PORT || 3306,
+  port: process.env.DB_PORT || 3306,
 };
 
 const pool = mysql.createPool(dbConfig);
-// ---- Auth helpers (paste after: const pool = mysql.createPool(dbConfig);) ----
+
+// === JWT config (extendable) ===
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '12h';
+
+// ---- Auth helpers ----
 function getTokenFromHeader(req) {
   const h = req.headers.authorization || '';
   return h.startsWith('Bearer ') ? h.slice(7) : null;
@@ -30,7 +34,7 @@ function authRequired(req, res, next) {
     const token = getTokenFromHeader(req);
     if (!token) return res.status(401).json({ message: 'No token provided' });
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'change_me_now');
-    req.user = decoded; // { email, role, userID, ... }
+    req.user = decoded; // { email, role, userID, firebaseUID, ... }
     next();
   } catch (err) {
     console.error('authRequired error:', err);
@@ -62,7 +66,10 @@ app.post('/api/subjects', authRequired, requireRole('Admin'), async (req, res) =
   const { subjectName } = req.body || {};
   if (!subjectName) return res.status(400).json({ message: 'subjectName required' });
   try {
-    await pool.execute('INSERT INTO Academic_Subject (subjectName) VALUES (?) ON DUPLICATE KEY UPDATE subjectName=VALUES(subjectName)', [subjectName]);
+    await pool.execute(
+      'INSERT INTO Academic_Subject (subjectName) VALUES (?) ON DUPLICATE KEY UPDATE subjectName=VALUES(subjectName)',
+      [subjectName]
+    );
     res.json({ message: 'Subject upserted' });
   } catch (e) {
     console.error(e);
@@ -223,6 +230,66 @@ app.get('/api/sessions/mine', authRequired, async (req, res) => {
   }
 });
 
+// ---- Student calendar events (booked sessions) ----
+app.get('/api/student/calendar', authRequired, requireRole('Student'), async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      `
+      SELECT
+        sess.sessionID,
+        ds.scheduleDate,
+        subj.subjectName,
+        tsu.userFirstName AS tutorFirstName,
+        tsu.userLastName  AS tutorLastName,
+        sess.sessionSignInTime,
+        sess.sessionSignOutTime
+      FROM Tutor_Session sess
+      JOIN Timeslot tl ON tl.timeslotID = sess.Timeslot_timeslotID
+                       AND tl.Daily_Schedule_scheduleID = sess.Timeslot_Daily_Schedule_scheduleID
+      JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+      JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+      JOIN System_User tsu ON tsu.userID = sess.Tutor_System_User_userID
+      WHERE sess.Student_System_User_userID = ?
+      ORDER BY COALESCE(sess.sessionSignInTime, ds.scheduleDate), sess.sessionID
+      `,
+      [req.user.userID]
+    );
+
+    const events = rows.map((r) => {
+      const title = `${r.subjectName} with ${r.tutorFirstName} ${r.tutorLastName}`;
+      const ext = { subject: r.subjectName, tutorName: `${r.tutorFirstName} ${r.tutorLastName}` };
+
+      if (r.sessionSignInTime && r.sessionSignOutTime) {
+        return {
+          id: r.sessionID,
+          title,
+          start: new Date(r.sessionSignInTime).toISOString(),
+          end: new Date(r.sessionSignOutTime).toISOString(),
+          allDay: false,
+          extendedProps: ext,
+        };
+      }
+      // Fallback: all-day on scheduleDate
+      const d = new Date(r.scheduleDate);
+      const startISO = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString();
+      const endISO = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate() + 1)).toISOString();
+      return {
+        id: r.sessionID,
+        title,
+        start: startISO,
+        end: endISO,
+        allDay: true,
+        extendedProps: ext,
+      };
+    });
+
+    res.json(events);
+  } catch (e) {
+    console.error('student calendar error', e);
+    res.status(500).json({ message: 'Failed to load calendar' });
+  }
+});
+
 // ---- Student leaves feedback/rating ----
 app.post('/api/sessions/:sessionID/feedback', authRequired, requireRole('Student'), async (req, res) => {
   const { sessionID } = req.params;
@@ -246,7 +313,6 @@ app.post('/api/sessions/:sessionID/feedback', authRequired, requireRole('Student
 app.post('/api/sessions/:sessionID/attended', authRequired, requireRole('Tutor'), async (req, res) => {
   const { sessionID } = req.params;
   try {
-    // If signInTime is null -> set NOW(); else set signOut NOW()
     const [[row]] = await pool.execute(
       `SELECT sessionSignInTime, sessionSignOutTime FROM Tutor_Session
        WHERE sessionID = ? AND Tutor_System_User_userID = ?`,
@@ -272,6 +338,38 @@ app.post('/api/sessions/:sessionID/attended', authRequired, requireRole('Tutor')
   } catch (e) {
     console.error('attended error', e);
     res.status(500).json({ message: 'Failed to update attendance' });
+  }
+});
+
+// ---- NEW: Cancel a session (role-aware) ----
+app.delete('/api/sessions/:id', authRequired, async (req, res) => {
+  const sessionID = Number(req.params.id);
+  if (!sessionID) return res.status(400).json({ message: 'Invalid session id' });
+
+  try {
+    let where = 'sessionID = ?';
+    const params = [sessionID];
+
+    if (req.user.role === 'Student') {
+      where += ' AND Student_System_User_userID = ?';
+      params.push(req.user.userID);
+    } else if (req.user.role === 'Tutor') {
+      where += ' AND Tutor_System_User_userID = ?';
+      params.push(req.user.userID);
+    } else if (req.user.role === 'Admin') {
+      // Admin can cancel any session
+    } else {
+      return res.status(403).json({ message: 'Forbidden: insufficient role' });
+    }
+
+    const [r] = await pool.execute(`DELETE FROM Tutor_Session WHERE ${where}`, params);
+    if (r.affectedRows === 0) {
+      return res.status(404).json({ message: 'Session not found or not permitted to cancel' });
+    }
+    res.json({ message: 'Session cancelled' });
+  } catch (e) {
+    console.error('cancel session error', e);
+    res.status(500).json({ message: 'Failed to cancel session' });
   }
 });
 
@@ -320,7 +418,7 @@ app.delete('/api/availability/:id', authRequired, requireRole('Tutor'), async (r
   }
 });
 
-// ---- Admin: create a daily schedule (for yourself) ----
+// ---- Admin: create a daily schedule ----
 app.post('/api/schedules/generate', authRequired, requireRole('Admin'), async (req, res) => {
   const { date } = req.body || {};
   if (!date) return res.status(400).json({ message: 'date required (YYYY-MM-DD)' });
@@ -337,15 +435,13 @@ app.post('/api/schedules/generate', authRequired, requireRole('Admin'), async (r
   }
 });
 
-// ---- Admin: generate timeslots for a tutor on a schedule ----
-// Body: { scheduleID, subjectID, tutorUserID, start: "09:00", end: "12:00", durationMinutes: 60 }
+// ---- Admin: generate timeslots ----
 app.post('/api/timeslots/generate', authRequired, requireRole('Admin'), async (req, res) => {
   const { scheduleID, subjectID, tutorUserID, start, end, durationMinutes } = req.body || {};
   if (!scheduleID || !subjectID || !tutorUserID || !start || !end || !durationMinutes) {
     return res.status(400).json({ message: 'scheduleID, subjectID, tutorUserID, start, end, durationMinutes required' });
   }
   try {
-    // Build time blocks
     const [dsRows] = await pool.execute('SELECT scheduleID FROM Daily_Schedule WHERE scheduleID = ?', [scheduleID]);
     if (dsRows.length === 0) return res.status(404).json({ message: 'Schedule not found' });
 
@@ -358,13 +454,10 @@ app.post('/api/timeslots/generate', authRequired, requireRole('Admin'), async (r
     const n = Math.max(0, Math.floor((mEnd - mStart) / Number(durationMinutes)));
 
     const values = [];
-    for (let i = 0; i < n; i++) {
-      // One timeslot per block
-      values.push([scheduleID, subjectID, tutorUserID]);
-    }
+    for (let i = 0; i < n; i++) values.push([scheduleID, subjectID, tutorUserID]);
+
     if (!values.length) return res.json({ message: 'No slots generated (check times)' });
 
-    // Insert n rows; timeslotID is AUTO_INCREMENT; we’re not storing exact time-of-day on Timeslot table (you can expand schema later)
     const [result] = await pool.query(
       'INSERT INTO Timeslot (Daily_Schedule_scheduleID, Academic_Subject_subjectID, Tutor_System_User_userID) VALUES ?',
       [values]
@@ -391,193 +484,128 @@ app.get('/api/analytics/overview', authRequired, requireRole('Admin'), async (re
   }
 });
 
-
-// ✅ POST /api/auth/complete-signup - Complete signup after Firebase client verification
+// ✅ POST /api/auth/complete-signup
 app.post('/api/auth/complete-signup', async (req, res) => {
   const { firebaseUID, name, email, role } = req.body;
-  
   console.log('📝 Complete signup request:', { firebaseUID, name, email, role });
-  
+
   try {
-    // ✅ Use lowercase table name (system_user not System_User)
     const [existingUsers] = await pool.execute(
       'SELECT userID FROM System_User WHERE userEmail = ?',
       [email]
     );
-    
+
     if (existingUsers.length > 0) {
       console.log('❌ User already exists:', email);
-      return res.status(400).json({
-        message: 'User already exists in database'
-      });
+      return res.status(400).json({ message: 'User already exists in database' });
     }
-
 
     const nameParts = name.split(' ');
     const firstName = nameParts[0] || name;
     const lastName = nameParts.slice(1).join(' ') || '';
-    
-    console.log('💾 Inserting user into database:', { firstName, lastName, email, role });
-    
+
+    console.log('💾 Inserting user:', { firstName, lastName, email, role });
 
     const [insertResult] = await pool.execute(
-      'INSERT INTO System_User (userFirstName, userLastName, userEmail, userPassword, userRole, firebaseUID) VALUES (?, ?, ?, ?, ?, ?)', // ✅ Changed from system_user
+      'INSERT INTO System_User (userFirstName, userLastName, userEmail, userPassword, userRole, firebaseUID) VALUES (?, ?, ?, ?, ?, ?)',
       [firstName, lastName, email, 'firebase_auth', role, firebaseUID]
     );
-    
+
     const userID = insertResult.insertId;
-    console.log('✅ User inserted with ID:', userID);
-    
-    // Insert into role-specific table
+
     if (role.toLowerCase() === 'student') {
       await pool.execute(
         'INSERT INTO student (System_User_userID, studentIDCard, studentLearningGoals) VALUES (?, ?, ?)',
         [userID, 'TBD', 'General tutoring']
       );
-      console.log('✅ Student record created');
     } else if (role.toLowerCase() === 'tutor') {
       await pool.execute(
         'INSERT INTO tutor (System_User_userID, tutorBiography, tutorQualifications) VALUES (?, ?, ?)',
         [userID, 'New tutor', 'To be updated']
       );
-      console.log('✅ Tutor record created');
     }
-    
 
     const token = jwt.sign(
-  { email, role, userID, firebaseUID },
-  process.env.JWT_SECRET || 'change_me_now',
-  { expiresIn: '2h' }
-);
-    
-    console.log('✅ Complete signup successful for:', email);
-    
-    res.json({
-      message: 'User setup completed successfully',
-      token: token,
-      role: role,
-      userID: userID
-    });
-    
+      { email, role, userID, firebaseUID },
+      process.env.JWT_SECRET || 'change_me_now',
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    res.json({ message: 'User setup completed successfully', token, role, userID });
   } catch (error) {
     console.error('❌ Complete signup error:', error);
-    console.error('❌ Error details:', {
-      code: error.code,
-      errno: error.errno,
-      sqlMessage: error.sqlMessage,
-      sql: error.sql
-    });
-    
     res.status(500).json({
       message: 'Database error during signup completion',
       error: error.message,
-      details: error.sqlMessage || 'Unknown database error'
+      details: error.sqlMessage || 'Unknown database error',
     });
   }
 });
 
-// ✅ POST /api/auth/login - Login existing users
+// ✅ POST /api/auth/login
 app.post('/api/auth/login', async (req, res) => {
   const { email, firebaseUID } = req.body;
 
   try {
-    // Check System_User table for existing users
     const [users] = await pool.execute(
       'SELECT userID, userFirstName, userLastName, userEmail, userRole, firebaseUID FROM System_User WHERE userEmail = ? OR firebaseUID = ?',
       [email, firebaseUID]
     );
 
     if (users.length === 0) {
-      return res.status(401).json({ 
-        message: 'User not found. Please sign up first.' 
-      });
+      return res.status(401).json({ message: 'User not found. Please sign up first.' });
     }
 
     const user = users[0];
 
-    // Generate JWT token
     const token = jwt.sign(
-  { email: user.userEmail, role: user.userRole, userID: user.userID, firebaseUID: user.firebaseUID },
-  process.env.JWT_SECRET || 'change_me_now',
-  { expiresIn: '2h' }
-);
+      { email: user.userEmail, role: user.userRole, userID: user.userID, firebaseUID: user.firebaseUID },
+      process.env.JWT_SECRET || 'change_me_now',
+      { expiresIn: JWT_EXPIRES_IN }
+    );
 
-    res.json({ 
-      message: 'Login successful',
-      token, 
-      role: user.userRole,
-      userID: user.userID
-    });
-
+    res.json({ message: 'Login successful', token, role: user.userRole, userID: user.userID });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ 
-      message: 'Login failed. Please try again.' 
-    });
+    res.status(500).json({ message: 'Login failed. Please try again.' });
   }
 });
 
-
+// ✅ POST /api/auth/login-database-first
 app.post('/api/auth/login-database-first', async (req, res) => {
   const { email, password } = req.body;
- 
-
   try {
-    // First, test the connection
-    console.log('🔍 Testing database connection...');
-    
-    // Try lowercase table name first
     const [users] = await pool.execute(
-      'SELECT userID, userFirstName, userLastName, userEmail, userRole FROM System_User WHERE userEmail = ? AND userPassword = ?', // ✅ Changed from system_user
+      'SELECT userID, userFirstName, userLastName, userEmail, userRole FROM System_User WHERE userEmail = ? AND userPassword = ?',
       [email, password]
     );
 
-    
-  
-
     if (users.length === 0) {
-      return res.status(401).json({ 
-        success: false,
-        message: 'Invalid credentials'
-      });
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
     const user = users[0];
-
     const token = jwt.sign(
-  { email: user.userEmail, role: user.userRole, userID: user.userID, isTestUser: true },
-  process.env.JWT_SECRET || 'change_me_now',
-  { expiresIn: '2h' }
-);
+      { email: user.userEmail, role: user.userRole, userID: user.userID, isTestUser: true },
+      process.env.JWT_SECRET || 'change_me_now',
+      { expiresIn: JWT_EXPIRES_IN }
+    );
 
-
-    console.log(`LOGIN SUCCESSFUL for user: ${user.userEmail}`);
-
-    res.json({ 
-      success: true,
-      message: 'Login successful',
-      token, 
-      role: user.userRole,
-      userID: user.userID
-    });
-
+    res.json({ success: true, message: 'Login successful', token, role: user.userRole, userID: user.userID });
   } catch (error) {
     console.error('❌ DATABASE LOGIN ERROR:', error);
-    console.error('❌ ERROR CODE:', error.code);
-    console.error('❌ SQL MESSAGE:', error.sqlMessage);
-    
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       message: 'Database error: ' + error.message,
-      details: error.sqlMessage || 'Unknown database error'
+      details: error.sqlMessage || 'Unknown database error',
     });
   }
 });
 
-
+// ✅ GET /api/auth/check-user/:firebaseUID
 app.get('/api/auth/check-user/:firebaseUID', async (req, res) => {
   const { firebaseUID } = req.params;
-  
+
   try {
     const [users] = await pool.execute(
       'SELECT userID, userRole FROM System_User WHERE firebaseUID = ?',
@@ -585,26 +613,17 @@ app.get('/api/auth/check-user/:firebaseUID', async (req, res) => {
     );
 
     if (users.length > 0) {
-      res.json({ 
-        exists: true,
-        role: users[0].userRole,
-        userID: users[0].userID
-      });
+      res.json({ exists: true, role: users[0].userRole, userID: users[0].userID });
     } else {
-      res.json({ 
-        exists: false 
-      });
+      res.json({ exists: false });
     }
-
   } catch (error) {
     console.error('Check user error:', error);
-    res.status(500).json({ 
-      message: 'Failed to check user' 
-    });
+    res.status(500).json({ message: 'Failed to check user' });
   }
 });
 
-// ✅ Database test
+// ✅ /test-db
 app.get('/test-db', async (req, res) => {
   try {
     const [rows] = await pool.execute('SELECT 1 as test');
@@ -615,19 +634,10 @@ app.get('/test-db', async (req, res) => {
   }
 });
 
-// GET /api/user/profile - returns profile based on JWT in Authorization header
-app.get('/api/user/profile', async (req, res) => {
+// ✅ GET /api/user/profile (now uses authRequired)
+app.get('/api/user/profile', authRequired, async (req, res) => {
   try {
-    const authHeader = req.headers.authorization || '';
-    const token = authHeader.split(' ')[1];
-    if (!token) return res.status(401).json({ message: 'No token provided' });
-
-    // Verify token (use your JWT secret)
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'change_me_now');
-
-
-    // Adjust this to match the claim you put into the token (email or uid)
-    const email = decoded.email;
+    const email = req.user.email;
     if (!email) return res.status(400).json({ message: 'Invalid token payload' });
 
     const [rows] = await pool.execute(

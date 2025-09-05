@@ -83,7 +83,9 @@ SELECT
 FROM Tutor t
 JOIN System_User su ON su.userID = t.System_User_userID
 JOIN Tutor_Availability ta ON ta.Tutor_System_User_userID = t.System_User_userID
-ORDER BY su.userLastName, su.userFirstName, FIELD(ta.dayOfWeek,'Mon','Tue','Wed','Thu','Fri','Sat','Sun'), ta.startTime;
+ORDER BY su.userLastName, su.userFirstName,
+         FIELD(ta.dayOfWeek,'Mon','Tue','Wed','Thu','Fri','Sat','Sun'),
+         ta.startTime;
 
 -- Open timeslots (no assigned student)
 DROP VIEW IF EXISTS view_available_timeslots;

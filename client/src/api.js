@@ -10,3 +10,17 @@ api.interceptors.request.use((config) => {
 });
 
 export default api;
+// after your existing request interceptor
+api.interceptors.response.use(
+  (res) => res,
+  (error) => {
+    if (error?.response && [401, 403].includes(error.response.status)) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('role');
+      localStorage.removeItem('userID');
+      window.location.assign('/login');
+    }
+    return Promise.reject(error);
+  }
+);
+

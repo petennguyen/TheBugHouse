@@ -1,5 +1,5 @@
 -- ======================================================================
--- BugHouse schema (final)
+-- BugHouse schema (fixed)
 -- ======================================================================
 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0;
 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;
@@ -90,7 +90,7 @@ CREATE TABLE `Timeslot` (
   `Daily_Schedule_scheduleID` INT NOT NULL,
   `Academic_Subject_subjectID` INT NOT NULL,
   `Tutor_System_User_userID` INT NOT NULL,
-  PRIMARY KEY (`timeslotID`, `Daily_Schedule_scheduleID`),   -- composite PK (kept for your FKs)
+  PRIMARY KEY (`timeslotID`, `Daily_Schedule_scheduleID`),
   KEY `idx_Timeslot_Schedule` (`Daily_Schedule_scheduleID`),
   KEY `idx_Timeslot_Subject` (`Academic_Subject_subjectID`),
   KEY `idx_Timeslot_Tutor`   (`Tutor_System_User_userID`),
@@ -152,7 +152,8 @@ CREATE TABLE `Tutor_Availability` (
   `endTime`   TIME NOT NULL,
   PRIMARY KEY (`availabilityID`),
   KEY `idx_Availability_Tutor` (`Tutor_System_User_userID`),
-  UNIQUE KEY `uniq_tutor_slot` (`Tutor_System_User_userID`,`dayOfWeek`,`startTime`,`endTime`),
+  -- Unique per tutor+day (so your upsert by day works)
+  UNIQUE KEY `uniq_tutor_day` (`Tutor_System_User_userID`,`dayOfWeek`),
   CONSTRAINT `fk_Availability_Tutor`
     FOREIGN KEY (`Tutor_System_User_userID`)
     REFERENCES `Tutor`(`System_User_userID`)

@@ -9,7 +9,7 @@ import StudentBook from './StudentBook';
 import Sessions from './Sessions';
 import TutorAvailability from './TutorAvailability';
 import AdminDashboard from './AdminDashboard';
-import Dashboard from './Dashboard'; // 👈 NEW
+import Dashboard from './Dashboard.jsx'; // 👈 NEW
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -110,7 +110,6 @@ function App() {
 
           {/* MAIN */}
           <main className="app-main">
-            {isLoggedIn && <h1 className="hero-title">Welcome to BugHouse</h1>}
 
             <Routes>
               {/* Auth */}
