@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { auth } from './firebase-config';
@@ -11,13 +11,17 @@ function Login({ onLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [msg, setMsg] = useState('');
-  const [msgType, setMsgType] = useState('error'); // 'success' | 'error'
+  const [msgType, setMsgType] = useState('error');
   const [isLoading, setIsLoading] = useState(false);
-
-  // 👇 show/hide password state
   const [showPwd, setShowPwd] = useState(false);
+  const [isCardVisible, setIsCardVisible] = useState(false);
 
-  // 👇 inline SVG icons (same as Signup)
+  useEffect(() => {
+    // Card slide-up animation on mount
+    setTimeout(() => setIsCardVisible(true), 100);
+  }, []);
+
+  // Inline SVG icons for password visibility
   const Eye = (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/>
@@ -31,6 +35,99 @@ function Login({ onLogin }) {
       <path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a21.8 21.8 0 0 1-3.22 4.31"/>
       <path d="M14.12 14.12A3 3 0 0 1 9.88 9.88"/>
     </svg>
+  );
+
+  // Blue Bug SVG for the login card icon
+  const BlueBugIcon = () => (
+    <svg width="24" height="24" viewBox="0 0 100 100">
+      {/* Bug body - blue primary */}
+      <ellipse cx="50" cy="55" rx="18" ry="25" fill="#0b61ff" />
+      
+      {/* Bug head - lighter blue */}
+      <circle cx="50" cy="32" r="13" fill="#3b82f6" />
+      
+      {/* Antennae - orange accents */}
+      <line x1="44" y1="22" x2="40" y2="15" stroke="#f97316" strokeWidth="2" strokeLinecap="round" />
+      <line x1="56" y1="22" x2="60" y2="15" stroke="#f97316" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="40" cy="15" r="2" fill="#f97316" />
+      <circle cx="60" cy="15" r="2" fill="#f97316" />
+      
+      {/* Eyes */}
+      <circle cx="46" cy="30" r="2.5" fill="white" />
+      <circle cx="54" cy="30" r="2.5" fill="white" />
+      <circle cx="46" cy="30" r="1" fill="black" />
+      <circle cx="54" cy="30" r="1" fill="black" />
+      
+      {/* Wings - blue with orange patterns */}
+      <ellipse cx="35" cy="45" rx="8" ry="15" fill="#60a5fa" opacity="0.8" transform="rotate(-15 35 45)" />
+      <ellipse cx="65" cy="45" rx="8" ry="15" fill="#60a5fa" opacity="0.8" transform="rotate(15 65 45)" />
+      <ellipse cx="35" cy="42" rx="3" ry="6" fill="#f97316" opacity="0.9" transform="rotate(-15 35 42)" />
+      <ellipse cx="65" cy="42" rx="3" ry="6" fill="#f97316" opacity="0.9" transform="rotate(15 65 42)" />
+      
+      {/* Legs - blue */}
+      <line x1="40" y1="65" x2="30" y2="75" stroke="#0b61ff" strokeWidth="2" strokeLinecap="round" />
+      <line x1="40" y1="75" x2="30" y2="85" stroke="#0b61ff" strokeWidth="2" strokeLinecap="round" />
+      <line x1="60" y1="65" x2="70" y2="75" stroke="#0b61ff" strokeWidth="2" strokeLinecap="round" />
+      <line x1="60" y1="75" x2="70" y2="85" stroke="#0b61ff" strokeWidth="2" strokeLinecap="round" />
+      
+      {/* Smile - orange */}
+      <path d="M 46 34 Q 50 38 54 34" stroke="#f97316" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+      
+      {/* Body spots - orange */}
+      <circle cx="47" cy="50" r="2" fill="#f97316" opacity="0.8" />
+      <circle cx="53" cy="60" r="1.5" fill="#f97316" opacity="0.8" />
+    </svg>
+  );
+
+  // Animated Bug SVG Component (orange primary color for visibility)
+  const AnimatedBug = () => (
+    <div className="floating-bug">
+      <svg width="120" height="120" viewBox="0 0 140 140" className="bug-svg">
+        {/* Bug body - orange primary */}
+        <ellipse cx="70" cy="75" rx="30" ry="40" fill="#f97316" className="bug-body" />
+        
+        {/* Bug head - lighter orange circle */}
+        <circle cx="70" cy="40" r="22" fill="#fb923c" className="bug-head" />
+        
+        {/* Antennae - blue accents */}
+        <line x1="60" y1="25" x2="55" y2="15" stroke="#0b61ff" strokeWidth="4" strokeLinecap="round" />
+        <line x1="80" y1="25" x2="85" y2="15" stroke="#0b61ff" strokeWidth="4" strokeLinecap="round" />
+        <circle cx="55" cy="15" r="4" fill="#0b61ff" />
+        <circle cx="85" cy="15" r="4" fill="#0b61ff" />
+        
+        {/* Eyes - white with black pupils */}
+        <circle cx="63" cy="37" r="5" fill="white" />
+        <circle cx="77" cy="37" r="5" fill="white" />
+        <circle cx="63" cy="37" r="2.5" fill="black" />
+        <circle cx="77" cy="37" r="2.5" fill="black" />
+        
+        {/* Wings - semi-transparent orange/blue */}
+        <ellipse cx="40" cy="60" rx="15" ry="25" fill="#fb923c" opacity="0.8" transform="rotate(-20 40 60)" className="wing-left" />
+        <ellipse cx="100" cy="60" rx="15" ry="25" fill="#fb923c" opacity="0.8" transform="rotate(20 100 60)" className="wing-right" />
+        
+        {/* Wing patterns - blue accents */}
+        <ellipse cx="40" cy="55" rx="6" ry="10" fill="#0b61ff" opacity="0.9" transform="rotate(-20 40 55)" />
+        <ellipse cx="100" cy="55" rx="6" ry="10" fill="#0b61ff" opacity="0.9" transform="rotate(20 100 55)" />
+        
+        {/* Legs - orange darker */}
+        <line x1="45" y1="85" x2="30" y2="100" stroke="#ea580c" strokeWidth="5" strokeLinecap="round" />
+        <line x1="45" y1="100" x2="30" y2="115" stroke="#ea580c" strokeWidth="5" strokeLinecap="round" />
+        <line x1="95" y1="85" x2="110" y2="100" stroke="#ea580c" strokeWidth="5" strokeLinecap="round" />
+        <line x1="95" y1="100" x2="110" y2="115" stroke="#ea580c" strokeWidth="5" strokeLinecap="round" />
+        
+        {/* Smile - blue curve */}
+        <path d="M 63 43 Q 70 50 77 43" stroke="#0b61ff" strokeWidth="3" fill="none" strokeLinecap="round" />
+        
+        {/* Body spots - blue decorations */}
+        <circle cx="62" cy="70" r="4" fill="#0b61ff" opacity="0.9" />
+        <circle cx="78" cy="80" r="3" fill="#0b61ff" opacity="0.9" />
+        <circle cx="68" cy="95" r="3.5" fill="#0b61ff" opacity="0.9" />
+        
+        {/* Extra stripes for more visibility */}
+        <ellipse cx="70" cy="65" rx="20" ry="3" fill="#ea580c" opacity="0.8" />
+        <ellipse cx="70" cy="80" rx="18" ry="3" fill="#ea580c" opacity="0.8" />
+      </svg>
+    </div>
   );
 
   const finishLogin = (payload) => {
@@ -168,60 +265,93 @@ function Login({ onLogin }) {
   };
 
   return (
-    <div className="auth-wrap">
-      <div className="card auth-card">
-        <div className="auth-title">Sign in to The BugHouse</div>
+    <div className="auth-wrap enhanced-auth">
+      {/* Floating background shapes */}
+      <div className="bg-shapes">
+        <div className="shape shape-1"></div>
+        <div className="shape shape-2"></div>
+        <div className="shape shape-3"></div>
+      </div>
 
-        {/* 👇 updated form with show/hide password */}
-        <form onSubmit={handleLogin} noValidate className="auth-actions">
-          <input
-            type="email"
-            placeholder="UTA Email (@mavs.uta.edu)"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-            required
-          />
+      {/* Animated Bug - orange and larger */}
+      <AnimatedBug />
 
-          <div className="input-wrap">
+      {/* Enhanced card with proper sizing */}
+      <div className={`card auth-card enhanced-card login-card ${isCardVisible ? 'visible' : ''}`}>
+        {/* Enhanced header with BLUE bug icon */}
+        <div className="auth-header">
+          <div className="bug-icon blue-bug-icon">
+            <BlueBugIcon />
+          </div>
+          <div className="auth-title gradient-text">Sign in to The BugHouse</div>
+          <div className="muted">Welcome back to your learning journey</div>
+        </div>
+
+        {/* Enhanced form with proper sizing */}
+        <form onSubmit={handleLogin} noValidate className="auth-actions enhanced-form">
+          <div className="input-group">
+            <label className="input-label">UTA Email (@mavs.uta.edu)</label>
             <input
-              type={showPwd ? 'text' : 'password'}
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
+              type="email"
+              placeholder="your.email@mavs.uta.edu"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
               required
+              className="login-input"
             />
-            <button
-              type="button"
-              className="eye-btn"
-              aria-label={showPwd ? 'Hide password' : 'Show password'}
-              aria-pressed={showPwd}
-              onClick={() => setShowPwd((v) => !v)}
-            >
-              {showPwd ? EyeOff : Eye}
-            </button>
           </div>
 
-          <button type="submit" className="btn success" disabled={isLoading}>
-            {isLoading ? 'Signing in…' : 'Sign In'}
+          <div className="input-group">
+            <label className="input-label">Password</label>
+            <div className="input-wrap">
+              <input
+                type={showPwd ? 'text' : 'password'}
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                required
+                className="login-input"
+              />
+              <button
+                type="button"
+                className="eye-btn enhanced-eye"
+                aria-label={showPwd ? 'Hide password' : 'Show password'}
+                aria-pressed={showPwd}
+                onClick={() => setShowPwd((v) => !v)}
+              >
+                {showPwd ? EyeOff : Eye}
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" className="btn success enhanced-btn login-btn" disabled={isLoading}>
+            {isLoading ? (
+              <span className="loading-content">
+                <span className="spinner"></span>
+                Signing in...
+              </span>
+            ) : (
+              'Sign In'
+            )}
           </button>
         </form>
 
         <div className="auth-meta">
-          <button type="button" className="link-inline" onClick={handleForgotPassword} disabled={isLoading}>
+          <button type="button" className="link-inline enhanced-link" onClick={handleForgotPassword} disabled={isLoading}>
             Forgot password?
           </button>
         </div>
 
-        {msg && <div className={`alert ${msgType}`}>{msg}</div>}
+        {msg && <div className={`alert ${msgType} enhanced-alert`}>{msg}</div>}
 
-        <div className="auth-meta" style={{ marginTop: 14 }}>
-          Don’t have an account?
+        <div className="auth-footer">
+          <div className="auth-meta">Don't have an account?</div>
+          <Link to="/signup">
+            <button className="btn primary enhanced-btn-secondary login-signup-btn">Create BugHouse Account</button>
+          </Link>
         </div>
-        <Link to="/signup">
-          <button className="btn primary" style={{ width: '100%' }}>Create BugHouse Account</button>
-        </Link>
       </div>
     </div>
   );

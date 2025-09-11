@@ -29,7 +29,7 @@
   flex-direction: column;
 }
 
-/* ---- Navbar ---- */
+/* ---- Navbar (Updated with UTA blue background) ---- */
 .navbar {
   position: sticky;
   top: 0;
@@ -45,6 +45,12 @@
   border-bottom: 1px solid rgba(0,0,0,.06);
 }
 
+/* Blue navbar styling */
+.blue-navbar {
+  background: linear-gradient(135deg, var(--brand), #1e40af);
+  border-bottom: 1px solid rgba(255,255,255,.1);
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -54,10 +60,35 @@
   letter-spacing: .2px;
 }
 
+.brand-text {
+  color: white;
+}
+
 .brand .dot {
   width: 10px; height: 10px; border-radius: 50%;
   background: var(--accent);
   box-shadow: 0 0 0 4px rgba(249,115,22,.15);
+}
+
+/* Navbar bug animation */
+.navbar-bug {
+  animation: navbarBugBounce 2s ease-in-out infinite;
+}
+
+.navbar-bug-svg {
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+}
+
+@keyframes navbarBugBounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-3px);
+  }
+  60% {
+    transform: translateY(-1px);
+  }
 }
 
 .nav-links {
@@ -66,17 +97,23 @@
   align-items: center;
 }
 
-.nav-links a {
+.blue-navbar .nav-links a {
   text-decoration: none;
   padding: 8px 12px;
   border-radius: 999px;
-  color: var(--ink);
+  color: white;
   font-weight: 600;
   transition: background .2s ease, color .2s ease, transform .06s ease;
 }
 
-.nav-links a:hover { background: var(--glass-strong); }
-.nav-links a.active { background: var(--brand); color: #fff; }
+.blue-navbar .nav-links a:hover { 
+  background: rgba(255,255,255,0.15); 
+}
+
+.blue-navbar .nav-links a.active { 
+  background: var(--accent); 
+  color: #fff; 
+}
 
 .navbar .logout {
   margin-left: 8px;
@@ -196,6 +233,7 @@ input:focus, select:focus, textarea:focus {
   color: var(--muted);
   font-size: 12px;
 }
+
 /* ===== Auth Page polish ===== */
 .auth-wrap {
   min-height: calc(100vh - 64px); /* below navbar */
@@ -278,9 +316,8 @@ input:focus, select:focus, textarea:focus {
   padding: 6px;
   cursor: pointer;
   border-radius: 8px;
-  /* 👇 ensure it’s visible and above the input */
-  color: #111827;            /* icon stroke color */
-  line-height: 0;            /* remove extra vertical space */
+  color: #111827;
+  line-height: 0;
   z-index: 2;
   opacity: .9;
 }
@@ -290,7 +327,202 @@ input:focus, select:focus, textarea:focus {
   width: 20px;
   height: 20px;
   display: block;
-  stroke: currentColor;      /* make sure stroke inherits color */
+  stroke: currentColor;
   fill: none;
   stroke-width: 2;
 }
+
+/* ===== ENHANCED LOGIN & SIGNUP STYLES ===== */
+
+/* Enhanced auth wrapper */
+.enhanced-auth {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Floating background shapes */
+.bg-shapes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.shape {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40px);
+  opacity: 0.15;
+  animation: float 6s ease-in-out infinite;
+}
+
+.shape-1 {
+  width: 150px;
+  height: 150px;
+  background: var(--accent);
+  top: 20%;
+  left: 15%;
+  animation-delay: 0s;
+}
+
+.shape-2 {
+  width: 200px;
+  height: 200px;
+  background: var(--brand);
+  top: 60%;
+  right: 20%;
+  animation-delay: 2s;
+}
+
+.shape-3 {
+  width: 120px;
+  height: 120px;
+  background: var(--accent);
+  bottom: 30%;
+  left: 30%;
+  animation-delay: 4s;
+}
+
+/* Floating bug animation */
+.floating-bug {
+  position: absolute;
+  top: 60px;
+  left: 60px;
+  z-index: 1;
+  animation: bugFloat 4s ease-in-out infinite;
+}
+
+.bug-svg {
+  filter: drop-shadow(0 8px 16px rgba(249, 115, 22, 0.3));
+  transition: transform 0.3s ease;
+}
+
+.floating-bug:hover .bug-svg {
+  transform: scale(1.1);
+}
+
+/* Bug parts animations */
+.bug-body {
+  animation: breathe 3s ease-in-out infinite;
+}
+
+.bug-head {
+  animation: headBob 2s ease-in-out infinite;
+}
+
+.wing-left, .wing-right {
+  animation: wingFlap 1.5s ease-in-out infinite alternate;
+}
+
+/* Enhanced card - FIXED SIZING */
+.enhanced-card {
+  background: var(--glass-strong);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.4);
+  box-shadow: 
+    0 20px 40px rgba(0,0,0,0.1),
+    0 1px 0 rgba(255,255,255,0.6) inset;
+  transform: translateY(30px);
+  opacity: 0;
+  transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  z-index: 2;
+}
+
+.enhanced-card.visible {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* Login card specific sizing */
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+/* Signup card specific sizing */
+.signup-card {
+  width: 100%;
+  max-width: 460px;
+  margin: 0 auto;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+/* Enhanced header */
+.auth-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+/* Bug icon */
+.bug-icon {
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, var(--accent), #ff8c42);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  box-shadow: 
+    0 8px 24px rgba(249, 115, 22, 0.4),
+    0 0 0 1px rgba(255,255,255,0.3) inset;
+  font-size: 24px;
+  transition: transform 0.3s ease;
+}
+
+/* Blue bug icon variant */
+.blue-bug-icon {
+  background: linear-gradient(135deg, var(--brand), #3b82f6);
+  box-shadow: 
+    0 8px 24px rgba(11, 97, 255, 0.4),
+    0 0 0 1px rgba(255,255,255,0.3) inset;
+}
+
+.bug-icon:hover {
+  transform: scale(1.1) rotate(5deg);
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, var(--brand), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 8px;
+}
+
+/* Enhanced form - FIXED SIZING */
+.enhanced-form {
+  gap: 20px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.input-label {
+  font-weight: 600;
+  color: var(--ink);
+  font-size: 14px;
+}
+
+/* Login-specific input styling - FIXED */
+.login-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255,255,255,0.95);
+  border: 2px solid rgba(11,97,255,0.1);
+  transition: all 0.3s ease;
+  font-size: 16px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  outline: none;
+}
+
