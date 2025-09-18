@@ -153,7 +153,6 @@ CREATE TABLE `Tutor_Availability` (
   PRIMARY KEY (`availabilityID`),
   KEY `idx_Availability_Tutor` (`Tutor_System_User_userID`),
   -- Unique per tutor+day (so your upsert by day works)
-  UNIQUE KEY `uniq_tutor_day` (`Tutor_System_User_userID`,`dayOfWeek`),
   CONSTRAINT `fk_Availability_Tutor`
     FOREIGN KEY (`Tutor_System_User_userID`)
     REFERENCES `Tutor`(`System_User_userID`)

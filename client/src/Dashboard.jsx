@@ -11,6 +11,7 @@ export default function Dashboard() {
   const role = (localStorage.getItem('role') || '').trim();
   const [kpis, setKpis] = useState(null);
   const [err, setErr] = useState('');
+  const [completedSessions, setCompletedSessions] = useState([]);
 
   useEffect(() => {
     if (role === 'Admin') {
@@ -18,6 +19,12 @@ export default function Dashboard() {
         .get('/api/analytics/overview')
         .then((res) => setKpis(res.data))
         .catch(() => setErr('Failed to load analytics'));
+    }
+
+    if (role === 'Tutor') {
+      api.get('/api/sessions/completed')
+        .then(res => setCompletedSessions(res.data))
+        .catch(() => {});
     }
   }, [role]);
 
@@ -151,6 +158,34 @@ export default function Dashboard() {
                 Mark <em>Sign-in</em> / <em>Sign-out</em> from the Sessions page.
               </li>
               <li>Keep your qualifications up to date for better matches.</li>
+            </ul>
+          </Card>
+          <Card title="Completed Sessions">
+            <ul className="list">
+              {completedSessions.map(sess => (
+                <li key={sess.sessionID} className="item">
+                  <div>
+                    <strong>{sess.subjectName}</strong> with {sess.studentFirstName} {sess.studentLastName} <br />
+                    {new Date(sess.sessionSignOutTime).toLocaleString()}
+                  </div>
+                  <button
+                    className="btn danger"
+                    onClick={async () => {
+                      if (window.confirm('Delete this completed session?')) {
+                        try {
+                          await api.delete(`/api/sessions/${sess.sessionID}`);
+                          setCompletedSessions(completedSessions.filter(s => s.sessionID !== sess.sessionID));
+                        } catch (e) {
+                          alert('Failed to delete session.');
+                        }
+                      }
+                    }}
+                  >
+                    Delete
+                  </button>
+                </li>
+              ))}
+              {!completedSessions.length && <li className="muted">No completed sessions.</li>}
             </ul>
           </Card>
         </>

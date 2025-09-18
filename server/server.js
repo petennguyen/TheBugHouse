@@ -4,6 +4,9 @@ const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const mysql = require('mysql2/promise');
+const sgMail = require('@sendgrid/mail');
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+const cron = require('node-cron');
 
 const app = express();
 app.use(cors());
@@ -654,8 +657,254 @@ app.get('/api/user/profile', authRequired, async (req, res) => {
   }
 });
 
+
+async function sendSessionReminder(toEmail, sessionDate, tutorName, subjectName) {
+  const msg = {
+    to: toEmail,
+    from: process.env.FROM_EMAIL,
+    subject: 'Tutoring Session Reminder',
+    text: `Reminder: You have a ${subjectName} session with ${tutorName} on ${sessionDate}.`,
+  };
+  try {
+    await sgMail.send(msg);
+    console.log(`Reminder email sent to ${toEmail}`);
+  } catch (err) {
+    console.error('SendGrid error:', err);
+  }
+}
+
+// Runs every hour at minute 0
+cron.schedule('0 * * * *', async () => {
+  console.log('⏰ Checking for sessions to remind...');
+  try {
+    // Find sessions scheduled 24 hours from now
+    const [rows] = await pool.execute(
+      `SELECT sess.sessionID, ds.scheduleDate, subj.subjectName,
+              tsu.userFirstName AS tutorFirstName, tsu.userLastName AS tutorLastName,
+              stu.userEmail AS studentEmail
+       FROM Tutor_Session sess
+       JOIN Timeslot tl ON tl.timeslotID = sess.Timeslot_timeslotID
+                        AND tl.Daily_Schedule_scheduleID = sess.Timeslot_Daily_Schedule_scheduleID
+       JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+       JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+       JOIN System_User tsu ON tsu.userID = sess.Tutor_System_User_userID
+       JOIN System_User stu ON stu.userID = sess.Student_System_User_userID
+       WHERE ds.scheduleDate = DATE_ADD(CURDATE(), INTERVAL 1 DAY)`
+    );
+
+    for (const session of rows) {
+      const tutorName = `${session.tutorFirstName} ${session.tutorLastName}`;
+      await sendSessionReminder(
+        session.studentEmail,
+        session.scheduleDate,
+        tutorName,
+        session.subjectName
+      );
+    }
+    console.log(`✅ Sent ${rows.length} reminders`);
+  } catch (err) {
+    console.error('Reminder cron error:', err);
+  }
+});
+
 // ✅ Start the server
 app.listen(8000, () => {
   console.log('Server running on port 8000');
   console.log('✅ Server ready for client-side Firebase Auth');
+});
+
+// ---- Test email endpoint ----
+app.get('/api/test-email', async (req, res) => {
+  try {
+    await sgMail.send({
+      to: 'pgn4608@mavs.uta.edu',
+      from: process.env.FROM_EMAIL,
+      subject: 'SendGrid Test',
+      text: 'This is a test email from BugHouse using SendGrid.',
+    });
+    res.json({ message: 'Test email sent!' });
+  } catch (err) {
+    console.error('SendGrid error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+
+//Manually trigger scron reminder
+app.post('/api/manual-reminder-check', async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      `SELECT sess.sessionID, ds.scheduleDate, subj.subjectName,
+              tsu.userFirstName AS tutorFirstName, tsu.userLastName AS tutorLastName,
+              stu.userEmail AS studentEmail
+       FROM Tutor_Session sess
+       JOIN Timeslot tl ON tl.timeslotID = sess.Timeslot_timeslotID
+                        AND tl.Daily_Schedule_scheduleID = sess.Timeslot_Daily_Schedule_scheduleID
+       JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+       JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+       JOIN System_User tsu ON tsu.userID = sess.Tutor_System_User_userID
+       JOIN System_User stu ON stu.userID = sess.Student_System_User_userID
+       WHERE ds.scheduleDate = DATE_ADD(CURDATE(), INTERVAL 1 DAY)`
+    );
+
+    let sent = 0;
+    for (const session of rows) {
+      const tutorName = `${session.tutorFirstName} ${session.tutorLastName}`;
+      await sendSessionReminder(
+        session.studentEmail,
+        session.scheduleDate,
+        tutorName,
+        session.subjectName
+      );
+      sent++;
+    }
+    res.json({ message: `Manual reminder check complete. Sent ${sent} reminders.` });
+  } catch (err) {
+    console.error('Manual reminder error', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---- Available sessions (public) ----
+app.get('/api/sessions/available', async (req, res) => {
+  const { date, subjectId } = req.query;
+  try {
+    // Query available timeslots for the given date and subject
+    const [rows] = await pool.execute(
+      `SELECT tl.timeslotID, ds.scheduleID, ds.scheduleDate, subj.subjectName,
+              tsu.userFirstName AS tutorFirstName, tsu.userLastName AS tutorLastName
+       FROM Timeslot tl
+       JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+       JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+       JOIN System_User tsu ON tsu.userID = tl.Tutor_System_User_userID
+       WHERE ds.scheduleDate = ?
+         AND subj.subjectID = ?
+         AND tl.timeslotID NOT IN (
+           SELECT timeslotID FROM Tutor_Session WHERE Timeslot_timeslotID = tl.timeslotID
+         )`,
+      [date, subjectId]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('Error fetching available sessions:', err);
+    res.status(500).json({ message: 'Failed to load available sessions' });
+  }
+});
+
+
+app.get('/api/tutor/availability', async (req, res) => {
+  const { dayOfWeek } = req.query;
+  try {
+    const [rows] = await pool.execute(
+      `SELECT ta.Tutor_System_User_userID AS tutorID, ta.dayOfWeek, ta.startTime, ta.endTime,
+              su.userFirstName AS tutorFirstName, su.userLastName AS tutorLastName
+       FROM Tutor_Availability ta
+       JOIN System_User su ON su.userID = ta.Tutor_System_User_userID
+       WHERE ta.dayOfWeek = ?`,
+      [dayOfWeek]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('Error fetching tutor availability:', err);
+    res.status(500).json({ message: 'Failed to load tutor availability' });
+  }
+});
+
+// ---- Book a session from availability (Student) ----
+app.post('/api/sessions/book-from-availability', authRequired, requireRole('Student'), async (req, res) => {
+  const { tutorID, dayOfWeek, startTime, date, subjectID, sessionLength } = req.body;
+  if (!tutorID || !dayOfWeek || !startTime || !date || !subjectID || !sessionLength) {
+    return res.status(400).json({ message: 'Missing required fields' });
+  }
+
+  // Calculate end time
+  const [startHour, startMin] = startTime.split(':').map(Number);
+  const totalMinutes = startHour * 60 + startMin + Number(sessionLength);
+  const endHour = Math.floor(totalMinutes / 60);
+  const endMin = totalMinutes % 60;
+  const endTime = `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
+
+  try {
+    // 1. Validate tutor availability for that day/time
+    const [availRows] = await pool.execute(
+      `SELECT * FROM Tutor_Availability
+       WHERE Tutor_System_User_userID = ? AND dayOfWeek = ? AND startTime <= ? AND endTime >= ?`,
+      [tutorID, dayOfWeek, startTime, endTime]
+    );
+    if (availRows.length === 0) {
+      return res.status(409).json({ message: 'Tutor is not available for the requested time/length.' });
+    }
+
+    // 2. Find or create Daily_Schedule for the date
+    const [schedRows] = await pool.execute(
+      `SELECT scheduleID FROM Daily_Schedule WHERE scheduleDate = ? LIMIT 1`,
+      [date]
+    );
+    let scheduleID;
+    if (schedRows.length === 0) {
+      const [schedInsert] = await pool.execute(
+        `INSERT INTO Daily_Schedule (Administrator_System_User_userID, scheduleDate)
+         VALUES (?, ?)`,
+        [1, date] // Use admin userID 1 or update as needed
+      );
+      scheduleID = schedInsert.insertId;
+    } else {
+      scheduleID = schedRows[0].scheduleID;
+    }
+
+    // 3. Check for overlapping sessions for this tutor on this date/time
+    const [conflictRows] = await pool.execute(
+      `SELECT sess.sessionID
+       FROM Tutor_Session sess
+       JOIN Timeslot tl ON tl.timeslotID = sess.Timeslot_timeslotID
+       JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+       WHERE tl.Tutor_System_User_userID = ?
+         AND ds.scheduleDate = ?
+         AND (
+           (sess.sessionSignInTime IS NULL AND sess.sessionSignOutTime IS NULL) -- fallback: all-day
+           OR (
+             (sess.sessionSignInTime < ? AND sess.sessionSignOutTime > ?)
+             OR (sess.sessionSignInTime < ? AND sess.sessionSignOutTime > ?)
+             OR (sess.sessionSignInTime >= ? AND sess.sessionSignInTime < ?)
+           )
+         )`,
+      [tutorID, date, endTime, startTime, startTime, endTime, startTime, endTime]
+    );
+    if (conflictRows.length > 0) {
+      return res.status(409).json({ message: 'Tutor already has a session at this time.' });
+    }
+
+    // 4. Create Timeslot
+    const [tsInsert] = await pool.execute(
+      `INSERT INTO Timeslot (Daily_Schedule_scheduleID, Academic_Subject_subjectID, Tutor_System_User_userID)
+       VALUES (?, ?, ?)`,
+      [scheduleID, subjectID, tutorID]
+    );
+    const timeslotID = tsInsert.insertId;
+
+    // 5. Create Tutor_Session
+    const signIn = `${date} ${startTime}`;
+    const signOut = `${date} ${endTime}`;
+    await pool.execute(
+      `INSERT INTO Tutor_Session
+        (Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID,
+         Tutor_System_User_userID, Student_System_User_userID, sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating)
+       VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL)`,
+      [
+        timeslotID,
+        scheduleID,
+        subjectID,
+        tutorID,
+        req.user.userID,
+        signIn,
+        signOut
+      ]
+    );
+
+    res.json({ message: 'Session booked from availability!' });
+  } catch (e) {
+    console.error('book-from-availability error', e);
+    res.status(500).json({ message: 'Failed to book session from availability' });
+  }
 });

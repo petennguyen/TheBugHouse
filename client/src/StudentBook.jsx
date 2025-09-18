@@ -7,6 +7,7 @@ export default function StudentBook() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0,10));
   const [slots, setSlots] = useState([]);
   const [msg, setMsg] = useState('');
+  const [sessionLength, setSessionLength] = useState(60); // default 60 minutes
 
   useEffect(() => {
     api.get('/api/subjects').then(res => setSubjects(res.data)).catch(() => setSubjects([]));
@@ -23,6 +24,15 @@ export default function StudentBook() {
     }
   };
 
+  const searchAvailability = async () => {
+    try {
+      const { data } = await api.get('/api/tutor/availability', { params: { dayOfWeek: new Date(date).toLocaleString('en-US', { weekday: 'short' }) } });
+      setSlots(data);
+    } catch (e) {
+      setMsg('Failed to load tutor availability');
+    }
+  };
+
   const book = async (s) => {
     try {
       await api.post('/api/sessions/book', { timeslotID: s.timeslotID, scheduleID: s.scheduleID });
@@ -30,6 +40,23 @@ export default function StudentBook() {
       await search();
     } catch (e) {
       setMsg(e?.response?.data?.message || 'Failed to book');
+    }
+  };
+
+  const bookAvailability = async (availability) => {
+    try {
+      await api.post('/api/sessions/book-from-availability', {
+        tutorID: availability.tutorID,
+        dayOfWeek: availability.dayOfWeek,
+        startTime: availability.startTime,
+        date,
+        subjectID: subjectId,
+        sessionLength
+      });
+      setMsg('✅ Booked!');
+      await searchAvailability();
+    } catch (e) {
+      setMsg(e?.response?.data?.message || 'Failed to book from availability');
     }
   };
 
@@ -47,7 +74,8 @@ export default function StudentBook() {
         </select>
 
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        <button className="btn" onClick={search}>Search</button>
+        <button className="btn" onClick={search}>Search Timeslots</button>
+        <button className="btn" onClick={searchAvailability}>Show Tutor Availability</button>
       </div>
 
       {msg && <p className="muted">{msg}</p>}
@@ -55,13 +83,33 @@ export default function StudentBook() {
 
     <div className="card">
       <ul className="list">
-        {slots.map((s) => (
-          <li key={`${s.scheduleID}-${s.timeslotID}`} className="item">
-            <div>
-              <div className="font-medium">{s.subjectName}</div>
-              <div className="muted">{s.tutorFirstName} {s.tutorLastName} — {s.scheduleDate}</div>
-            </div>
-            <button className="btn success" onClick={() => book(s)}>Book</button>
+        {slots.map((s, idx) => (
+          <li key={s.timeslotID ? `${s.scheduleID}-${s.timeslotID}` : idx} className="item">
+            {s.dayOfWeek ? (
+              <div>
+                <div className="font-medium">
+                  {s.tutorFirstName} {s.tutorLastName}
+                </div>
+                <div className="muted">
+                  {s.dayOfWeek} — {s.startTime} to {s.endTime}
+                </div>
+                <div>
+                  <select value={sessionLength} onChange={e => setSessionLength(Number(e.target.value))}>
+                    <option value={30}>30 min</option>
+                    <option value={60}>60 min</option>
+                    <option value={90}>90 min</option>
+                  </select>
+                  <button className="btn success" onClick={() => bookAvailability(s)}>Book</button>
+                </div>
+              </div>
+            ) : (
+              // Render timeslot/session
+              <div>
+                <div className="font-medium">{s.subjectName}</div>
+                <div className="muted">{s.tutorFirstName} {s.tutorLastName} — {s.scheduleDate}</div>
+                <button className="btn success" onClick={() => book(s)}>Book</button>
+              </div>
+            )}
           </li>
         ))}
 
