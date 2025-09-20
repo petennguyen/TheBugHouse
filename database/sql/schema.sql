@@ -90,6 +90,8 @@ CREATE TABLE `Timeslot` (
   `Daily_Schedule_scheduleID` INT NOT NULL,
   `Academic_Subject_subjectID` INT NOT NULL,
   `Tutor_System_User_userID` INT NOT NULL,
+  `timeslotStartTime` TIME NOT NULL,
+  `timeslotEndTime` TIME NOT NULL,
   PRIMARY KEY (`timeslotID`, `Daily_Schedule_scheduleID`),
   KEY `idx_Timeslot_Schedule` (`Daily_Schedule_scheduleID`),
   KEY `idx_Timeslot_Subject` (`Academic_Subject_subjectID`),

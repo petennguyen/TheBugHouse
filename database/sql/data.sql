@@ -119,25 +119,26 @@ SELECT * FROM (
 -- =====================================================
 -- 5) Timeslots
 -- =====================================================
-INSERT INTO Timeslot (Daily_Schedule_scheduleID, Academic_Subject_subjectID, Tutor_System_User_userID)
+INSERT INTO Timeslot 
+  (Daily_Schedule_scheduleID, Academic_Subject_subjectID, Tutor_System_User_userID, timeslotStartTime, timeslotEndTime)
 SELECT * FROM (
-  SELECT ds.scheduleID, s.subjectID, t.userID
+  SELECT ds.scheduleID, s.subjectID, t.userID, '09:00:00', '10:00:00'
     FROM Daily_Schedule ds
-    JOIN Academic_Subject s ON s.subjectName='Calculus I'
-    JOIN System_User t ON t.userEmail='tutorA@bughouse.edu'
-    WHERE ds.scheduleDate='2025-08-01'
+    JOIN Academic_Subject s ON s.subjectName = 'Calculus I'
+    JOIN System_User t ON t.userEmail = 'tutorA@bughouse.edu'
+    WHERE ds.scheduleDate = '2025-08-01'
   UNION ALL
-  SELECT ds.scheduleID, s.subjectID, t.userID
+  SELECT ds.scheduleID, s.subjectID, t.userID, '10:00:00', '11:00:00'
     FROM Daily_Schedule ds
-    JOIN Academic_Subject s ON s.subjectName='Physics I'
-    JOIN System_User t ON t.userEmail='tutorB@bughouse.edu'
-    WHERE ds.scheduleDate='2025-08-01'
+    JOIN Academic_Subject s ON s.subjectName = 'Physics I'
+    JOIN System_User t ON t.userEmail = 'tutorB@bughouse.edu'
+    WHERE ds.scheduleDate = '2025-08-01'
   UNION ALL
-  SELECT ds.scheduleID, s.subjectID, t.userID
+  SELECT ds.scheduleID, s.subjectID, t.userID, '11:00:00', '12:00:00'
     FROM Daily_Schedule ds
-    JOIN Academic_Subject s ON s.subjectName='Statistics'
-    JOIN System_User t ON t.userEmail='tutorC@bughouse.edu'
-    WHERE ds.scheduleDate='2025-08-02'
+    JOIN Academic_Subject s ON s.subjectName = 'Statistics'
+    JOIN System_User t ON t.userEmail = 'tutorC@bughouse.edu'
+    WHERE ds.scheduleDate = '2025-08-02'
 ) AS new;
 
 -- =====================================================

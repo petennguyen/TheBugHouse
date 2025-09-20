@@ -12,6 +12,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const admin = require("firebase-admin");
+const serviceAccount = require("./firebaseAdmin/serviceAccountKey.json");
+
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
+}
+
 // ✅ MySQL Database Connection
 const dbConfig = {
   host: process.env.DB_HOST,
@@ -421,6 +430,129 @@ app.delete('/api/availability/:id', authRequired, requireRole('Tutor'), async (r
   }
 });
 
+// ---- Admin: Create tutor's
+app.post('/api/admin/inviteTutor', authRequired, requireRole("Admin"), async (req, res) => {
+  try {
+    const { firstName, lastName, email, password } = req.body;
+
+    if (!firstName || !lastName || !email || !password) 
+    {
+      return res.status(400).json({ error: "All fields required (firstName, lastName, email, password)" });
+    }
+
+    // Check if tutor already exists in DB
+    const [rows] = await pool.execute(`SELECT * FROM System_User WHERE userEmail = ?`,[email]);
+    if (rows.length > 0) 
+    {
+      return res.status(400).json({ error: "Tutor already exists" });
+    }
+
+    // Create Firebase user
+    const fbUser = await admin.auth().createUser({
+      email,
+      password,
+      displayName: `${firstName} ${lastName}`,
+    });
+
+    // Insert into MySQL 
+    const [result] = await pool.execute(
+      `INSERT INTO System_User 
+         (userFirstName, userLastName, userEmail, userPassword, userRole, firebaseUID)
+       VALUES (?, ?, ?, ?, 'Tutor', ?)`,
+      [firstName, lastName, email, password, fbUser.uid]
+    );
+
+    res.status(201).json({
+      message: "Tutor created successfully",
+      tutorID: result.insertId,
+      firebaseUID: fbUser.uid,
+    });
+  } catch (err) 
+  {
+    console.error("Invite tutor error:", err);
+    res.status(500).json({ error: "Failed to invite tutor", details: err.message });
+  }
+});
+
+// Admin: View Existing schedules
+app.get('/api/admin/schedules', authRequired, requireRole('Admin'), async (req, res) => {
+  try 
+  {
+    // fetch schedules
+    const [schedules] = await pool.execute(
+      `SELECT scheduleID, scheduleDate 
+         FROM Daily_Schedule 
+        ORDER BY scheduleDate DESC`
+    );
+    if (schedules.length === 0) return res.json([]);
+
+    const ids = schedules.map(s => s.scheduleID);
+
+    // Fetch timeslots
+    const [timeslots] = await pool.query(
+      `SELECT t.timeslotID, 
+              t.Daily_Schedule_scheduleID AS scheduleID,
+              t.Academic_Subject_subjectID AS subjectID, subj.subjectName,
+              t.Tutor_System_User_userID AS tutorID, 
+              CONCAT(u.userFirstName, ' ', u.userLastName) AS tutorName,
+              t.timeslotStartTime,
+              t.timeslotEndTime
+        FROM Timeslot t
+        JOIN Academic_Subject subj ON t.Academic_Subject_subjectID = subj.subjectID
+        JOIN System_User u ON t.Tutor_System_User_userID = u.userID
+        WHERE t.Daily_Schedule_scheduleID IN (?)`,
+      [ids]
+    );
+
+    const timeslotIds = timeslots.map(t => t.timeslotID);
+    // Fetch Sessions
+    let sessions = [];
+    if (timeslotIds.length > 0) {
+      [sessions] = await pool.query(
+        `SELECT s.sessionID, s.Timeslot_timeslotID AS timeslotID, 
+                s.Timeslot_Daily_Schedule_scheduleID AS scheduleID,
+                s.Student_System_User_userID AS studentID,
+                stu.userFirstName AS studentFirstName, stu.userLastName AS studentLastName,
+                s.sessionSignInTime, s.sessionSignOutTime,
+                s.sessionFeedback, s.sessionRating
+           FROM Tutor_Session s
+           JOIN System_User stu ON s.Student_System_User_userID = stu.userID
+          WHERE s.Timeslot_Daily_Schedule_scheduleID IN (?)`,
+        [ids]
+      );
+    }
+
+    // nest sessions inside timeslots
+    const timeslotsWithSessions = timeslots.map(t => ({
+      ...t,
+      sessions: sessions.filter(s => s.timeslotID === t.timeslotID && s.scheduleID === t.scheduleID)
+    }));
+
+    // nest timeslots inside schedules
+    const schedulesWithSlots = schedules.map(s => ({
+      ...s,
+      timeslots: timeslotsWithSessions.filter(t => t.scheduleID === s.scheduleID)
+    }));
+
+    res.json(schedulesWithSlots);
+  } catch (e) 
+  {
+    console.error('Error Fetching Schedules', e);
+    res.status(500).json({ message: 'Failed to fetch schedules' });
+  }
+});
+
+// ---- Admin: get available tutors for schedule creation ----
+app.get('/api/admin/availableTutors', authRequired, requireRole('Admin'), async (req, res) => {
+  try {
+    const [rows] = await pool.execute(`SELECT userID, CONCAT(userFirstName, ' ', userLastName) AS name FROM System_User WHERE userRole = ?`,['Tutor']);
+    res.json(rows);
+  } catch (err) {
+    console.error('Error fetching tutors:', err);
+    res.status(500).json({ error: 'Failed to fetch tutors' });
+  }
+});
+
 // ---- Admin: create a daily schedule ----
 app.post('/api/schedules/generate', authRequired, requireRole('Admin'), async (req, res) => {
   const { date } = req.body || {};
@@ -452,17 +584,30 @@ app.post('/api/timeslots/generate', authRequired, requireRole('Admin'), async (r
       const [hh, mm] = t.split(':').map(Number);
       return hh * 60 + mm;
     };
+
+    const toHHMM = (mins) => {
+      const hh = String(Math.floor(mins / 60)).padStart(2, '0');
+      const mm = String(mins % 60).padStart(2, '0');
+      return `${hh}:${mm}:00`;
+    };
+
     const mStart = toMinutes(start);
     const mEnd = toMinutes(end);
-    const n = Math.max(0, Math.floor((mEnd - mStart) / Number(durationMinutes)));
+    const dur = Number(durationMinutes);
 
     const values = [];
-    for (let i = 0; i < n; i++) values.push([scheduleID, subjectID, tutorUserID]);
+    for (let t = mStart; t + dur <= mEnd; t += dur) 
+    {
+      const slotStart = toHHMM(t);
+      const slotEnd = toHHMM(t + dur);
+      values.push([scheduleID, subjectID, tutorUserID, slotStart, slotEnd]);
+    }
 
     if (!values.length) return res.json({ message: 'No slots generated (check times)' });
 
     const [result] = await pool.query(
-      'INSERT INTO Timeslot (Daily_Schedule_scheduleID, Academic_Subject_subjectID, Tutor_System_User_userID) VALUES ?',
+      `INSERT INTO Timeslot 
+       (Daily_Schedule_scheduleID, Academic_Subject_subjectID, Tutor_System_User_userID, timeslotStartTime, timeslotEndTime) VALUES ?`,
       [values]
     );
 
@@ -489,52 +634,73 @@ app.get('/api/analytics/overview', authRequired, requireRole('Admin'), async (re
 
 // ✅ POST /api/auth/complete-signup
 app.post('/api/auth/complete-signup', async (req, res) => {
-  const { firebaseUID, name, email, role } = req.body;
+  const { firebaseUID, name, email, role, password } = req.body; // include password
   console.log('📝 Complete signup request:', { firebaseUID, name, email, role });
 
   try {
     const [existingUsers] = await pool.execute(
-      'SELECT userID FROM System_User WHERE userEmail = ?',
+      'SELECT userID, firebaseUID FROM System_User WHERE userEmail = ?',
       [email]
     );
-
-    if (existingUsers.length > 0) {
-      console.log('❌ User already exists:', email);
-      return res.status(400).json({ message: 'User already exists in database' });
-    }
 
     const nameParts = name.split(' ');
     const firstName = nameParts[0] || name;
     const lastName = nameParts.slice(1).join(' ') || '';
 
-    console.log('💾 Inserting user:', { firstName, lastName, email, role });
+    let userID;
 
-    const [insertResult] = await pool.execute(
-      'INSERT INTO System_User (userFirstName, userLastName, userEmail, userPassword, userRole, firebaseUID) VALUES (?, ?, ?, ?, ?, ?)',
-      [firstName, lastName, email, 'firebase_auth', role, firebaseUID]
-    );
+    if (existingUsers.length > 0) {
+      const existing = existingUsers[0];
 
-    const userID = insertResult.insertId;
+      if (existing.firebaseUID) {
+        return res.status(400).json({ message: 'User already exists in database' });
+      }
 
+      // use the password passed in
+      await pool.execute(
+        `UPDATE System_User 
+         SET userFirstName = ?, userLastName = ?, userRole = ?, firebaseUID = ?, userPassword = ?
+         WHERE userID = ?`,
+        [firstName, lastName, role, firebaseUID, password, existing.userID]
+      );
+
+      userID = existing.userID;
+    } else {
+      // 3) Fresh signup (no invite) → insert new user
+      const [insertResult] = await pool.execute(
+        `INSERT INTO System_User 
+         (userFirstName, userLastName, userEmail, userPassword, userRole, firebaseUID) 
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [firstName, lastName, email, password, role, firebaseUID]
+      );
+      userID = insertResult.insertId;
+    }
+    // 4) Add to role-specific tables
     if (role.toLowerCase() === 'student') {
       await pool.execute(
-        'INSERT INTO student (System_User_userID, studentIDCard, studentLearningGoals) VALUES (?, ?, ?)',
+        'INSERT IGNORE INTO student (System_User_userID, studentIDCard, studentLearningGoals) VALUES (?, ?, ?)',
         [userID, 'TBD', 'General tutoring']
       );
     } else if (role.toLowerCase() === 'tutor') {
       await pool.execute(
-        'INSERT INTO tutor (System_User_userID, tutorBiography, tutorQualifications) VALUES (?, ?, ?)',
+        'INSERT IGNORE INTO tutor (System_User_userID, tutorBiography, tutorQualifications) VALUES (?, ?, ?)',
         [userID, 'New tutor', 'To be updated']
       );
     }
 
+    // 5) Issue JWT
     const token = jwt.sign(
       { email, role, userID, firebaseUID },
       process.env.JWT_SECRET || 'change_me_now',
       { expiresIn: JWT_EXPIRES_IN }
     );
 
-    res.json({ message: 'User setup completed successfully', token, role, userID });
+    res.json({
+      message: 'User setup completed successfully',
+      token,
+      role,
+      userID,
+    });
   } catch (error) {
     console.error('❌ Complete signup error:', error);
     res.status(500).json({
