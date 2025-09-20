@@ -12,6 +12,7 @@ export default function Dashboard() {
   const [kpis, setKpis] = useState(null);
   const [err, setErr] = useState('');
   const [completedSessions, setCompletedSessions] = useState([]);
+  const [scheduledSessions, setScheduledSessions] = useState([]);
 
   useEffect(() => {
     if (role === 'Admin') {
@@ -22,6 +23,9 @@ export default function Dashboard() {
     }
 
     if (role === 'Tutor') {
+      api.get('/api/sessions/scheduled')
+        .then(res => setScheduledSessions(res.data))
+        .catch(() => {});
       api.get('/api/sessions/completed')
         .then(res => setCompletedSessions(res.data))
         .catch(() => {});
@@ -186,6 +190,21 @@ export default function Dashboard() {
                 </li>
               ))}
               {!completedSessions.length && <li className="muted">No completed sessions.</li>}
+            </ul>
+          </Card>
+          <Card title="Scheduled Sessions">
+            <ul className="list">
+              {scheduledSessions.map(sess => (
+                <li key={sess.sessionID} className="item">
+                  <div>
+                    <strong>{sess.subjectName}</strong> with {sess.studentFirstName} {sess.studentLastName} <br />
+                    {sess.sessionSignInTime
+                      ? new Date(sess.sessionSignInTime).toLocaleString()
+                      : sess.scheduleDate}
+                  </div>
+                </li>
+              ))}
+              {!scheduledSessions.length && <li className="muted">No scheduled sessions.</li>}
             </ul>
           </Card>
         </>
@@ -373,6 +392,31 @@ END:VCALENDAR`;
 
         <OfficeHoursBox />
       </div>
+
+      {events
+        .filter(ev => new Date(ev.start) > new Date())
+        .map(ev => (
+          <div key={ev.id} style={{ marginBottom: 12 }}>
+            <div>
+              <strong>{ev.title}</strong><br />
+              {new Date(ev.start).toLocaleString()}
+            </div>
+            <button
+              className="btn success"
+              onClick={async () => {
+                try {
+                  await api.post(`/api/sessions/${ev.id}/checkin`);
+                  alert('Checked in!');
+                  // Optionally reload events or update UI
+                } catch (e) {
+                  alert('Check-in failed.');
+                }
+              }}
+            >
+              Check In
+            </button>
+          </div>
+        ))}
     </>
   );
 }

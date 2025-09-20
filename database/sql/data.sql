@@ -29,7 +29,8 @@ VALUES
   ('Tutor','G','tutorG@bughouse.edu','tutorpasswordG','Tutor'),
   ('Tutor','H','tutorH@bughouse.edu','tutorpasswordH','Tutor'),
   ('Tutor','I','tutorI@bughouse.edu','tutorpasswordI','Tutor'),
-  ('Tutor','J','tutorJ@bughouse.edu','tutorpasswordJ','Tutor'),
+  ('Tutor','J','tutorJ@bughouse.edu','tutorpasswordJ','Tutor'),  
+
 
   ('Student','A','studentA@bughouse.edu','studentpasswordA','Student'),
   ('Student','B','studentB@bughouse.edu','studentpasswordB','Student'),

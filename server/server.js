@@ -908,3 +908,43 @@ app.post('/api/sessions/book-from-availability', authRequired, requireRole('Stud
     res.status(500).json({ message: 'Failed to book session from availability' });
   }
 });
+
+// ---- Check-in for session (Student) ----
+app.post('/api/sessions/:id/checkin', authRequired, requireRole('Student'), async (req, res) => {
+  const sessionID = req.params.id;
+  try {
+    await pool.execute(
+      `UPDATE Tutor_Session SET sessionSignInTime = NOW() WHERE sessionID = ? AND Student_System_User_userID = ?`,
+      [sessionID, req.user.userID]
+    );
+    res.json({ message: 'Checked in!' });
+  } catch (e) {
+    res.status(500).json({ message: 'Check-in failed.' });
+  }
+});
+
+// ---- Scheduled sessions (upcoming) ----
+app.get('/api/sessions/scheduled', authRequired, requireRole('Tutor'), async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      `SELECT
+      sess.sessionID, ds.scheduleDate,
+  subj.subjectName,
+  ssu.userFirstName AS studentFirstName, ssu.userLastName AS studentLastName,
+  sess.sessionSignInTime, sess.sessionSignOutTime
+FROM Tutor_Session sess
+JOIN Timeslot tl ON tl.timeslotID = sess.Timeslot_timeslotID
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+JOIN System_User ssu ON ssu.userID = sess.Student_System_User_userID
+WHERE sess.Tutor_System_User_userID = ?
+  AND (sess.sessionSignOutTime IS NULL OR sess.sessionSignOutTime > NOW())
+ORDER BY ds.scheduleDate ASC`,
+      [req.user.userID]
+    );
+    res.json(rows);
+  } catch (e) {
+    console.error('scheduled sessions error', e);
+    res.status(500).json({ message: 'Failed to load scheduled sessions' });
+  }
+});
