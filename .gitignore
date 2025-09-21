@@ -42,3 +42,6 @@ coverage/
 
 # BUT explicitly allow client/.env (safe Firebase config)
 !client/.env
+
+
+server/firebaseAdmin/serviceAccountKey.json
