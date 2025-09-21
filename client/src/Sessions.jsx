@@ -46,7 +46,18 @@ export default function Sessions() {
       {rows.map((r) => (
         <li key={r.sessionID} className="item">
           <div>
-            <div className="font-medium">{r.subjectName} — {r.scheduleDate}</div>
+            <div className="font-medium">
+              {r.subjectName} <br />
+              {new Date(r.scheduleDate).toLocaleString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+              })}
+            </div>
             {role === 'Student' && (
               <div className="muted">Tutor: {r.tutorFirstName} {r.tutorLastName}</div>
             )}
@@ -54,7 +65,23 @@ export default function Sessions() {
               <div className="muted">Student: {r.studentFirstName} {r.studentLastName}</div>
             )}
             <div className="muted" style={{ fontSize: 12 }}>
-              In: {r.sessionSignInTime ?? '-'} · Out: {r.sessionSignOutTime ?? '-'} · Rating: {r.sessionRating ?? '-'}
+              In: {r.sessionSignInTime
+                ? new Date(r.sessionSignInTime).toLocaleString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true,
+                  })
+                : '-'}
+              <span> · </span>
+              Out: {r.sessionSignOutTime
+                ? new Date(r.sessionSignOutTime).toLocaleString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true,
+                  })
+                : '-'}
+              <span> · </span>
+              Rating: {r.sessionRating ?? '-'}
             </div>
           </div>
 

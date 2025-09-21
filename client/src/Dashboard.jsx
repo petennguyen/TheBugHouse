@@ -165,8 +165,33 @@ export default function Dashboard() {
               {completedSessions.map(sess => (
                 <li key={sess.sessionID} className="item">
                   <div>
-                    <strong>{sess.subjectName}</strong> with {sess.studentFirstName} {sess.studentLastName} <br />
-                    {new Date(sess.sessionSignOutTime).toLocaleString()}
+                    <strong>{sess.subjectName}</strong> <br />
+                    Student: {sess.studentFirstName} {sess.studentLastName} <br />
+                    {sess.sessionSignInTime && (
+                      <>
+                        In: {new Date(sess.sessionSignInTime).toLocaleString('en-US', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                          hour12: true,
+                        })}
+                        <br />
+                      </>
+                    )}
+                    {sess.sessionSignOutTime && (
+                      <>
+                        Out: {new Date(sess.sessionSignOutTime).toLocaleString('en-US', {
+                          hour: 'numeric',
+                          minute: '2-digit',
+                          hour12: true,
+                        })}
+                        <br />
+                      </>
+                    )}
+                    Rating: {sess.sessionRating ?? '-'}
                   </div>
                   <button
                     className="btn danger"

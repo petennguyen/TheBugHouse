@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from './api';
 
-const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+//const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
 export default function TutorAvailability() {
   const [rows, setRows] = useState([]);
