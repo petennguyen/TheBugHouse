@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from './api';
 
 import FullCalendar from '@fullcalendar/react';
@@ -12,6 +12,7 @@ export default function Dashboard() {
   const [kpis, setKpis] = useState(null);
   const [err, setErr] = useState('');
   const [completedSessions, setCompletedSessions] = useState([]);
+
 
   useEffect(() => {
     if (role === 'Admin') {
@@ -42,6 +43,21 @@ export default function Dashboard() {
       {children}
     </div>
   );
+
+  useEffect(() => {
+    const oldSessionId = localStorage.getItem('rescheduleOldSessionId');
+    if (oldSessionId) {
+      (async () => {
+        try {
+          await api.delete(`/api/sessions/${oldSessionId}`);
+        } catch (e) {
+          console.error('Failed to cancel old session', e);
+        } finally {
+          localStorage.removeItem('rescheduleOldSessionId');
+        }
+      })();
+    }
+  }, []);
 
   return (
     <div style={{ maxWidth: 1120, margin: '0 auto', padding: 20 }}>
@@ -248,9 +264,14 @@ export default function Dashboard() {
 }
 
 function StudentCalendarAndHours() {
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [showActionModal, setShowActionModal] = useState(false);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errCal, setErrCal] = useState('');
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const navigate = useNavigate();
+
 
   const [initialView, setInitialView] = useState('timeGridWeek');
   useEffect(() => {
@@ -364,28 +385,9 @@ END:VCALENDAR`;
               const cls = subjectToClass(subj);
               return cls ? [cls] : [];
             }}
-            eventClick={async (info) => {
-              const id = info.event.id;
-              const action = window.prompt('Type R to reschedule, C to cancel');
-              if (!action) return;
-
-              if (action.toLowerCase() === 'r') {
-                const d = info.event.start?.toISOString();
-                window.location.href = `/book?from=${encodeURIComponent(d || '')}`;
-                return;
-              }
-
-              if (action.toLowerCase() === 'c') {
-                if (!window.confirm('Are you sure you want to cancel this session?')) return;
-                try {
-                  await api.delete(`/api/sessions/${id}`);
-                  info.event.remove();
-                  alert('Session cancelled.');
-                } catch (e) {
-                  console.error(e);
-                  alert('Could not cancel. Do you have permission, and is the session ID valid?');
-                }
-              }
+            eventClick={info => {
+              setSelectedEvent(info.event);
+              setShowActionModal(true);
             }}
             events={events}
             height="auto"
@@ -394,6 +396,89 @@ END:VCALENDAR`;
             slotMaxTime="20:00:00"
             slotDuration="00:30:00"
           />
+
+{showActionModal && selectedEvent && (
+  <div style={{
+    position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+    background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
+  }}>
+    <div style={{
+      background: '#fff', padding: 24, borderRadius: 12, minWidth: 320, boxShadow: '0 8px 22px rgba(0,0,0,0.15)'
+    }}>
+      <div style={{ marginBottom: 16, fontWeight: 700 }}>
+        What would you like to do with this session?
+      </div>
+      <div style={{ display: 'flex', gap: 12 }}>
+        <button
+          className="btn danger"
+          style={btn}
+          onClick={() => {
+            setShowActionModal(false);
+            navigate('/book');
+          }}
+        >
+          Reschedule
+        </button>
+        <button
+          className="btn danger"
+          style={btn}
+          onClick={() => setShowCancelConfirm(true)}
+          >
+        Cancel
+        </button>
+        <button
+          className="btn"
+          style={{ ...btn, background: '#e5e7eb', color: '#111827' }}
+          onClick={() => setShowActionModal(false)}
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{showCancelConfirm && (
+  <div style={{
+    position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+    background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000
+  }}>
+    <div style={{
+      background: '#fff', padding: 24, borderRadius: 12, minWidth: 320, boxShadow: '0 8px 22px rgba(0,0,0,0.15)'
+    }}>
+      <div style={{ marginBottom: 16, fontWeight: 700 }}>
+        Are you sure you want to cancel this session?
+      </div>
+      <div style={{ display: 'flex', gap: 12 }}>
+        <button
+          className="btn danger"
+          style={btn}
+          onClick={async () => {
+            try {
+              await api.delete(`/api/sessions/${selectedEvent.id}`);
+              selectedEvent.remove();
+              setShowCancelConfirm(false);
+              setShowActionModal(false);
+              //alert('Session cancelled.');
+            } catch (e) {
+              alert('Could not cancel. Do you have permission, and is the session ID valid?');
+            }
+          }}
+        >
+          Yes, Cancel
+        </button>
+        <button
+          className="btn"
+          style={{ ...btn, background: '#e5e7eb', color: '#111827' }}
+          onClick={() => setShowCancelConfirm(false)}
+        >
+          No, Go Back
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
         </div>
 
         <OfficeHoursBox />
@@ -401,7 +486,6 @@ END:VCALENDAR`;
     </>
   );
 }
-
 function OfficeHoursBox() {
   const hours = useMemo(() => ([
     { day: 'Mon', open: '8:00 AM', close: '5:00 PM' },
