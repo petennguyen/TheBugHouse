@@ -824,12 +824,12 @@ app.get('/api/user/profile', authRequired, async (req, res) => {
 });
 
 
-async function sendSessionReminder(toEmail, sessionDate, tutorName, subjectName) {
+async function sendSessionReminder(toEmail, sessionDate, startTime, endTime, tutorName, subjectName) {
   const msg = {
     to: toEmail,
     from: process.env.FROM_EMAIL,
     subject: 'Tutoring Session Reminder',
-    text: `Reminder: You have a ${subjectName} session with ${tutorName} on ${sessionDate}.`,
+    text: `Reminder: You have a ${subjectName} session with ${tutorName} on ${sessionDate} from ${startTime} to ${endTime}.`,
   };
   try {
     await sgMail.send(msg);
@@ -843,11 +843,11 @@ async function sendSessionReminder(toEmail, sessionDate, tutorName, subjectName)
 cron.schedule('0 * * * *', async () => {
   console.log('⏰ Checking for sessions to remind...');
   try {
-    // Find sessions scheduled 24 hours from now
     const [rows] = await pool.execute(
       `SELECT sess.sessionID, ds.scheduleDate, subj.subjectName,
               tsu.userFirstName AS tutorFirstName, tsu.userLastName AS tutorLastName,
-              stu.userEmail AS studentEmail
+              stu.userEmail AS studentEmail,
+              sess.sessionSignInTime, sess.sessionSignOutTime
        FROM Tutor_Session sess
        JOIN Timeslot tl ON tl.timeslotID = sess.Timeslot_timeslotID
                         AND tl.Daily_Schedule_scheduleID = sess.Timeslot_Daily_Schedule_scheduleID
@@ -860,16 +860,33 @@ cron.schedule('0 * * * *', async () => {
 
     for (const session of rows) {
       const tutorName = `${session.tutorFirstName} ${session.tutorLastName}`;
+      
+      const startTime = session.sessionSignInTime 
+        ? new Date(session.sessionSignInTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+        : 'TBD';
+      
+      const endTime = session.sessionSignOutTime 
+        ? new Date(session.sessionSignOutTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+        : 'TBD';
+        
+      const sessionDate = new Date(session.scheduleDate).toLocaleDateString('en-US', { 
+        weekday: 'short', 
+        month: 'short', 
+        day: 'numeric' 
+      });
+      
       await sendSessionReminder(
         session.studentEmail,
-        session.scheduleDate,
+        sessionDate,
+        startTime,
+        endTime,
         tutorName,
         session.subjectName
       );
     }
     console.log(`✅ Sent ${rows.length} reminders`);
   } catch (err) {
-    console.error('Reminder cron error:', err);
+    console.error('Reminder cron error', err);
   }
 });
 
@@ -903,7 +920,8 @@ app.post('/api/manual-reminder-check', async (req, res) => {
     const [rows] = await pool.execute(
       `SELECT sess.sessionID, ds.scheduleDate, subj.subjectName,
               tsu.userFirstName AS tutorFirstName, tsu.userLastName AS tutorLastName,
-              stu.userEmail AS studentEmail
+              stu.userEmail AS studentEmail,
+              sess.sessionSignInTime, sess.sessionSignOutTime
        FROM Tutor_Session sess
        JOIN Timeslot tl ON tl.timeslotID = sess.Timeslot_timeslotID
                         AND tl.Daily_Schedule_scheduleID = sess.Timeslot_Daily_Schedule_scheduleID
@@ -917,9 +935,26 @@ app.post('/api/manual-reminder-check', async (req, res) => {
     let sent = 0;
     for (const session of rows) {
       const tutorName = `${session.tutorFirstName} ${session.tutorLastName}`;
+      
+      const startTime = session.sessionSignInTime 
+        ? new Date(session.sessionSignInTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+        : 'TBD';
+      
+      const endTime = session.sessionSignOutTime 
+        ? new Date(session.sessionSignOutTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+        : 'TBD';
+        
+      const sessionDate = new Date(session.scheduleDate).toLocaleDateString('en-US', { 
+        weekday: 'short', 
+        month: 'short', 
+        day: 'numeric' 
+      });
+      
       await sendSessionReminder(
         session.studentEmail,
-        session.scheduleDate,
+        sessionDate,
+        startTime,
+        endTime,
         tutorName,
         session.subjectName
       );

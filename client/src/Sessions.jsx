@@ -99,7 +99,7 @@ export default function Sessions() {
           </div>
 
           <div style={{ display: 'flex', gap: 8 }}>
-            {role === 'Student' && (
+            {role === 'Student' && r.sessionSignInTime && r.sessionSignOutTime && (
               <button className="btn primary" onClick={() => leaveFeedback(r.sessionID)}>
                 Feedback
               </button>
