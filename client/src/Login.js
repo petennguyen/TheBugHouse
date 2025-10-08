@@ -346,7 +346,7 @@ function Login({ onLogin }) {
 
         {msg && <div className={`alert ${msgType} enhanced-alert`}>{msg}</div>}
 
-        <div className="auth-footer">
+        <div className="auth-footer" style={{ textAlign: 'center' }}>
           <div className="auth-meta">Don't have an account?</div>
           <Link to="/signup">
             <button className="btn primary enhanced-btn-secondary login-signup-btn">Create BugHouse Account</button>
