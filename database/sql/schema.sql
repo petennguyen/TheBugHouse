@@ -21,6 +21,12 @@ CREATE TABLE `System_User` (
   `userPassword`  VARCHAR(255) NOT NULL,
   `userRole`      ENUM('Admin','Tutor','Student') NOT NULL,
   `firebaseUID`   VARCHAR(128) NULL,
+
+  `bio` TEXT,
+  `profilePicture` TEXT,
+  `specialties` JSON,
+  `experience` TEXT,
+
   PRIMARY KEY (`userID`),
   UNIQUE KEY `userEmail_UNIQUE` (`userEmail`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

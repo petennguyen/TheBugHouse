@@ -823,6 +823,66 @@ app.get('/api/user/profile', authRequired, async (req, res) => {
   }
 });
 
+// Get tutor profile
+app.get('/api/profile/tutor', authRequired, requireRole('Tutor'), async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      'SELECT userFirstName, userLastName, userEmail, bio, profilePicture, specialties, experience, hourlyRate FROM System_User WHERE userID = ?',
+      [req.user.userID]
+    );
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Profile not found' });
+    }
+    
+    const profile = rows[0];
+    // Parse specialties JSON
+    if (profile.specialties) {
+      try {
+        profile.specialties = JSON.parse(profile.specialties);
+      } catch {
+        profile.specialties = [];
+      }
+    } else {
+      profile.specialties = [];
+    }
+    
+    res.json(profile);
+  } catch (error) {
+    console.error('Error fetching tutor profile:', error);
+    res.status(500).json({ message: 'Failed to load profile' });
+  }
+});
+
+// Update tutor profile
+app.put('/api/profile/tutor', authRequired, requireRole('Tutor'), async (req, res) => {
+  const { userFirstName, userLastName, bio, profilePicture, specialties, experience, hourlyRate } = req.body;
+  
+  try {
+    await pool.execute(
+      `UPDATE System_User 
+       SET userFirstName = ?, userLastName = ?, bio = ?, profilePicture = ?, 
+           specialties = ?, experience = ?, hourlyRate = ?
+       WHERE userID = ?`,
+      [
+        userFirstName, 
+        userLastName, 
+        bio, 
+        profilePicture, 
+        JSON.stringify(specialties || []), 
+        experience, 
+        hourlyRate,
+        req.user.userID
+      ]
+    );
+    
+    res.json({ message: 'Profile updated successfully' });
+  } catch (error) {
+    console.error('Error updating tutor profile:', error);
+    res.status(500).json({ message: 'Failed to update profile' });
+  }
+});
+
 
 async function sendSessionReminder(toEmail, sessionDate, startTime, endTime, tutorName, subjectName) {
   const msg = {
