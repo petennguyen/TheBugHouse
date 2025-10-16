@@ -1109,3 +1109,122 @@ app.post('/api/sessions/book-from-availability', authRequired, requireRole('Stud
     res.status(500).json({ message: 'Failed to book session from availability' });
   }
 });
+
+// ---- Admin: View all feedback ----
+app.get('/api/admin/feedback', authRequired, requireRole('Admin'), async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      `SELECT 
+         sess.sessionID,
+         sess.sessionFeedback,
+         sess.sessionRating,
+         sess.sessionSignInTime,
+         sess.sessionSignOutTime,
+         ds.scheduleDate,
+         subj.subjectName,
+         stu.userFirstName AS studentFirstName,
+         stu.userLastName AS studentLastName,
+         tut.userFirstName AS tutorFirstName,
+         tut.userLastName AS tutorLastName
+       FROM Tutor_Session sess
+       JOIN Timeslot tl ON tl.timeslotID = sess.Timeslot_timeslotID 
+                        AND tl.Daily_Schedule_scheduleID = sess.Timeslot_Daily_Schedule_scheduleID
+       JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+       JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+       JOIN System_User stu ON stu.userID = sess.Student_System_User_userID
+       JOIN System_User tut ON tut.userID = sess.Tutor_System_User_userID
+       WHERE sess.sessionRating IS NOT NULL OR sess.sessionFeedback IS NOT NULL
+       ORDER BY ds.scheduleDate DESC, sess.sessionID DESC`
+    );
+    res.json(rows);
+  } catch (e) {
+    console.error('Error fetching feedback:', e);
+    res.status(500).json({ message: 'Failed to load feedback' });
+  }
+});
+
+// ---- Admin: Feedback analytics ----
+app.get('/api/admin/feedback-analytics', authRequired, requireRole('Admin'), async (req, res) => {
+  try {
+    // Average rating
+    const [[avgResult]] = await pool.execute(
+      'SELECT AVG(sessionRating) as avgRating FROM Tutor_Session WHERE sessionRating IS NOT NULL'
+    );
+    
+    // Rating distribution
+    const [ratingDist] = await pool.execute(
+      `SELECT sessionRating, COUNT(*) as count 
+       FROM Tutor_Session 
+       WHERE sessionRating IS NOT NULL 
+       GROUP BY sessionRating 
+       ORDER BY sessionRating`
+    );
+    
+    // Total feedback count
+    const [[feedbackCount]] = await pool.execute(
+      'SELECT COUNT(*) as totalFeedback FROM Tutor_Session WHERE sessionRating IS NOT NULL'
+    );
+    
+    // Feedback by tutor
+    const [tutorFeedback] = await pool.execute(
+      `SELECT 
+         tut.userFirstName AS tutorFirstName,
+         tut.userLastName AS tutorLastName,
+         COUNT(*) as feedbackCount,
+         AVG(sess.sessionRating) as avgRating
+       FROM Tutor_Session sess
+       JOIN System_User tut ON tut.userID = sess.Tutor_System_User_userID
+       WHERE sess.sessionRating IS NOT NULL
+       GROUP BY tut.userID, tut.userFirstName, tut.userLastName
+       ORDER BY avgRating DESC`
+    );
+    
+    // Feedback by subject
+    const [subjectFeedback] = await pool.execute(
+      `SELECT 
+         subj.subjectName,
+         COUNT(*) as feedbackCount,
+         AVG(sess.sessionRating) as avgRating
+       FROM Tutor_Session sess
+       JOIN Timeslot tl ON tl.timeslotID = sess.Timeslot_timeslotID
+       JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+       WHERE sess.sessionRating IS NOT NULL
+       GROUP BY subj.subjectID, subj.subjectName
+       ORDER BY avgRating DESC`
+    );
+    
+    // Recent feedback
+    const [recentFeedback] = await pool.execute(
+      `SELECT 
+         sess.sessionFeedback,
+         sess.sessionRating,
+         ds.scheduleDate,
+         stu.userFirstName AS studentFirstName,
+         stu.userLastName AS studentLastName,
+         tut.userFirstName AS tutorFirstName,
+         tut.userLastName AS tutorLastName,
+         subj.subjectName
+       FROM Tutor_Session sess
+       JOIN Timeslot tl ON tl.timeslotID = sess.Timeslot_timeslotID
+       JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+       JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+       JOIN System_User stu ON stu.userID = sess.Student_System_User_userID
+       JOIN System_User tut ON tut.userID = sess.Tutor_System_User_userID
+       WHERE sess.sessionFeedback IS NOT NULL
+       ORDER BY ds.scheduleDate DESC, sess.sessionID DESC
+       LIMIT 10`
+    );
+
+    res.json({
+      avgRating: avgResult.avgRating || 0,
+      totalFeedback: feedbackCount.totalFeedback,
+      ratingDistribution: ratingDist,
+      tutorFeedback,
+      subjectFeedback,
+      recentFeedback
+    });
+  } catch (e) {
+    console.error('Error fetching feedback analytics:', e);
+    res.status(500).json({ message: 'Failed to load feedback analytics' });
+  }
+});
