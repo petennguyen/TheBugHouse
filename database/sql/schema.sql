@@ -152,6 +152,7 @@ CREATE TABLE `Tutor_Availability` (
   `dayOfWeek` ENUM('Mon','Tue','Wed','Thu','Fri','Sat','Sun') NOT NULL,
   `startTime` TIME NOT NULL,
   `endTime`   TIME NOT NULL,
+  `subjects`  TEXT NULL,
   PRIMARY KEY (`availabilityID`),
   KEY `idx_Availability_Tutor` (`Tutor_System_User_userID`),
   -- Unique per tutor+day (so your upsert by day works)

@@ -389,842 +389,115 @@ app.delete('/api/sessions/:id', authRequired, async (req, res) => {
 app.get('/api/availability/mine', authRequired, requireRole('Tutor'), async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      `SELECT availabilityID, dayOfWeek, startTime, endTime
-       FROM Tutor_Availability WHERE Tutor_System_User_userID = ? ORDER BY FIELD(dayOfWeek,'Mon','Tue','Wed','Thu','Fri','Sat','Sun'), startTime`,
+      'SELECT availabilityID, dayOfWeek, startTime, endTime, subjects FROM Tutor_Availability WHERE Tutor_System_User_userID = ? ORDER BY FIELD(dayOfWeek, "Mon","Tue","Wed","Thu","Fri","Sat","Sun"), startTime',
       [req.user.userID]
     );
     res.json(rows);
   } catch (e) {
-    console.error(e);
+    console.error('availability mine error', e);
     res.status(500).json({ message: 'Failed to load availability' });
   }
 });
 
 app.post('/api/availability', authRequired, requireRole('Tutor'), async (req, res) => {
-  const { dayOfWeek, startTime, endTime } = req.body || {};
-  if (!dayOfWeek || !startTime || !endTime) return res.status(400).json({ message: 'dayOfWeek, startTime, endTime required' });
+  const { dayOfWeek, startTime, endTime, subjects } = req.body;
+  
+  if (!dayOfWeek || !startTime || !endTime || !subjects?.length) {
+    return res.status(400).json({ message: 'dayOfWeek, startTime, endTime, and subjects required' });
+  }
+  
   try {
-    await pool.execute(
-      `INSERT INTO Tutor_Availability (Tutor_System_User_userID, dayOfWeek, startTime, endTime)
-       VALUES (?, ?, ?, ?)`,
-      [req.user.userID, dayOfWeek, startTime, endTime]
+    // Convert subject IDs to names for storage
+    const [subjectRows] = await pool.execute(
+      `SELECT subjectName FROM Academic_Subject WHERE subjectID IN (${subjects.map(() => '?').join(',')})`,
+      subjects
     );
+    const subjectNames = subjectRows.map(row => row.subjectName).join(',');
+    
+    await pool.execute(
+      'INSERT INTO Tutor_Availability (Tutor_System_User_userID, dayOfWeek, startTime, endTime, subjects) VALUES (?, ?, ?, ?, ?)',
+      [req.user.userID, dayOfWeek, startTime, endTime, subjectNames]
+    );
+    
     res.json({ message: 'Availability added' });
   } catch (e) {
-    console.error(e);
+    console.error('availability add error', e);
     res.status(500).json({ message: 'Failed to add availability' });
   }
 });
 
-app.delete('/api/availability/:id', authRequired, requireRole('Tutor'), async (req, res) => {
-  try {
-    const [r] = await pool.execute(
-      `DELETE FROM Tutor_Availability WHERE availabilityID = ? AND Tutor_System_User_userID = ?`,
-      [req.params.id, req.user.userID]
-    );
-    if (r.affectedRows === 0) return res.status(404).json({ message: 'Not found' });
-    res.json({ message: 'Availability removed' });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ message: 'Failed to remove availability' });
-  }
-});
-
-// ---- Admin: Create tutor's
-app.post('/api/admin/inviteTutor', authRequired, requireRole("Admin"), async (req, res) => {
-  try {
-    const { firstName, lastName, email, password } = req.body;
-
-    if (!firstName || !lastName || !email || !password) 
-    {
-      return res.status(400).json({ error: "All fields required (firstName, lastName, email, password)" });
-    }
-
-    // Check if tutor already exists in DB
-    const [rows] = await pool.execute(`SELECT * FROM System_User WHERE userEmail = ?`,[email]);
-    if (rows.length > 0) 
-    {
-      return res.status(400).json({ error: "Tutor already exists" });
-    }
-
-    // Create Firebase user
-    const fbUser = await admin.auth().createUser({
-      email,
-      password,
-      displayName: `${firstName} ${lastName}`,
-    });
-
-    // Insert into MySQL 
-    const [result] = await pool.execute(
-      `INSERT INTO System_User 
-         (userFirstName, userLastName, userEmail, userPassword, userRole, firebaseUID)
-       VALUES (?, ?, ?, ?, 'Tutor', ?)`,
-      [firstName, lastName, email, password, fbUser.uid]
-    );
-
-    res.status(201).json({
-      message: "Tutor created successfully",
-      tutorID: result.insertId,
-      firebaseUID: fbUser.uid,
-    });
-  } catch (err) 
-  {
-    console.error("Invite tutor error:", err);
-    res.status(500).json({ error: "Failed to invite tutor", details: err.message });
-  }
-});
-
-// Admin: View Existing schedules
-app.get('/api/admin/schedules', authRequired, requireRole('Admin'), async (req, res) => {
-  try 
-  {
-    // fetch schedules
-    const [schedules] = await pool.execute(
-      `SELECT scheduleID, scheduleDate 
-         FROM Daily_Schedule 
-        ORDER BY scheduleDate DESC`
-    );
-    if (schedules.length === 0) return res.json([]);
-
-    const ids = schedules.map(s => s.scheduleID);
-
-    // Fetch timeslots
-    const [timeslots] = await pool.query(
-      `SELECT t.timeslotID, 
-              t.Daily_Schedule_scheduleID AS scheduleID,
-              t.Academic_Subject_subjectID AS subjectID, subj.subjectName,
-              t.Tutor_System_User_userID AS tutorID, 
-              CONCAT(u.userFirstName, ' ', u.userLastName) AS tutorName,
-              t.timeslotStartTime,
-              t.timeslotEndTime
-        FROM Timeslot t
-        JOIN Academic_Subject subj ON t.Academic_Subject_subjectID = subj.subjectID
-        JOIN System_User u ON t.Tutor_System_User_userID = u.userID
-        WHERE t.Daily_Schedule_scheduleID IN (?)`,
-      [ids]
-    );
-
-    const timeslotIds = timeslots.map(t => t.timeslotID);
-    // Fetch Sessions
-    let sessions = [];
-    if (timeslotIds.length > 0) {
-      [sessions] = await pool.query(
-        `SELECT s.sessionID, s.Timeslot_timeslotID AS timeslotID, 
-                s.Timeslot_Daily_Schedule_scheduleID AS scheduleID,
-                s.Student_System_User_userID AS studentID,
-                stu.userFirstName AS studentFirstName, stu.userLastName AS studentLastName,
-                s.sessionSignInTime, s.sessionSignOutTime,
-                s.sessionFeedback, s.sessionRating
-           FROM Tutor_Session s
-           JOIN System_User stu ON s.Student_System_User_userID = stu.userID
-          WHERE s.Timeslot_Daily_Schedule_scheduleID IN (?)`,
-        [ids]
-      );
-    }
-
-    // nest sessions inside timeslots
-    const timeslotsWithSessions = timeslots.map(t => ({
-      ...t,
-      sessions: sessions.filter(s => s.timeslotID === t.timeslotID && s.scheduleID === t.scheduleID)
-    }));
-
-    // nest timeslots inside schedules
-    const schedulesWithSlots = schedules.map(s => ({
-      ...s,
-      timeslots: timeslotsWithSessions.filter(t => t.scheduleID === s.scheduleID)
-    }));
-
-    res.json(schedulesWithSlots);
-  } catch (e) 
-  {
-    console.error('Error Fetching Schedules', e);
-    res.status(500).json({ message: 'Failed to fetch schedules' });
-  }
-});
-
-// ---- Admin: get available tutors for schedule creation ----
-app.get('/api/admin/availableTutors', authRequired, requireRole('Admin'), async (req, res) => {
-  try {
-    const [rows] = await pool.execute(`SELECT userID, CONCAT(userFirstName, ' ', userLastName) AS name FROM System_User WHERE userRole = ?`,['Tutor']);
-    res.json(rows);
-  } catch (err) {
-    console.error('Error fetching tutors:', err);
-    res.status(500).json({ error: 'Failed to fetch tutors' });
-  }
-});
-
-// ---- Admin: create a daily schedule ----
-app.post('/api/schedules/generate', authRequired, requireRole('Admin'), async (req, res) => {
-  const { date } = req.body || {};
-  if (!date) return res.status(400).json({ message: 'date required (YYYY-MM-DD)' });
-  try {
-    const [r] = await pool.execute(
-      `INSERT INTO Daily_Schedule (Administrator_System_User_userID, scheduleDate)
-       VALUES (?, ?)`,
-      [req.user.userID, date]
-    );
-    res.json({ message: 'Schedule created', scheduleID: r.insertId });
-  } catch (e) {
-    console.error('create schedule error', e);
-    res.status(500).json({ message: 'Failed to create schedule' });
-  }
-});
-
-// ---- Admin: generate timeslots ----
-app.post('/api/timeslots/generate', authRequired, requireRole('Admin'), async (req, res) => {
-  const { scheduleID, subjectID, tutorUserID, start, end, durationMinutes } = req.body || {};
-  if (!scheduleID || !subjectID || !tutorUserID || !start || !end || !durationMinutes) {
-    return res.status(400).json({ message: 'scheduleID, subjectID, tutorUserID, start, end, durationMinutes required' });
-  }
-  try {
-    const [dsRows] = await pool.execute('SELECT scheduleID FROM Daily_Schedule WHERE scheduleID = ?', [scheduleID]);
-    if (dsRows.length === 0) return res.status(404).json({ message: 'Schedule not found' });
-
-    const toMinutes = (t) => {
-      const [hh, mm] = t.split(':').map(Number);
-      return hh * 60 + mm;
-    };
-
-    const toHHMM = (mins) => {
-      const hh = String(Math.floor(mins / 60)).padStart(2, '0');
-      const mm = String(mins % 60).padStart(2, '0');
-      return `${hh}:${mm}:00`;
-    };
-
-    const mStart = toMinutes(start);
-    const mEnd = toMinutes(end);
-    const dur = Number(durationMinutes);
-
-    const values = [];
-    for (let t = mStart; t + dur <= mEnd; t += dur) 
-    {
-      const slotStart = toHHMM(t);
-      const slotEnd = toHHMM(t + dur);
-      values.push([scheduleID, subjectID, tutorUserID, slotStart, slotEnd]);
-    }
-
-    if (!values.length) return res.json({ message: 'No slots generated (check times)' });
-
-    const [result] = await pool.query(
-      `INSERT INTO Timeslot 
-       (Daily_Schedule_scheduleID, Academic_Subject_subjectID, Tutor_System_User_userID, timeslotStartTime, timeslotEndTime) VALUES ?`,
-      [values]
-    );
-
-    res.json({ message: `Generated ${values.length} timeslots`, inserted: values.length, firstInsertId: result.insertId });
-  } catch (e) {
-    console.error('generate timeslots error', e);
-    res.status(500).json({ message: 'Failed to generate timeslots' });
-  }
-});
-
-app.get('/api/analytics/overview', authRequired, requireRole('Admin'), async (req, res) => {
-  try {
-    const [[{ totalSessions }]] = await pool.execute('SELECT COUNT(*) AS totalSessions FROM Tutor_Session');
-    const [[{ totalStudents }]] = await pool.execute('SELECT COUNT(*) AS totalStudents FROM Student');
-    const [[{ totalTutors }]] = await pool.execute('SELECT COUNT(*) AS totalTutors FROM Tutor');
-    const [avgRows] = await pool.execute('SELECT AVG(sessionRating) AS avgRating FROM Tutor_Session WHERE sessionRating IS NOT NULL');
-    const avgRating = avgRows[0]?.avgRating ?? null;
-    res.json({ totalSessions, totalStudents, totalTutors, avgRating });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ message: 'Failed to load analytics' });
-  }
-});
-
-// ✅ POST /api/auth/complete-signup
-app.post('/api/auth/complete-signup', async (req, res) => {
-  const { firebaseUID, name, email, role, password } = req.body; // include password
-  console.log('📝 Complete signup request:', { firebaseUID, name, email, role });
-
-  try {
-    const [existingUsers] = await pool.execute(
-      'SELECT userID, firebaseUID FROM System_User WHERE userEmail = ?',
-      [email]
-    );
-
-    const nameParts = name.split(' ');
-    const firstName = nameParts[0] || name;
-    const lastName = nameParts.slice(1).join(' ') || '';
-
-    let userID;
-
-    if (existingUsers.length > 0) {
-      const existing = existingUsers[0];
-
-      if (existing.firebaseUID) {
-        return res.status(400).json({ message: 'User already exists in database' });
-      }
-
-      // use the password passed in
-      await pool.execute(
-        `UPDATE System_User 
-         SET userFirstName = ?, userLastName = ?, userRole = ?, firebaseUID = ?, userPassword = ?
-         WHERE userID = ?`,
-        [firstName, lastName, role, firebaseUID, password, existing.userID]
-      );
-
-      userID = existing.userID;
-    } else {
-      // 3) Fresh signup (no invite) → insert new user
-      const [insertResult] = await pool.execute(
-        `INSERT INTO System_User 
-         (userFirstName, userLastName, userEmail, userPassword, userRole, firebaseUID) 
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [firstName, lastName, email, password, role, firebaseUID]
-      );
-      userID = insertResult.insertId;
-    }
-    // 4) Add to role-specific tables
-    if (role.toLowerCase() === 'student') {
-      await pool.execute(
-        'INSERT IGNORE INTO student (System_User_userID, studentIDCard, studentLearningGoals) VALUES (?, ?, ?)',
-        [userID, 'TBD', 'General tutoring']
-      );
-    } else if (role.toLowerCase() === 'tutor') {
-      await pool.execute(
-        'INSERT IGNORE INTO tutor (System_User_userID, tutorBiography, tutorQualifications) VALUES (?, ?, ?)',
-        [userID, 'New tutor', 'To be updated']
-      );
-    }
-
-    // 5) Issue JWT
-    const token = jwt.sign(
-      { email, role, userID, firebaseUID },
-      process.env.JWT_SECRET || 'change_me_now',
-      { expiresIn: JWT_EXPIRES_IN }
-    );
-
-    res.json({
-      message: 'User setup completed successfully',
-      token,
-      role,
-      userID,
-    });
-  } catch (error) {
-    console.error('❌ Complete signup error:', error);
-    res.status(500).json({
-      message: 'Database error during signup completion',
-      error: error.message,
-      details: error.sqlMessage || 'Unknown database error',
-    });
-  }
-});
-
-// ✅ POST /api/auth/login
-app.post('/api/auth/login', async (req, res) => {
-  const { email, firebaseUID } = req.body;
-
-  try {
-    const [users] = await pool.execute(
-      'SELECT userID, userFirstName, userLastName, userEmail, userRole, firebaseUID FROM System_User WHERE userEmail = ? OR firebaseUID = ?',
-      [email, firebaseUID]
-    );
-
-    if (users.length === 0) {
-      return res.status(401).json({ message: 'User not found. Please sign up first.' });
-    }
-
-    const user = users[0];
-
-    const token = jwt.sign(
-      { email: user.userEmail, role: user.userRole, userID: user.userID, firebaseUID: user.firebaseUID },
-      process.env.JWT_SECRET || 'change_me_now',
-      { expiresIn: JWT_EXPIRES_IN }
-    );
-
-    res.json({ message: 'Login successful', token, role: user.userRole, userID: user.userID });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ message: 'Login failed. Please try again.' });
-  }
-});
-
-// ✅ POST /api/auth/login-database-first
-app.post('/api/auth/login-database-first', async (req, res) => {
-  const { email, password } = req.body;
-  try {
-    const [users] = await pool.execute(
-      'SELECT userID, userFirstName, userLastName, userEmail, userRole FROM System_User WHERE userEmail = ? AND userPassword = ?',
-      [email, password]
-    );
-
-    if (users.length === 0) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
-
-    const user = users[0];
-    const token = jwt.sign(
-      { email: user.userEmail, role: user.userRole, userID: user.userID, isTestUser: true },
-      process.env.JWT_SECRET || 'change_me_now',
-      { expiresIn: JWT_EXPIRES_IN }
-    );
-
-    res.json({ success: true, message: 'Login successful', token, role: user.userRole, userID: user.userID });
-  } catch (error) {
-    console.error('❌ DATABASE LOGIN ERROR:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Database error: ' + error.message,
-      details: error.sqlMessage || 'Unknown database error',
-    });
-  }
-});
-
-// ✅ GET /api/auth/check-user/:firebaseUID
-app.get('/api/auth/check-user/:firebaseUID', async (req, res) => {
-  const { firebaseUID } = req.params;
-
-  try {
-    const [users] = await pool.execute(
-      'SELECT userID, userRole FROM System_User WHERE firebaseUID = ?',
-      [firebaseUID]
-    );
-
-    if (users.length > 0) {
-      res.json({ exists: true, role: users[0].userRole, userID: users[0].userID });
-    } else {
-      res.json({ exists: false });
-    }
-  } catch (error) {
-    console.error('Check user error:', error);
-    res.status(500).json({ message: 'Failed to check user' });
-  }
-});
-
-// ✅ /test-db
-app.get('/test-db', async (req, res) => {
-  try {
-    const [rows] = await pool.execute('SELECT 1 as test');
-    res.json({ message: 'Database connected successfully!' });
-  } catch (error) {
-    console.error('Database error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ✅ GET /api/user/profile (now uses authRequired)
-app.get('/api/user/profile', authRequired, async (req, res) => {
-  try {
-    const email = req.user.email;
-    if (!email) return res.status(400).json({ message: 'Invalid token payload' });
-
-    const [rows] = await pool.execute(
-      'SELECT userID, userFirstName, userLastName, userEmail, userRole FROM System_User WHERE userEmail = ?',
-      [email]
-    );
-
-    if (!rows || rows.length === 0) return res.status(404).json({ message: 'User not found' });
-
-    res.json({ user: rows[0] });
-  } catch (err) {
-    console.error('GET /api/user/profile error:', err);
-    res.status(500).json({ message: 'Failed to fetch profile' });
-  }
-});
-
-
-async function sendSessionReminder(toEmail, sessionDate, startTime, endTime, tutorName, subjectName) {
-  const msg = {
-    to: toEmail,
-    from: process.env.FROM_EMAIL,
-    subject: 'Tutoring Session Reminder',
-    text: `Reminder: You have a ${subjectName} session with ${tutorName} on ${sessionDate} from ${startTime} to ${endTime}.`,
-  };
-  try {
-    await sgMail.send(msg);
-    console.log(`Reminder email sent to ${toEmail}`);
-  } catch (err) {
-    console.error('SendGrid error:', err);
-  }
-}
-
-// Runs every hour at minute 0
-cron.schedule('0 * * * *', async () => {
-  console.log('⏰ Checking for sessions to remind...');
-  try {
-    const [rows] = await pool.execute(
-      `SELECT sess.sessionID, ds.scheduleDate, subj.subjectName,
-              tsu.userFirstName AS tutorFirstName, tsu.userLastName AS tutorLastName,
-              stu.userEmail AS studentEmail,
-              sess.sessionSignInTime, sess.sessionSignOutTime
-       FROM Tutor_Session sess
-       JOIN Timeslot tl ON tl.timeslotID = sess.Timeslot_timeslotID
-                        AND tl.Daily_Schedule_scheduleID = sess.Timeslot_Daily_Schedule_scheduleID
-       JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
-       JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
-       JOIN System_User tsu ON tsu.userID = sess.Tutor_System_User_userID
-       JOIN System_User stu ON stu.userID = sess.Student_System_User_userID
-       WHERE ds.scheduleDate = DATE_ADD(CURDATE(), INTERVAL 1 DAY)`
-    );
-
-    for (const session of rows) {
-      const tutorName = `${session.tutorFirstName} ${session.tutorLastName}`;
-      
-      const startTime = session.sessionSignInTime 
-        ? new Date(session.sessionSignInTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
-        : 'TBD';
-      
-      const endTime = session.sessionSignOutTime 
-        ? new Date(session.sessionSignOutTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
-        : 'TBD';
-        
-      const sessionDate = new Date(session.scheduleDate).toLocaleDateString('en-US', { 
-        weekday: 'short', 
-        month: 'short', 
-        day: 'numeric' 
-      });
-      
-      await sendSessionReminder(
-        session.studentEmail,
-        sessionDate,
-        startTime,
-        endTime,
-        tutorName,
-        session.subjectName
-      );
-    }
-    console.log(`✅ Sent ${rows.length} reminders`);
-  } catch (err) {
-    console.error('Reminder cron error', err);
-  }
-});
-
-// ✅ Start the server
-app.listen(8000, () => {
-  console.log('Server running on port 8000');
-  console.log('✅ Server ready for client-side Firebase Auth');
-});
-
-// ---- Test email endpoint ----
-app.get('/api/test-email', async (req, res) => {
-  try {
-    await sgMail.send({
-      to: 'pgn4608@mavs.uta.edu',
-      from: process.env.FROM_EMAIL,
-      subject: 'SendGrid Test',
-      text: 'This is a test email from BugHouse using SendGrid.',
-    });
-    res.json({ message: 'Test email sent!' });
-  } catch (err) {
-    console.error('SendGrid error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-
-
-//Manually trigger scron reminder
-app.post('/api/manual-reminder-check', async (req, res) => {
-  try {
-    const [rows] = await pool.execute(
-      `SELECT sess.sessionID, ds.scheduleDate, subj.subjectName,
-              tsu.userFirstName AS tutorFirstName, tsu.userLastName AS tutorLastName,
-              stu.userEmail AS studentEmail,
-              sess.sessionSignInTime, sess.sessionSignOutTime
-       FROM Tutor_Session sess
-       JOIN Timeslot tl ON tl.timeslotID = sess.Timeslot_timeslotID
-                        AND tl.Daily_Schedule_scheduleID = sess.Timeslot_Daily_Schedule_scheduleID
-       JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
-       JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
-       JOIN System_User tsu ON tsu.userID = sess.Tutor_System_User_userID
-       JOIN System_User stu ON stu.userID = sess.Student_System_User_userID
-       WHERE ds.scheduleDate = DATE_ADD(CURDATE(), INTERVAL 1 DAY)`
-    );
-
-    let sent = 0;
-    for (const session of rows) {
-      const tutorName = `${session.tutorFirstName} ${session.tutorLastName}`;
-      
-      const startTime = session.sessionSignInTime 
-        ? new Date(session.sessionSignInTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
-        : 'TBD';
-      
-      const endTime = session.sessionSignOutTime 
-        ? new Date(session.sessionSignOutTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
-        : 'TBD';
-        
-      const sessionDate = new Date(session.scheduleDate).toLocaleDateString('en-US', { 
-        weekday: 'short', 
-        month: 'short', 
-        day: 'numeric' 
-      });
-      
-      await sendSessionReminder(
-        session.studentEmail,
-        sessionDate,
-        startTime,
-        endTime,
-        tutorName,
-        session.subjectName
-      );
-      sent++;
-    }
-    res.json({ message: `Manual reminder check complete. Sent ${sent} reminders.` });
-  } catch (err) {
-    console.error('Manual reminder error', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ---- Available sessions (public) ----
-app.get('/api/sessions/available', async (req, res) => {
-  const { date, subjectId } = req.query;
-  try {
-    // Query available timeslots for the given date and subject
-    const [rows] = await pool.execute(
-      `SELECT tl.timeslotID, ds.scheduleID, ds.scheduleDate, subj.subjectName,
-              tsu.userFirstName AS tutorFirstName, tsu.userLastName AS tutorLastName
-       FROM Timeslot tl
-       JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
-       JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
-       JOIN System_User tsu ON tsu.userID = tl.Tutor_System_User_userID
-       WHERE ds.scheduleDate = ?
-         AND subj.subjectID = ?
-         AND tl.timeslotID NOT IN (
-           SELECT timeslotID FROM Tutor_Session WHERE Timeslot_timeslotID = tl.timeslotID
-         )`,
-      [date, subjectId]
-    );
-    res.json(rows);
-  } catch (err) {
-    console.error('Error fetching available sessions:', err);
-    res.status(500).json({ message: 'Failed to load available sessions' });
-  }
-});
-
-
+// Update the student-facing availability endpoint
 app.get('/api/tutor/availability', async (req, res) => {
-  const { dayOfWeek } = req.query;
+  const { dayOfWeek, subjectId } = req.query;
+  
   try {
-    const [rows] = await pool.execute(
-      `SELECT ta.Tutor_System_User_userID AS tutorID, ta.dayOfWeek, ta.startTime, ta.endTime,
-              su.userFirstName AS tutorFirstName, su.userLastName AS tutorLastName
-       FROM Tutor_Availability ta
-       JOIN System_User su ON su.userID = ta.Tutor_System_User_userID
-       WHERE ta.dayOfWeek = ?`,
-      [dayOfWeek]
-    );
+    let query = `
+      SELECT 
+        ta.availabilityID,
+        ta.dayOfWeek, 
+        ta.startTime, 
+        ta.endTime,
+        ta.subjects,
+        su.userID as tutorUserID,
+        su.userFirstName AS tutorFirstName, 
+        su.userLastName AS tutorLastName
+      FROM Tutor_Availability ta
+      JOIN System_User su ON su.userID = ta.Tutor_System_User_userID
+      WHERE 1=1
+    `;
+    
+    const params = [];
+    
+    if (dayOfWeek) {
+      query += ' AND ta.dayOfWeek = ?';
+      params.push(dayOfWeek);
+    }
+    
+    // Filter by subject if specified
+    if (subjectId) {
+      const [subjectRow] = await pool.execute(
+        'SELECT subjectName FROM Academic_Subject WHERE subjectID = ?',
+        [subjectId]
+      );
+      
+      if (subjectRow.length > 0) {
+        query += ' AND (ta.subjects LIKE ? OR ta.subjects IS NULL)';
+        params.push(`%${subjectRow[0].subjectName}%`);
+      }
+    }
+    
+    query += ' ORDER BY su.userLastName, su.userFirstName, ta.startTime';
+    
+    const [rows] = await pool.execute(query, params);
     res.json(rows);
-  } catch (err) {
-    console.error('Error fetching tutor availability:', err);
+  } catch (e) {
+    console.error('tutor availability error', e);
     res.status(500).json({ message: 'Failed to load tutor availability' });
   }
 });
 
-// ---- Book a session from availability (Student) ----
-app.post('/api/sessions/book-from-availability', authRequired, requireRole('Student'), async (req, res) => {
-  const { tutorID, dayOfWeek, startTime, date, subjectID, sessionLength } = req.body;
-  if (!tutorID || !dayOfWeek || !startTime || !date || !subjectID || !sessionLength) {
-    return res.status(400).json({ message: 'Missing required fields' });
-  }
-
-  // Calculate end time
-  const [startHour, startMin] = startTime.split(':').map(Number);
-  const totalMinutes = startHour * 60 + startMin + Number(sessionLength);
-  const endHour = Math.floor(totalMinutes / 60);
-  const endMin = totalMinutes % 60;
-  const endTime = `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
-
+// ---- Delete availability ----
+app.delete('/api/availability/:id', authRequired, requireRole('Tutor'), async (req, res) => {
+  const { id } = req.params;
+  
   try {
-    // 1. Validate tutor availability for that day/time
-    const [availRows] = await pool.execute(
-      `SELECT * FROM Tutor_Availability
-       WHERE Tutor_System_User_userID = ? AND dayOfWeek = ? AND startTime <= ? AND endTime >= ?`,
-      [tutorID, dayOfWeek, startTime, endTime]
+    const [result] = await pool.execute(
+      'DELETE FROM Tutor_Availability WHERE availabilityID = ? AND Tutor_System_User_userID = ?',
+      [id, req.user.userID]
     );
-    if (availRows.length === 0) {
-      return res.status(409).json({ message: 'Tutor is not available for the requested time/length.' });
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Availability not found or not yours to delete' });
     }
-
-    // 2. Find or create Daily_Schedule for the date
-    const [schedRows] = await pool.execute(
-      `SELECT scheduleID FROM Daily_Schedule WHERE scheduleDate = ? LIMIT 1`,
-      [date]
-    );
-    let scheduleID;
-    if (schedRows.length === 0) {
-      const [schedInsert] = await pool.execute(
-        `INSERT INTO Daily_Schedule (Administrator_System_User_userID, scheduleDate)
-         VALUES (?, ?)`,
-        [1, date] // Use admin userID 1 or update as needed
-      );
-      scheduleID = schedInsert.insertId;
-    } else {
-      scheduleID = schedRows[0].scheduleID;
-    }
-
-    // 3. Check for overlapping sessions for this tutor on this date/time
-    const [conflictRows] = await pool.execute(
-      `SELECT sess.sessionID
-       FROM Tutor_Session sess
-       JOIN Timeslot tl ON tl.timeslotID = sess.Timeslot_timeslotID
-       JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
-       WHERE tl.Tutor_System_User_userID = ?
-         AND ds.scheduleDate = ?
-         AND (
-           (sess.sessionSignInTime IS NULL AND sess.sessionSignOutTime IS NULL) -- fallback: all-day
-           OR (
-             (sess.sessionSignInTime < ? AND sess.sessionSignOutTime > ?)
-             OR (sess.sessionSignInTime < ? AND sess.sessionSignOutTime > ?)
-             OR (sess.sessionSignInTime >= ? AND sess.sessionSignInTime < ?)
-           )
-         )`,
-      [tutorID, date, endTime, startTime, startTime, endTime, startTime, endTime]
-    );
-    if (conflictRows.length > 0) {
-      return res.status(409).json({ message: 'Tutor already has a session at this time.' });
-    }
-
-    // 4. Create Timeslot
-    const [tsInsert] = await pool.execute(
-      `INSERT INTO Timeslot (Daily_Schedule_scheduleID, Academic_Subject_subjectID, Tutor_System_User_userID)
-       VALUES (?, ?, ?)`,
-      [scheduleID, subjectID, tutorID]
-    );
-    const timeslotID = tsInsert.insertId;
-
-    // 5. Create Tutor_Session
-    const signIn = `${date} ${startTime}`;
-    const signOut = `${date} ${endTime}`;
-    await pool.execute(
-      `INSERT INTO Tutor_Session
-        (Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID,
-         Tutor_System_User_userID, Student_System_User_userID, sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating)
-       VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL)`,
-      [
-        timeslotID,
-        scheduleID,
-        subjectID,
-        tutorID,
-        req.user.userID,
-        signIn,
-        signOut
-      ]
-    );
-
-    res.json({ message: 'Session booked from availability!' });
+    
+    res.json({ message: 'Availability deleted successfully' });
   } catch (e) {
-    console.error('book-from-availability error', e);
-    res.status(500).json({ message: 'Failed to book session from availability' });
+    console.error('Delete availability error:', e);
+    res.status(500).json({ message: 'Failed to delete availability' });
   }
 });
 
-// ---- Admin: View all feedback ----
-app.get('/api/admin/feedback', authRequired, requireRole('Admin'), async (req, res) => {
-  try {
-    const [rows] = await pool.execute(
-      `SELECT 
-         sess.sessionID,
-         sess.sessionFeedback,
-         sess.sessionRating,
-         sess.sessionSignInTime,
-         sess.sessionSignOutTime,
-         ds.scheduleDate,
-         subj.subjectName,
-         stu.userFirstName AS studentFirstName,
-         stu.userLastName AS studentLastName,
-         tut.userFirstName AS tutorFirstName,
-         tut.userLastName AS tutorLastName
-       FROM Tutor_Session sess
-       JOIN Timeslot tl ON tl.timeslotID = sess.Timeslot_timeslotID 
-                        AND tl.Daily_Schedule_scheduleID = sess.Timeslot_Daily_Schedule_scheduleID
-       JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
-       JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
-       JOIN System_User stu ON stu.userID = sess.Student_System_User_userID
-       JOIN System_User tut ON tut.userID = sess.Tutor_System_User_userID
-       WHERE sess.sessionRating IS NOT NULL OR sess.sessionFeedback IS NOT NULL
-       ORDER BY ds.scheduleDate DESC, sess.sessionID DESC`
-    );
-    res.json(rows);
-  } catch (e) {
-    console.error('Error fetching feedback:', e);
-    res.status(500).json({ message: 'Failed to load feedback' });
-  }
-});
-
-// ---- Admin: Feedback analytics ----
-app.get('/api/admin/feedback-analytics', authRequired, requireRole('Admin'), async (req, res) => {
-  try {
-    // Average rating
-    const [[avgResult]] = await pool.execute(
-      'SELECT AVG(sessionRating) as avgRating FROM Tutor_Session WHERE sessionRating IS NOT NULL'
-    );
-    
-    // Rating distribution
-    const [ratingDist] = await pool.execute(
-      `SELECT sessionRating, COUNT(*) as count 
-       FROM Tutor_Session 
-       WHERE sessionRating IS NOT NULL 
-       GROUP BY sessionRating 
-       ORDER BY sessionRating`
-    );
-    
-    // Total feedback count
-    const [[feedbackCount]] = await pool.execute(
-      'SELECT COUNT(*) as totalFeedback FROM Tutor_Session WHERE sessionRating IS NOT NULL'
-    );
-    
-    // Feedback by tutor
-    const [tutorFeedback] = await pool.execute(
-      `SELECT 
-         tut.userFirstName AS tutorFirstName,
-         tut.userLastName AS tutorLastName,
-         COUNT(*) as feedbackCount,
-         AVG(sess.sessionRating) as avgRating
-       FROM Tutor_Session sess
-       JOIN System_User tut ON tut.userID = sess.Tutor_System_User_userID
-       WHERE sess.sessionRating IS NOT NULL
-       GROUP BY tut.userID, tut.userFirstName, tut.userLastName
-       ORDER BY avgRating DESC`
-    );
-    
-    // Feedback by subject
-    const [subjectFeedback] = await pool.execute(
-      `SELECT 
-         subj.subjectName,
-         COUNT(*) as feedbackCount,
-         AVG(sess.sessionRating) as avgRating
-       FROM Tutor_Session sess
-       JOIN Timeslot tl ON tl.timeslotID = sess.Timeslot_timeslotID
-       JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
-       WHERE sess.sessionRating IS NOT NULL
-       GROUP BY subj.subjectID, subj.subjectName
-       ORDER BY avgRating DESC`
-    );
-    
-    // Recent feedback
-    const [recentFeedback] = await pool.execute(
-      `SELECT 
-         sess.sessionFeedback,
-         sess.sessionRating,
-         ds.scheduleDate,
-         stu.userFirstName AS studentFirstName,
-         stu.userLastName AS studentLastName,
-         tut.userFirstName AS tutorFirstName,
-         tut.userLastName AS tutorLastName,
-         subj.subjectName
-       FROM Tutor_Session sess
-       JOIN Timeslot tl ON tl.timeslotID = sess.Timeslot_timeslotID
-       JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
-       JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
-       JOIN System_User stu ON stu.userID = sess.Student_System_User_userID
-       JOIN System_User tut ON tut.userID = sess.Tutor_System_User_userID
-       WHERE sess.sessionFeedback IS NOT NULL
-       ORDER BY ds.scheduleDate DESC, sess.sessionID DESC
-       LIMIT 10`
-    );
-
-    res.json({
-      avgRating: avgResult.avgRating || 0,
-      totalFeedback: feedbackCount.totalFeedback,
-      ratingDistribution: ratingDist,
-      tutorFeedback,
-      subjectFeedback,
-      recentFeedback
-    });
-  } catch (e) {
-    console.error('Error fetching feedback analytics:', e);
-    res.status(500).json({ message: 'Failed to load feedback analytics' });
-  }
+const PORT = process.env.PORT || 8000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
 });

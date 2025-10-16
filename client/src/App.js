@@ -10,7 +10,8 @@ import Sessions from './Sessions';
 import TutorAvailability from './TutorAvailability';
 import AdminDashboard from './AdminDashboard';
 import Dashboard from './Dashboard.jsx';
-import Navbar from './Navbar'; // Import the new Navbar component
+import Navbar from './Navbar.jsx'; // Import the new Navbar component
+
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
