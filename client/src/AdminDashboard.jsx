@@ -101,6 +101,11 @@ export default function AdminDashboard() {
     load();
   };
   
+  const loadSchedules = async() => {
+    const {data} = await api.get('api/admin/schedules');
+    setSchedules(data);
+  }
+
   const createSchedule = async () => {
     const { data } = await api.post('/api/schedules/generate', { date });
     setScheduleID(data.scheduleID);
@@ -114,6 +119,8 @@ export default function AdminDashboard() {
       tutorUserID: Number(tutorUserID), start, end, durationMinutes: Number(dur)
     });
     setMsg(data.message);
+
+    await loadSchedules(); // Loads schedule after each generated timeslot
   };
 
   // New functions for feedback analytics
