@@ -11,6 +11,8 @@ import TutorAvailability from './TutorAvailability';
 import AdminDashboard from './AdminDashboard';
 import Dashboard from './Dashboard.jsx';
 import Navbar from './Navbar.jsx'; // Import the new Navbar component
+import TimeslotGenerator from './TimeslotGenerator';
+
 
 
 function App() {
@@ -95,7 +97,7 @@ function App() {
               <Route path="/sessions" element={isLoggedIn ? <Sessions /> : <Navigate to="/login" replace />} />
               <Route path="/availability" element={isLoggedIn && userRole === 'Tutor' ? <TutorAvailability /> : <Navigate to="/" replace />} />
               <Route path="/admin" element={isLoggedIn && userRole === 'Admin' ? <AdminDashboard /> : <Navigate to="/" replace />} />
-
+              <Route path="/admin/timeslot-generator" element={isLoggedIn && userRole === 'Admin' ? <TimeslotGenerator /> : <Navigate to="/" replace />} />
               {/* 404 */}
               <Route path="*" element={<Navigate to={isLoggedIn ? '/' : '/login'} replace />} />
             </Routes>
