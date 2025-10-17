@@ -151,30 +151,30 @@ function Login({ onLogin }) {
     setIsLoading(true);
     setMsg('');
 
-    // 1) DB-first (seeded users)
-    try {
-      const dbRes = await api.post('/api/auth/login-database-first', {
-        email: emailTrim,
-        password,
-      });
-      if (dbRes?.data?.success) {
-        setMsg('Login successful!');
-        setMsgType('success');
-        finishLogin(dbRes.data);
-        return;
+    // Try database login first (for @bughouse.edu test accounts)
+    if (emailTrim.includes('@bughouse.edu')) {
+      try {
+        const dbRes = await api.post('/api/auth/login', {
+          email: emailTrim,
+          password,
+        });
+        if (dbRes?.data?.success) {
+          setMsg('Login successful!');
+          setMsgType('success');
+          finishLogin(dbRes.data);
+          return;
+        }
+      } catch (dbErr) {
+        if (dbErr?.response?.status !== 401) {
+          setMsg('Login failed. Please try again later.');
+          setMsgType('error');
+          setIsLoading(false);
+          return;
+        }
       }
-    } catch (dbErr) {
-      const status = dbErr?.response?.status;
-      if (status && status !== 401) {
-        setMsg('Login failed. Please try again later.');
-        setMsgType('error');
-        setIsLoading(false);
-        return;
-      }
-      // 401 → not a DB user → try Firebase
     }
 
-    // 2) Firebase login
+    // Try Firebase login (for @mavs.uta.edu accounts)
     try {
       const cred = await signInWithEmailAndPassword(auth, emailTrim, password);
       const user = cred.user;
@@ -182,10 +182,11 @@ function Login({ onLogin }) {
       if (!user.emailVerified) {
         setMsg('Please verify your email before logging in.');
         setMsgType('error');
+        setIsLoading(false);
         return;
       }
 
-      // 3) Backend login by email/uid
+      // Login with Firebase UID
       try {
         const fbRes = await api.post('/api/auth/login', {
           email: user.email,
@@ -196,11 +197,10 @@ function Login({ onLogin }) {
         finishLogin(fbRes.data);
         return;
       } catch (loginErr) {
-        // 4) If user not in DB yet, auto complete-signup
+        // Auto-create account if needed
         if (loginErr?.response?.status === 401) {
-          const derivedName =
-            user.displayName ||
-            emailTrim.replace(/@.*/, '').replace(/[._-]+/g, ' ') ||
+          const derivedName = user.displayName || 
+            emailTrim.replace(/@.*/, '').replace(/[._-]+/g, ' ') || 
             'New User';
 
           const csRes = await api.post('/api/auth/complete-signup', {
@@ -218,7 +218,7 @@ function Login({ onLogin }) {
         setMsgType('error');
       }
     } catch (fbErr) {
-      setMsg('Invalid email or password. If you just verified, refresh and try again.');
+      setMsg('Invalid email or password.');
       setMsgType('error');
     } finally {
       setIsLoading(false);

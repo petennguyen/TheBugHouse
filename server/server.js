@@ -497,6 +497,231 @@ app.delete('/api/availability/:id', authRequired, requireRole('Tutor'), async (r
   }
 });
 
+// ---- Authentication endpoints ----
+
+// User profile endpoint
+app.get('/api/user/profile', authRequired, async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      'SELECT userID, userFirstName, userLastName, userEmail, userRole FROM System_User WHERE userID = ?',
+      [req.user.userID]
+    );
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    res.json({ user: rows[0] });
+  } catch (e) {
+    console.error('Profile error:', e);
+    res.status(500).json({ message: 'Failed to load profile' });
+  }
+});
+
+// Database-first login endpoint
+app.post('/api/auth/login-database-first', async (req, res) => {
+  const { email, password } = req.body;
+  
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email and password required' });
+  }
+  
+  try {
+    // Find user in database
+    const [rows] = await pool.execute(
+      'SELECT userID, userFirstName, userLastName, userEmail, userPassword, userRole FROM System_User WHERE userEmail = ?',
+      [email]
+    );
+    
+    if (rows.length === 0) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+    
+    const user = rows[0];
+    
+    // In a real app, you'd hash and compare passwords
+    // For now, assuming plain text comparison (NOT SECURE)
+    if (user.userPassword !== password) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+    
+    // Create JWT token
+    const token = jwt.sign(
+      {
+        userID: user.userID,
+        email: user.userEmail,
+        role: user.userRole,
+        firstName: user.userFirstName,
+        lastName: user.userLastName
+      },
+      process.env.JWT_SECRET || 'change_me_now',
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+    
+    res.json({
+      message: 'Login successful',
+      token,
+      user: {
+        userID: user.userID,
+        userFirstName: user.userFirstName,
+        userLastName: user.userLastName,
+        userEmail: user.userEmail,
+        userRole: user.userRole
+      }
+    });
+  } catch (e) {
+    console.error('Login error:', e);
+    res.status(500).json({ message: 'Login failed' });
+  }
+});
+
+// Single unified login endpoint
+app.post('/api/auth/login', async (req, res) => {
+  const { email, password, firebaseUID } = req.body;
+  
+  if (!email || (!password && !firebaseUID)) {
+    return res.status(400).json({ message: 'Email and either password or firebaseUID required' });
+  }
+  
+  try {
+    let query, params;
+    
+    if (firebaseUID) {
+      // Firebase login - find by email and firebaseUID
+      query = 'SELECT userID, userFirstName, userLastName, userEmail, userRole FROM System_User WHERE userEmail = ? AND firebaseUID = ?';
+      params = [email, firebaseUID];
+    } else {
+      // Database login - find by email and password
+      query = 'SELECT userID, userFirstName, userLastName, userEmail, userPassword, userRole FROM System_User WHERE userEmail = ?';
+      params = [email];
+    }
+    
+    const [rows] = await pool.execute(query, params);
+    
+    if (rows.length === 0) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+    
+    const user = rows[0];
+    
+    // If password login, check password
+    if (password && user.userPassword !== password) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+    
+    // Create JWT token
+    const token = jwt.sign(
+      {
+        userID: user.userID,
+        email: user.userEmail,
+        role: user.userRole,
+        firstName: user.userFirstName,
+        lastName: user.userLastName
+      },
+      process.env.JWT_SECRET || 'change_me_now',
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+    
+    res.json({
+      message: 'Login successful',
+      success: true,
+      token,
+      role: user.userRole,
+      userID: user.userID,
+      user: {
+        userID: user.userID,
+        userFirstName: user.userFirstName,
+        userLastName: user.userLastName,
+        userEmail: user.userEmail,
+        userRole: user.userRole
+      }
+    });
+  } catch (e) {
+    console.error('Login error:', e);
+    res.status(500).json({ message: 'Login failed' });
+  }
+});
+
+// Signup endpoint
+app.post('/api/auth/signup', async (req, res) => {
+  const { userFirstName, userLastName, userEmail, userPassword, userRole } = req.body;
+  
+  if (!userFirstName || !userLastName || !userEmail || !userPassword || !userRole) {
+    return res.status(400).json({ message: 'All fields required' });
+  }
+  
+  if (!['Admin', 'Tutor', 'Student'].includes(userRole)) {
+    return res.status(400).json({ message: 'Invalid role' });
+  }
+  
+  try {
+    // Check if user already exists
+    const [existing] = await pool.execute(
+      'SELECT userID FROM System_User WHERE userEmail = ?',
+      [userEmail]
+    );
+    
+    if (existing.length > 0) {
+      return res.status(409).json({ message: 'User already exists' });
+    }
+    
+    // Insert new user
+    const [result] = await pool.execute(
+      'INSERT INTO System_User (userFirstName, userLastName, userEmail, userPassword, userRole) VALUES (?, ?, ?, ?, ?)',
+      [userFirstName, userLastName, userEmail, userPassword, userRole]
+    );
+    
+    const userID = result.insertId;
+    
+    // Insert into role-specific table
+    if (userRole === 'Admin') {
+      await pool.execute(
+        'INSERT INTO Administrator (System_User_userID, accessLevel) VALUES (?, 1)',
+        [userID]
+      );
+    } else if (userRole === 'Tutor') {
+      await pool.execute(
+        'INSERT INTO Tutor (System_User_userID) VALUES (?)',
+        [userID]
+      );
+    } else if (userRole === 'Student') {
+      await pool.execute(
+        'INSERT INTO Student (System_User_userID) VALUES (?)',
+        [userID]
+      );
+    }
+    
+    // Create JWT token
+    const token = jwt.sign(
+      {
+        userID,
+        email: userEmail,
+        role: userRole,
+        firstName: userFirstName,
+        lastName: userLastName
+      },
+      process.env.JWT_SECRET || 'change_me_now',
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+    
+    res.status(201).json({
+      message: 'Signup successful',
+      token,
+      user: {
+        userID,
+        userFirstName,
+        userLastName,
+        userEmail,
+        userRole
+      }
+    });
+  } catch (e) {
+    console.error('Signup error:', e);
+    res.status(500).json({ message: 'Signup failed' });
+  }
+});
+
+
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
