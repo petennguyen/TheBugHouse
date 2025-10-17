@@ -322,7 +322,7 @@ export default function AdminDashboard() {
           
           <div style={{ padding: 16, background: '#f3f4f6', borderRadius: 8, textAlign: 'center' }}>
             <div style={{ fontSize: 24, fontWeight: 'bold', color: '#dc2626' }}>
-              {feedbackAnalytics.ratingDistribution.length > 0 ? 
+              {feedbackAnalytics.ratingDistribution && feedbackAnalytics.ratingDistribution.length > 0 ? 
                 feedbackAnalytics.ratingDistribution.reduce((max, curr) => 
                   curr.count > max.count ? curr : max
                 ).sessionRating : 'N/A'}
@@ -336,9 +336,13 @@ export default function AdminDashboard() {
           <h3 style={{ marginBottom: 12 }}>Rating Distribution</h3>
           <div style={{ display: 'flex', gap: 8, alignItems: 'end', height: 100 }}>
             {[1, 2, 3, 4, 5].map(rating => {
-              const found = feedbackAnalytics.ratingDistribution.find(r => r.sessionRating === rating);
+              const found = feedbackAnalytics.ratingDistribution && feedbackAnalytics.ratingDistribution.length > 0 
+                ? feedbackAnalytics.ratingDistribution.find(r => r.sessionRating === rating)
+                : null;
               const count = found ? found.count : 0;
-              const maxCount = Math.max(...feedbackAnalytics.ratingDistribution.map(r => r.count), 1);
+              const maxCount = feedbackAnalytics.ratingDistribution && feedbackAnalytics.ratingDistribution.length > 0
+                ? Math.max(...feedbackAnalytics.ratingDistribution.map(r => r.count), 1)
+                : 1;
               const height = (count / maxCount) * 80;
               
               return (
@@ -367,7 +371,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Recent Feedback */}
-        {feedbackAnalytics.recentFeedback.length > 0 && (
+        {feedbackAnalytics.recentFeedback && feedbackAnalytics.recentFeedback.length > 0 && (
           <div>
             <h3 style={{ marginBottom: 12 }}>Recent Feedback</h3>
             <div style={{ maxHeight: 200, overflowY: 'auto' }}>

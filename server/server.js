@@ -453,16 +453,17 @@ app.get('/api/tutor/availability', async (req, res) => {
       params.push(dayOfWeek);
     }
     
-    // Filter by subject if specified
+    // Filter by subject if specified - FIX HERE TOO:
     if (subjectId) {
-      const [subjectRow] = await pool.execute(
+      const [subjectRows] = await pool.execute(
         'SELECT subjectName FROM Academic_Subject WHERE subjectID = ?',
         [subjectId]
       );
       
-      if (subjectRow.length > 0) {
+
+      if (subjectRows && subjectRows.length > 0) {
         query += ' AND (ta.subjects LIKE ? OR ta.subjects IS NULL)';
-        params.push(`%${subjectRow[0].subjectName}%`);
+        params.push(`%${subjectRows[0].subjectName}%`);
       }
     }
     
@@ -721,6 +722,427 @@ app.post('/api/auth/signup', async (req, res) => {
   }
 });
 
+// ---- Analytics endpoints ----
+app.get('/api/analytics/overview', authRequired, requireRole('Admin'), async (req, res) => {
+  try {
+    // Get total sessions
+    const [sessionRows] = await pool.execute(
+      'SELECT COUNT(*) as totalSessions FROM Tutor_Session'
+    );
+    
+    // Get total students
+    const [studentRows] = await pool.execute(
+      'SELECT COUNT(*) as totalStudents FROM Student'
+    );
+    
+    // Get total tutors  
+    const [tutorRows] = await pool.execute(
+      'SELECT COUNT(*) as totalTutors FROM Tutor'
+    );
+    
+    // Get average rating
+    const [ratingRows] = await pool.execute(
+      'SELECT AVG(sessionRating) as avgRating FROM Tutor_Session WHERE sessionRating IS NOT NULL'
+    );
+    
+    res.json({
+      totalSessions: sessionRows[0].totalSessions,
+      totalStudents: studentRows[0].totalStudents,
+      totalTutors: tutorRows[0].totalTutors,
+      avgRating: ratingRows[0].avgRating || 0
+    });
+  } catch (e) {
+    console.error('Analytics overview error:', e);
+    res.status(500).json({ message: 'Failed to load analytics overview' });
+  }
+});
+
+// ---- Admin endpoints ----
+app.get('/api/admin/availableTutors', authRequired, requireRole('Admin'), async (req, res) => {
+  const { date, subjectId } = req.query;
+  
+  try {
+    let query = `
+      SELECT DISTINCT
+        su.userID as tutorUserID,
+        su.userFirstName AS tutorFirstName,
+        su.userLastName AS tutorLastName,
+        su.userEmail AS tutorEmail,
+        ta.subjects
+      FROM System_User su
+      JOIN Tutor t ON t.System_User_userID = su.userID
+      LEFT JOIN Tutor_Availability ta ON ta.Tutor_System_User_userID = su.userID
+      WHERE su.userRole = 'Tutor'
+    `;
+    
+    const params = [];
+    
+    // Filter by day of week if date is provided
+    if (date) {
+      const dayOfWeek = new Date(date).toLocaleDateString('en-US', { weekday: 'short' });
+      query += ' AND (ta.dayOfWeek = ? OR ta.dayOfWeek IS NULL)';
+      params.push(dayOfWeek);
+    }
+    
+    // Filter by subject if provided - FIX THE LENGTH CHECK HERE:
+    if (subjectId) {
+      const [subjectRows] = await pool.execute(
+        'SELECT subjectName FROM Academic_Subject WHERE subjectID = ?',
+        [subjectId]
+      );
+      
+      // Fix: Check if subjectRows exists and has length
+      if (subjectRows && subjectRows.length > 0) {
+        query += ' AND (ta.subjects LIKE ? OR ta.subjects IS NULL)';
+        params.push(`%${subjectRows[0].subjectName}%`);
+      }
+    }
+    
+    query += ' ORDER BY su.userLastName, su.userFirstName';
+    
+    const [rows] = await pool.execute(query, params);
+    res.json(rows);
+  } catch (e) {
+    console.error('Available tutors error:', e);
+    res.status(500).json({ message: 'Failed to load available tutors' });
+  }
+});
+
+// Get all tutors (simplified version)
+app.get('/api/admin/tutors', authRequired, requireRole('Admin'), async (req, res) => {
+  try {
+    const [rows] = await pool.execute(`
+      SELECT 
+        su.userID as tutorUserID,
+        su.userFirstName AS tutorFirstName,
+        su.userLastName AS tutorLastName,
+        su.userEmail AS tutorEmail,
+        t.tutorBiography,
+        t.tutorQualifications
+      FROM System_User su
+      JOIN Tutor t ON t.System_User_userID = su.userID
+      WHERE su.userRole = 'Tutor'
+      ORDER BY su.userLastName, su.userFirstName
+    `);
+    res.json(rows);
+  } catch (e) {
+    console.error('Get tutors error:', e);
+    res.status(500).json({ message: 'Failed to load tutors' });
+  }
+});
+
+// Get all students
+app.get('/api/admin/students', authRequired, requireRole('Admin'), async (req, res) => {
+  try {
+    const [rows] = await pool.execute(`
+      SELECT 
+        su.userID as studentUserID,
+        su.userFirstName AS studentFirstName,
+        su.userLastName AS studentLastName,
+        su.userEmail AS studentEmail,
+        s.studentIDCard,
+        s.studentLearningGoals
+      FROM System_User su
+      JOIN Student s ON s.System_User_userID = su.userID
+      WHERE su.userRole = 'Student'
+      ORDER BY su.userLastName, su.userFirstName
+    `);
+    res.json(rows);
+  } catch (e) {
+    console.error('Get students error:', e);
+    res.status(500).json({ message: 'Failed to load students' });
+  }
+});
+
+// Create schedule
+app.post('/api/admin/schedules', authRequired, requireRole('Admin'), async (req, res) => {
+  const { scheduleDate } = req.body;
+  
+  if (!scheduleDate) {
+    return res.status(400).json({ message: 'scheduleDate required' });
+  }
+  
+  try {
+    const [result] = await pool.execute(
+      'INSERT INTO Daily_Schedule (Administrator_System_User_userID, scheduleDate) VALUES (?, ?)',
+      [req.user.userID, scheduleDate]
+    );
+    
+    res.json({ 
+      message: 'Schedule created successfully',
+      scheduleId: result.insertId 
+    });
+  } catch (e) {
+    console.error('Create schedule error:', e);
+    res.status(500).json({ message: 'Failed to create schedule' });
+  }
+});
+
+// Create timeslot
+app.post('/api/admin/timeslots', authRequired, requireRole('Admin'), async (req, res) => {
+  const { scheduleId, subjectId, tutorId, startTime, endTime } = req.body;
+  
+  if (!scheduleId || !subjectId || !tutorId || !startTime || !endTime) {
+    return res.status(400).json({ message: 'All fields required' });
+  }
+  
+  try {
+    await pool.execute(
+      'INSERT INTO Timeslot (Daily_Schedule_scheduleID, Academic_Subject_subjectID, Tutor_System_User_userID, timeslotStartTime, timeslotEndTime) VALUES (?, ?, ?, ?, ?)',
+      [scheduleId, subjectId, tutorId, startTime, endTime]
+    );
+    
+    res.json({ message: 'Timeslot created successfully' });
+  } catch (e) {
+    console.error('Create timeslot error:', e);
+    res.status(500).json({ message: 'Failed to create timeslot' });
+  }
+});
+
+// Get all schedules
+app.get('/api/admin/schedules', authRequired, requireRole('Admin'), async (req, res) => {
+  try {
+    const [rows] = await pool.execute(`
+      SELECT 
+        ds.scheduleID,
+        ds.scheduleDate,
+        su.userFirstName AS adminFirstName,
+        su.userLastName AS adminLastName,
+        COUNT(t.timeslotID) as timeslotCount
+      FROM Daily_Schedule ds
+      JOIN Administrator a ON a.System_User_userID = ds.Administrator_System_User_userID
+      JOIN System_User su ON su.userID = a.System_User_userID
+      LEFT JOIN Timeslot t ON t.Daily_Schedule_scheduleID = ds.scheduleID
+      GROUP BY ds.scheduleID, ds.scheduleDate, su.userFirstName, su.userLastName
+      ORDER BY ds.scheduleDate DESC
+    `);
+    res.json(rows);
+  } catch (e) {
+    console.error('Get schedules error:', e);
+    res.status(500).json({ message: 'Failed to load schedules' });
+  }
+});
+
+// Get timeslots for a specific schedule
+app.get('/api/admin/schedules/:scheduleId/timeslots', authRequired, requireRole('Admin'), async (req, res) => {
+  const { scheduleId } = req.params;
+  
+  try {
+    const [rows] = await pool.execute(`
+      SELECT 
+        t.timeslotID,
+        t.timeslotStartTime,
+        t.timeslotEndTime,
+        sub.subjectName,
+        su.userFirstName AS tutorFirstName,
+        su.userLastName AS tutorLastName,
+        CASE WHEN ts.sessionID IS NOT NULL THEN 1 ELSE 0 END as isBooked
+      FROM Timeslot t
+      JOIN Academic_Subject sub ON sub.subjectID = t.Academic_Subject_subjectID
+      JOIN System_User su ON su.userID = t.Tutor_System_User_userID
+      LEFT JOIN Tutor_Session ts ON ts.Timeslot_timeslotID = t.timeslotID 
+                                 AND ts.Timeslot_Daily_Schedule_scheduleID = t.Daily_Schedule_scheduleID
+      WHERE t.Daily_Schedule_scheduleID = ?
+      ORDER BY t.timeslotStartTime, sub.subjectName
+    `, [scheduleId]);
+    res.json(rows);
+  } catch (e) {
+    console.error('Get timeslots error:', e);
+    res.status(500).json({ message: 'Failed to load timeslots' });
+  }
+});
+
+// Delete schedule
+app.delete('/api/admin/schedules/:scheduleId', authRequired, requireRole('Admin'), async (req, res) => {
+  const { scheduleId } = req.params;
+  
+  try {
+    const [result] = await pool.execute(
+      'DELETE FROM Daily_Schedule WHERE scheduleID = ?',
+      [scheduleId]
+    );
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Schedule not found' });
+    }
+    
+    res.json({ message: 'Schedule deleted successfully' });
+  } catch (e) {
+    console.error('Delete schedule error:', e);
+    res.status(500).json({ message: 'Failed to delete schedule' });
+  }
+});
+
+// Get feedback analytics
+app.get('/api/admin/feedback-analytics', authRequired, requireRole('Admin'), async (req, res) => {
+  try {
+    // Average rating by subject
+    const [subjectRatings] = await pool.execute(`
+      SELECT 
+        sub.subjectName,
+        AVG(ts.sessionRating) as avgRating,
+        COUNT(ts.sessionRating) as ratingCount
+      FROM Academic_Subject sub
+      LEFT JOIN Tutor_Session ts ON ts.Academic_Subject_subjectID = sub.subjectID
+      WHERE ts.sessionRating IS NOT NULL
+      GROUP BY sub.subjectID, sub.subjectName
+      ORDER BY avgRating DESC
+    `);
+
+    // Average rating by tutor
+    const [tutorRatings] = await pool.execute(`
+      SELECT 
+        su.userFirstName,
+        su.userLastName,
+        AVG(ts.sessionRating) as avgRating,
+        COUNT(ts.sessionRating) as ratingCount
+      FROM System_User su
+      JOIN Tutor_Session ts ON ts.Tutor_System_User_userID = su.userID
+      WHERE ts.sessionRating IS NOT NULL
+      GROUP BY su.userID, su.userFirstName, su.userLastName
+      ORDER BY avgRating DESC
+    `);
+
+    // Recent feedback
+    const [recentFeedback] = await pool.execute(`
+      SELECT 
+        ts.sessionFeedback,
+        ts.sessionRating,
+        sub.subjectName,
+        tsu.userFirstName AS tutorFirstName,
+        tsu.userLastName AS tutorLastName,
+        ssu.userFirstName AS studentFirstName,
+        ssu.userLastName AS studentLastName,
+        ds.scheduleDate
+      FROM Tutor_Session ts
+      JOIN Academic_Subject sub ON sub.subjectID = ts.Academic_Subject_subjectID
+      JOIN System_User tsu ON tsu.userID = ts.Tutor_System_User_userID
+      JOIN System_User ssu ON ssu.userID = ts.Student_System_User_userID
+      JOIN Timeslot t ON t.timeslotID = ts.Timeslot_timeslotID
+      JOIN Daily_Schedule ds ON ds.scheduleID = t.Daily_Schedule_scheduleID
+      WHERE ts.sessionFeedback IS NOT NULL OR ts.sessionRating IS NOT NULL
+      ORDER BY ds.scheduleDate DESC, ts.sessionID DESC
+      LIMIT 20
+    `);
+
+    res.json({
+      subjectRatings,
+      tutorRatings,
+      recentFeedback
+    });
+  } catch (e) {
+    console.error('Feedback analytics error:', e);
+    res.status(500).json({ message: 'Failed to load feedback analytics' });
+  }
+});
+
+// Get session analytics
+app.get('/api/admin/session-analytics', authRequired, requireRole('Admin'), async (req, res) => {
+  try {
+    // Sessions by month
+    const [monthlyStats] = await pool.execute(`
+      SELECT 
+        DATE_FORMAT(ds.scheduleDate, '%Y-%m') as month,
+        COUNT(ts.sessionID) as sessionCount,
+        COUNT(CASE WHEN ts.sessionSignInTime IS NOT NULL THEN 1 END) as completedSessions
+      FROM Daily_Schedule ds
+      LEFT JOIN Timeslot t ON t.Daily_Schedule_scheduleID = ds.scheduleID
+      LEFT JOIN Tutor_Session ts ON ts.Timeslot_timeslotID = t.timeslotID
+      WHERE ds.scheduleDate >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
+      GROUP BY DATE_FORMAT(ds.scheduleDate, '%Y-%m')
+      ORDER BY month DESC
+    `);
+
+    // Sessions by subject
+    const [subjectStats] = await pool.execute(`
+      SELECT 
+        sub.subjectName,
+        COUNT(ts.sessionID) as sessionCount,
+        COUNT(CASE WHEN ts.sessionSignInTime IS NOT NULL THEN 1 END) as completedSessions
+      FROM Academic_Subject sub
+      LEFT JOIN Tutor_Session ts ON ts.Academic_Subject_subjectID = sub.subjectID
+      GROUP BY sub.subjectID, sub.subjectName
+      ORDER BY sessionCount DESC
+    `);
+
+    res.json({
+      monthlyStats,
+      subjectStats
+    });
+  } catch (e) {
+    console.error('Session analytics error:', e);
+    res.status(500).json({ message: 'Failed to load session analytics' });
+  }
+});
+
+// Complete signup for Firebase users (add this if missing)
+app.post('/api/auth/complete-signup', async (req, res) => {
+  const { firebaseUID, name, email, role } = req.body;
+  
+  if (!firebaseUID || !email || !role) {
+    return res.status(400).json({ message: 'firebaseUID, email, and role required' });
+  }
+  
+  try {
+    // Split name into first/last
+    const nameParts = name.split(' ');
+    const userFirstName = nameParts[0] || 'User';
+    const userLastName = nameParts.slice(1).join(' ') || 'Name';
+    
+    // Insert new user
+    const [result] = await pool.execute(
+      'INSERT INTO System_User (userFirstName, userLastName, userEmail, userPassword, userRole, firebaseUID) VALUES (?, ?, ?, ?, ?, ?)',
+      [userFirstName, userLastName, email, 'firebase_user', role, firebaseUID]
+    );
+    
+    
+    // Insert into role-specific table
+    if (role === 'Admin') {
+      await pool.execute('INSERT INTO Administrator (System_User_userID, accessLevel) VALUES (?, 1)', [userID]);
+    } else if (role === 'Tutor') {
+      await pool.execute('INSERT INTO Tutor (System_User_userID) VALUES (?)', [userID]);
+    } else if (role === 'Student') {
+      await pool.execute('INSERT INTO Student (System_User_userID) VALUES (?)', [userID]);
+    }
+    
+    // Create JWT token
+    const token = jwt.sign(
+      { userID, email, role, firstName: userFirstName, lastName: userLastName },
+      process.env.JWT_SECRET || 'change_me_now',
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+    
+    res.json({
+      message: 'Account completed successfully',
+      success: true,
+      token,
+      role,
+      userID,
+      user: { userID, userFirstName, userLastName, userEmail: email, userRole: role }
+    });
+  } catch (e) {
+    console.error('Complete signup error:', e);
+    res.status(500).json({ message: 'Failed to complete signup' });
+  }
+});
+
+// Test database connection endpoint
+app.get('/test-db', async (req, res) => {
+  try {
+    const [rows] = await pool.execute('SELECT COUNT(*) as count FROM System_User');
+    res.json({ 
+      message: 'Database connection successful!', 
+      userCount: rows[0].count,
+      timestamp: new Date().toISOString()
+    });
+  } catch (e) {
+    console.error('Database test error:', e);
+    res.status(500).json({ 
+      message: 'Database connection failed', 
+      error: e.message 
+    });
+  }
+});
 
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
