@@ -897,79 +897,6 @@ app.get('/api/analytics/overview', authRequired, requireRole('Admin'), async (re
   }
 });
 
-// ---- Admin endpoints ----
-app.get('/api/admin/availableTutors', authRequired, requireRole('Admin'), async (req, res) => {
-  const { date, subjectId } = req.query;
-  
-  try {
-    let query = `
-      SELECT DISTINCT
-        su.userID as tutorUserID,
-        su.userFirstName AS tutorFirstName,
-        su.userLastName AS tutorLastName,
-        su.userEmail AS tutorEmail,
-        ta.subjects
-      FROM System_User su
-      JOIN Tutor t ON t.System_User_userID = su.userID
-      LEFT JOIN Tutor_Availability ta ON ta.Tutor_System_User_userID = su.userID
-      WHERE su.userRole = 'Tutor'
-    `;
-    
-    const params = [];
-    
-    // Filter by day of week if date is provided
-    if (date) {
-      const dayOfWeek = new Date(date).toLocaleDateString('en-US', { weekday: 'short' });
-      query += ' AND (ta.dayOfWeek = ? OR ta.dayOfWeek IS NULL)';
-      params.push(dayOfWeek);
-    }
-    
-    // Filter by subject if provided - FIX THE LENGTH CHECK HERE:
-    if (subjectId) {
-      const [subjectRows] = await pool.execute(
-        'SELECT subjectName FROM Academic_Subject WHERE subjectID = ?',
-        [subjectId]
-      );
-      
-      // Fix: Check if subjectRows exists and has length
-      if (subjectRows && subjectRows.length > 0) {
-        query += ' AND (ta.subjects LIKE ? OR ta.subjects IS NULL)';
-        params.push(`%${subjectRows[0].subjectName}%`);
-      }
-    }
-    
-    query += ' ORDER BY su.userLastName, su.userFirstName';
-    
-    const [rows] = await pool.execute(query, params);
-    res.json(rows);
-  } catch (e) {
-    console.error('Available tutors error:', e);
-    res.status(500).json({ message: 'Failed to load available tutors' });
-  }
-});
-
-// Get all tutors (simplified version)
-app.get('/api/admin/tutors', authRequired, requireRole('Admin'), async (req, res) => {
-  try {
-    const [rows] = await pool.execute(`
-      SELECT 
-        su.userID as tutorUserID,
-        su.userFirstName AS tutorFirstName,
-        su.userLastName AS tutorLastName,
-        su.userEmail AS tutorEmail,
-        t.tutorBiography,
-        t.tutorQualifications
-      FROM System_User su
-      JOIN Tutor t ON t.System_User_userID = su.userID
-      WHERE su.userRole = 'Tutor'
-      ORDER BY su.userLastName, su.userFirstName
-    `);
-    res.json(rows);
-  } catch (e) {
-    console.error('Get tutors error:', e);
-    res.status(500).json({ message: 'Failed to load tutors' });
-  }
-});
 
 // Get all students
 app.get('/api/admin/students', authRequired, requireRole('Admin'), async (req, res) => {
@@ -1018,79 +945,148 @@ app.post('/api/admin/schedules', authRequired, requireRole('Admin'), async (req,
   }
 });
 
-// Create timeslot
-app.post('/api/admin/timeslots', authRequired, requireRole('Admin'), async (req, res) => {
-  const { scheduleId, subjectId, tutorId, startTime, endTime } = req.body;
-  
-  if (!scheduleId || !subjectId || !tutorId || !startTime || !endTime) {
-    return res.status(400).json({ message: 'All fields required' });
-  }
-  
-  try {
-    await pool.execute(
-      'INSERT INTO Timeslot (Daily_Schedule_scheduleID, Academic_Subject_subjectID, Tutor_System_User_userID, timeslotStartTime, timeslotEndTime) VALUES (?, ?, ?, ?, ?)',
-      [scheduleId, subjectId, tutorId, startTime, endTime]
+
+// Admin: View Existing schedules
+app.get('/api/admin/schedules', authRequired, requireRole('Admin'), async (req, res) => { 
+  try 
+  {
+    // fetch schedules
+    const [schedules] = await pool.execute(
+      `SELECT scheduleID, scheduleDate 
+         FROM Daily_Schedule 
+        ORDER BY scheduleDate DESC`
     );
-    
-    res.json({ message: 'Timeslot created successfully' });
-  } catch (e) {
-    console.error('Create timeslot error:', e);
-    res.status(500).json({ message: 'Failed to create timeslot' });
-  }
-});
+    if (schedules.length === 0) return res.json([]);
 
-// Get all schedules
-app.get('/api/admin/schedules', authRequired, requireRole('Admin'), async (req, res) => {
-  try {
-    const [rows] = await pool.execute(`
-      SELECT 
-        ds.scheduleID,
-        ds.scheduleDate,
-        su.userFirstName AS adminFirstName,
-        su.userLastName AS adminLastName,
-        COUNT(t.timeslotID) as timeslotCount
-      FROM Daily_Schedule ds
-      JOIN Administrator a ON a.System_User_userID = ds.Administrator_System_User_userID
-      JOIN System_User su ON su.userID = a.System_User_userID
-      LEFT JOIN Timeslot t ON t.Daily_Schedule_scheduleID = ds.scheduleID
-      GROUP BY ds.scheduleID, ds.scheduleDate, su.userFirstName, su.userLastName
-      ORDER BY ds.scheduleDate DESC
-    `);
-    res.json(rows);
-  } catch (e) {
-    console.error('Get schedules error:', e);
-    res.status(500).json({ message: 'Failed to load schedules' });
-  }
-});
+    const ids = schedules.map(s => s.scheduleID);
 
-// Get timeslots for a specific schedule
-app.get('/api/admin/schedules/:scheduleId/timeslots', authRequired, requireRole('Admin'), async (req, res) => {
-  const { scheduleId } = req.params;
-  
-  try {
-    const [rows] = await pool.execute(`
-      SELECT 
-        t.timeslotID,
-        t.timeslotStartTime,
-        t.timeslotEndTime,
-        sub.subjectName,
-        su.userFirstName AS tutorFirstName,
-        su.userLastName AS tutorLastName,
-        CASE WHEN ts.sessionID IS NOT NULL THEN 1 ELSE 0 END as isBooked
-      FROM Timeslot t
-      JOIN Academic_Subject sub ON sub.subjectID = t.Academic_Subject_subjectID
-      JOIN System_User su ON su.userID = t.Tutor_System_User_userID
-      LEFT JOIN Tutor_Session ts ON ts.Timeslot_timeslotID = t.timeslotID 
-                                 AND ts.Timeslot_Daily_Schedule_scheduleID = t.Daily_Schedule_scheduleID
-      WHERE t.Daily_Schedule_scheduleID = ?
-      ORDER BY t.timeslotStartTime, sub.subjectName
-    `, [scheduleId]);
-    res.json(rows);
-  } catch (e) {
-    console.error('Get timeslots error:', e);
-    res.status(500).json({ message: 'Failed to load timeslots' });
+    // Fetch timeslots
+    const [timeslots] = await pool.query(
+      `SELECT t.timeslotID, 
+              t.Daily_Schedule_scheduleID AS scheduleID,
+              t.Academic_Subject_subjectID AS subjectID, subj.subjectName,
+              t.Tutor_System_User_userID AS tutorID, 
+              CONCAT(u.userFirstName, ' ', u.userLastName) AS tutorName,
+              t.timeslotStartTime,
+              t.timeslotEndTime
+        FROM Timeslot t
+        JOIN Academic_Subject subj ON t.Academic_Subject_subjectID = subj.subjectID
+        JOIN System_User u ON t.Tutor_System_User_userID = u.userID
+        WHERE t.Daily_Schedule_scheduleID IN (?)`,
+      [ids]
+    );
+
+    const timeslotIds = timeslots.map(t => t.timeslotID);
+    // Fetch Sessions
+    let sessions = [];
+    if (timeslotIds.length > 0) {
+      [sessions] = await pool.query(
+        `SELECT s.sessionID, s.Timeslot_timeslotID AS timeslotID, 
+                s.Timeslot_Daily_Schedule_scheduleID AS scheduleID,
+                s.Student_System_User_userID AS studentID,
+                stu.userFirstName AS studentFirstName, stu.userLastName AS studentLastName,
+                s.sessionSignInTime, s.sessionSignOutTime,
+                s.sessionFeedback, s.sessionRating
+           FROM Tutor_Session s
+           JOIN System_User stu ON s.Student_System_User_userID = stu.userID
+          WHERE s.Timeslot_Daily_Schedule_scheduleID IN (?)`,
+        [ids]
+      );
+    }
+
+    // nest sessions inside timeslots
+    const timeslotsWithSessions = timeslots.map(t => ({
+      ...t,
+      sessions: sessions.filter(s => s.timeslotID === t.timeslotID && s.scheduleID === t.scheduleID)
+    }));
+
+    // nest timeslots inside schedules
+    const schedulesWithSlots = schedules.map(s => ({
+      ...s,
+      timeslots: timeslotsWithSessions.filter(t => t.scheduleID === s.scheduleID)
+    }));
+
+    res.json(schedulesWithSlots);
+  } catch (e) 
+  {
+    console.error('Error Fetching Schedules', e);
+    res.status(500).json({ message: 'Failed to fetch schedules' });
   }
 });
+// ---- Admin: get available tutors for schedule creation ----
+app.get('/api/admin/availableTutors', authRequired, requireRole('Admin'), async (req, res) => {
+  try { 
+    const [rows] = await pool.execute(`SELECT userID, CONCAT(userFirstName, ' ', userLastName) AS name FROM System_User WHERE userRole = ?`,['Tutor']);
+    res.json(rows); 
+  } catch (err) {
+    console.error('Error fetching tutors:', err);
+    res.status(500).json({ error: 'Failed to fetch tutors' });
+  } 
+}); 
+// ---- Admin: create a daily schedule ----
+app.post('/api/schedules/generate', authRequired, requireRole('Admin'), async (req, res) => {
+  const { date } = req.body || {};
+  if (!date) return res.status(400).json({ message: 'date required (YYYY-MM-DD)' });
+  try {
+    const [r] = await pool.execute(
+      `INSERT INTO Daily_Schedule (Administrator_System_User_userID, scheduleDate)
+       VALUES (?, ?)`,
+      [req.user.userID, date]
+    );
+    res.json({ message: 'Schedule created', scheduleID: r.insertId });
+  } catch (e) { 
+    console.error('create schedule error', e);
+    res.status(500).json({ message: 'Failed to create schedule' });
+  } 
+}); 
+ 
+// ---- Admin: generate timeslots ----
+app.post('/api/timeslots/generate', authRequired, requireRole('Admin'), async (req, res) => {
+  const { scheduleID, subjectID, tutorUserID, start, end, durationMinutes } = req.body || {};
+  if (!scheduleID || !subjectID || !tutorUserID || !start || !end || !durationMinutes) {
+    return res.status(400).json({ message: 'scheduleID, subjectID, tutorUserID, start, end, durationMinutes required' });
+  }
+  try {
+    const [dsRows] = await pool.execute('SELECT scheduleID FROM Daily_Schedule WHERE scheduleID = ?', [scheduleID]);
+    if (dsRows.length === 0) return res.status(404).json({ message: 'Schedule not found' });
+
+    const toMinutes = (t) => {
+      const [hh, mm] = t.split(':').map(Number);
+      return hh * 60 + mm;
+    };
+
+    const toHHMM = (mins) => {
+      const hh = String(Math.floor(mins / 60)).padStart(2, '0');
+      const mm = String(mins % 60).padStart(2, '0');
+      return `${hh}:${mm}:00`;
+    };
+
+    const mStart = toMinutes(start);
+    const mEnd = toMinutes(end);
+    const dur = Number(durationMinutes);
+
+    const values = [];
+    for (let t = mStart; t + dur <= mEnd; t += dur) 
+    {
+      const slotStart = toHHMM(t);
+      const slotEnd = toHHMM(t + dur);
+      values.push([scheduleID, subjectID, tutorUserID, slotStart, slotEnd]);
+    }
+
+    if (!values.length) return res.json({ message: 'No slots generated (check times)' });
+
+    const [result] = await pool.query(
+      `INSERT INTO Timeslot 
+       (Daily_Schedule_scheduleID, Academic_Subject_subjectID, Tutor_System_User_userID, timeslotStartTime, timeslotEndTime) VALUES ?`,
+      [values]
+    );
+
+    res.json({ message: `Generated ${values.length} timeslots`, inserted: values.length, firstInsertId: result.insertId });
+  } catch (e) { 
+    console.error('generate timeslots error', e);
+    res.status(500).json({ message: 'Failed to generate timeslots' });
+  } 
+}); 
 
 // Delete schedule
 app.delete('/api/admin/schedules/:scheduleId', authRequired, requireRole('Admin'), async (req, res) => {

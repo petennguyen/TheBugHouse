@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from './api';
 
 function InviteTutorCard() 
@@ -62,17 +63,8 @@ function InviteTutorCard()
 export default function AdminDashboard() {
   const [kpis, setKpis] = useState({});
   const [subjectName, setSubjectName] = useState('');
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0,10));
-  const [scheduleID, setScheduleID] = useState('');
-  const [subjectID, setSubjectID] = useState('');
-  const [subjects, setSubjects] = useState([]);
-  const [tutorUserID, setTutorUserID] = useState('');
-  const [tutorsList, setTutors] = useState([]);
-  const [start, setStart] = useState('09:00');
-  const [end, setEnd] = useState('12:00');
-  const [dur, setDur] = useState(60);
-  const [schedules, setSchedules] = useState([]);
-  const [msg, setMsg] = useState('');
+  const [msg, setMsg] = useState("");
+  const navigate = useNavigate();
 
   // New state variables for feedback analytics
   const [feedbackAnalytics, setFeedbackAnalytics] = useState(null);
@@ -83,47 +75,20 @@ export default function AdminDashboard() {
     try {
       const { data } = await api.get('/api/analytics/overview');
       setKpis(data);
-      const s = await api.get('/api/subjects');
-      setSubjects(s.data);
-      const at = await api.get('/api/admin/availableTutors');
-      setTutors(at.data);
-      const sch = await api.get('/api/admin/schedules'); 
-      setSchedules(sch.data);
-      
-    } catch {}
+    } catch (error) {
+      console.error('Failed to load analytics:', error);
+      setMsg('Error loading dashboard data');
+    }
   };
   useEffect(() => { load(); }, []);
-  
+
   const addSubject = async () => {
     if (!subjectName) return;
     await api.post('/api/subjects', { subjectName });
     setSubjectName('');
     load();
   };
-  
-  const loadSchedules = async() => {
-    const {data} = await api.get('api/admin/schedules');
-    setSchedules(data);
-  }
 
-  const createSchedule = async () => {
-    const { data } = await api.post('/api/schedules/generate', { date });
-    setScheduleID(data.scheduleID);
-    setMsg(`Schedule created: ${data.scheduleID}`);
-  };
-
-  const genTimeslots = async () => {
-    if (!scheduleID || !subjectID || !tutorUserID) { setMsg('Fill scheduleID, subjectID, tutorUserID'); return; }
-    const { data } = await api.post('/api/timeslots/generate', {
-      scheduleID: Number(scheduleID), subjectID: Number(subjectID),
-      tutorUserID: Number(tutorUserID), start, end, durationMinutes: Number(dur)
-    });
-    setMsg(data.message);
-
-    await loadSchedules(); // Loads schedule after each generated timeslot
-  };
-
-  // New functions for feedback analytics
   const loadFeedbackAnalytics = async () => {
     try {
       const { data } = await api.get('/api/admin/feedback-analytics');
@@ -145,11 +110,13 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     load();
-    loadFeedbackAnalytics(); // Load feedback analytics on mount
+    loadFeedbackAnalytics();
   }, []);
 
+  
+
   return (
-  <div className="p-4 max-w-4xl mx-auto space-y-6">
+    <div className="p-4 max-w-4xl mx-auto space-y-6">
     <h2 className="text-xl font-semibold">Admin Dashboard</h2>
 
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 bg-white/70 p-6 rounded-2xl shadow-lg">
@@ -173,10 +140,9 @@ export default function AdminDashboard() {
       </div>
     </div>
 
-      {/* Tutor Invite */}
       <InviteTutorCard />
 
-    <div className="card">
+      <div className="card">
       <h3 className="font-medium">Add Subject</h3>
       <div className="flex gap-2">
         <input
@@ -194,106 +160,15 @@ export default function AdminDashboard() {
       </div>
     </div>
 
-    <div className="card">
-      <h3 className="font-medium">Schedules</h3>
-
-      {/* Create new schedule */}
-      <div className="flex gap-2 items-center">
-        <input
-          className="border p-2"
-          type="date"
-          value={date}
-          onChange={e => setDate(e.target.value)}
-        />
+      <div className="card">
+        <h3 className="font-medium">Manage Schedules</h3>
         <button
-          className="px-3 py-2 bg-black text-white rounded"
-          onClick={createSchedule}
+          className="px-3 py-2 bg-blue-500 text-white rounded mt-2"
+          onClick={() => navigate('/admin/timeslot-generator')}
         >
-          Create Schedule
+          Go to Timeslot Generator
         </button>
       </div>
-
-      {/* Edit existing schedule */}
-      <div className="mt-3">
-        <select
-          className="border p-2"
-          value={scheduleID}
-          onChange={e => setScheduleID(e.target.value)}
-        >
-          <option value="">Select existing schedule…</option>
-          {schedules.map(s => (
-            <option key={s.scheduleID} value={s.scheduleID}>
-              {s.date} (ID {s.scheduleID})
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="mt-2">
-        <span className="text-gray-600">
-          Active schedule: <code>{scheduleID || '-'}</code>
-        </span>
-      </div>
-    </div>
-
-    {/* Show all existing timeslots for selected schedule */}
-     {scheduleID && (
-      <div className="card">
-        <h3 className="font-medium">Existing Timeslots</h3>
-        {(() => {
-          const active = schedules.find(s => String(s.scheduleID) === String(scheduleID));
-          if (!active) return <p className="text-gray-500">No timeslots found</p>;
-          if (!active.timeslots?.length) return <p className="text-gray-500">No timeslots yet</p>;
-
-          return (
-            <ul className="space-y-1">
-              {active.timeslots.map(t => (
-                <li key={t.timeslotID} className="border p-2 rounded">
-                  <div>
-                    <strong>{t.subjectName}</strong> — Tutor: {t.tutorName}
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    {t.timeslotStartTime} – {t.timeslotEndTime}
-                  </div>
-                  {t.sessions?.length > 0 && (
-                    <ul className="ml-4 list-disc text-sm">
-                      {t.sessions.map(sess => (
-                        <li key={sess.sessionID}>
-                          Student: {sess.studentFirstName} {sess.studentLastName} | Rating: {sess.sessionRating ?? 'N/A'}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </li>
-              ))}
-            </ul>
-          );
-        })()}
-      </div>
-    )}    
-     
-    {/* Show Timeslot generator only if scheduleID is set */}
-    {scheduleID && (
-      <div className="card">
-        <h3 className="font-medium">Generate Timeslots</h3>
-        <div className="grid md:grid-cols-2 gap-2">
-          <input className="border p-2" placeholder="scheduleID" value={scheduleID} onChange={e => setScheduleID(e.target.value)} />
-          <select className="border p-2" value={subjectID} onChange={e => setSubjectID(e.target.value)}>
-            <option value="">Subject…</option>
-            {subjects.map(s => <option key={s.subjectID} value={s.subjectID}>{s.subjectName}</option>)}
-          </select>
-          <select className="border p-2" value={tutorUserID} onChange={e => setTutorUserID(e.target.value)} > 
-            <option value="">Select Tutor...</option> {tutorsList.map(tutor => ( <option key={tutor.userID} value={tutor.userID}> {tutor.name} </option>))} 
-          </select>
-          <div className="flex gap-2">
-            <input className="border p-2" type="time" value={start} onChange={e => setStart(e.target.value)} />
-            <input className="border p-2" type="time" value={end} onChange={e => setEnd(e.target.value)} />
-            <input className="border p-2 w-24" type="number" value={dur} onChange={e => setDur(e.target.value)} />
-          </div>
-        </div>
-        <button className="px-3 py-2 bg-black text-white rounded" onClick={genTimeslots}>Generate</button>
-      </div>
-    )}
 
     {/* Feedback Analytics Section */}
     {feedbackAnalytics && (
