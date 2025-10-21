@@ -365,6 +365,156 @@ app.get('/api/sessions/mine', authRequired, async (req, res) => {
   }
 });
 
+cron.schedule('0 * * * *', async () => {
+  console.log('⏰ Checking for sessions to remind...');
+  try {
+    // Find sessions scheduled 24 hours from now
+    const [rows] = await pool.execute(
+      `SELECT sess.sessionID, ds.scheduleDate, subj.subjectName,
+              tsu.userFirstName AS tutorFirstName, tsu.userLastName AS tutorLastName,
+              stu.userEmail AS studentEmail
+       FROM Tutor_Session sess
+       JOIN Timeslot tl ON tl.timeslotID = sess.Timeslot_timeslotID
+                        AND tl.Daily_Schedule_scheduleID = sess.Timeslot_Daily_Schedule_scheduleID
+       JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+       JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+       JOIN System_User tsu ON tsu.userID = sess.Tutor_System_User_userID
+       JOIN System_User stu ON stu.userID = sess.Student_System_User_userID
+       WHERE ds.scheduleDate = DATE_ADD(CURDATE(), INTERVAL 3 DAY)`
+    );
+
+    for (const session of rows) {
+      const tutorName = `${session.tutorFirstName} ${session.tutorLastName}`;
+      await sendSessionReminder(
+        session.studentEmail,
+        session.scheduleDate,
+        tutorName,
+        session.subjectName
+      );
+    }
+    console.log(`✅ Sent ${rows.length} reminders`);
+  } catch (err) {
+    console.error('Reminder cron error:', err);
+  }
+});
+
+// ---- Email reminder endpoints ----
+
+// Test SendGrid email
+app.get('/api/test-email', async (req, res) => {
+  try {
+    const msg = {
+      to: 'pgn4608@mavs.uta.edu',
+      from: process.env.FROM_EMAIL || 'noreply@thebughouse.com',
+      subject: 'Test Email from The Bug House',
+      text: 'This is a test email from The Bug House tutoring system.',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #2563eb;">The Bug House</h2>
+          <p>This is a test email from The Bug House tutoring system.</p>
+          <p>Best regards,<br>The Bug House Team</p>
+        </div>
+      `
+    };
+    
+    await sgMail.send(msg);
+    res.json({ message: 'Test email sent successfully!' });
+  } catch (e) {
+    console.error('SendGrid test error:', e);
+    res.status(500).json({ 
+      message: 'Failed to send test email', 
+      error: e.message 
+    });
+  }
+});
+
+// Manually trigger reminder check (changed to GET)
+app.get('/api/manual-reminder-check', async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      `SELECT sess.sessionID, ds.scheduleDate, subj.subjectName,
+              tsu.userFirstName AS tutorFirstName, tsu.userLastName AS tutorLastName,
+              stu.userEmail AS studentEmail, stu.userFirstName AS studentFirstName
+       FROM Tutor_Session sess
+       JOIN Timeslot tl ON tl.timeslotID = sess.Timeslot_timeslotID
+                        AND tl.Daily_Schedule_scheduleID = sess.Timeslot_Daily_Schedule_scheduleID
+       JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+       JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+       JOIN System_User tsu ON tsu.userID = sess.Tutor_System_User_userID
+       JOIN System_User stu ON stu.userID = sess.Student_System_User_userID
+       WHERE ds.scheduleDate = DATE_ADD(CURDATE(), INTERVAL 1 DAY)`
+    );
+
+    let sent = 0;
+    for (const session of rows) {
+      const tutorName = `${session.tutorFirstName} ${session.tutorLastName}`;
+      await sendSessionReminder(
+        session.studentEmail,
+        session.scheduleDate,
+        tutorName,
+        session.subjectName
+      );
+      sent++;
+    }
+    res.json({ 
+      message: `Manual reminder check complete. Sent ${sent} reminders.`,
+      sessionsFound: rows.length,
+      emailsSent: sent
+    });
+  } catch (err) {
+    console.error('Manual reminder error', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// sendSessionReminder function
+async function sendSessionReminder(studentEmail, scheduleDate, tutorName, subjectName) {
+  const msg = {
+    to: studentEmail,
+    from: process.env.FROM_EMAIL || 'noreply@thebughouse.com',
+    subject: '📚 Reminder: Tutoring Session Tomorrow',
+    text: `Hi! This is a reminder for your upcoming tutoring session tomorrow (${scheduleDate}) for ${subjectName} with ${tutorName}. Please be on time.`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc;">
+        <div style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+          <h2 style="color: #2563eb; margin-bottom: 20px; text-align: center;">🎓 Session Reminder</h2>
+          
+          <p style="font-size: 16px; margin-bottom: 20px;">Hi there!</p>
+          
+          <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+            This is a friendly reminder that you have a tutoring session scheduled for <strong>tomorrow</strong>:
+          </p>
+          
+          <div style="background: #f1f5f9; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2563eb;">
+            <p style="margin: 8px 0; font-size: 16px;"><strong>📖 Subject:</strong> ${subjectName}</p>
+            <p style="margin: 8px 0; font-size: 16px;"><strong>📅 Date:</strong> ${scheduleDate}</p>
+            <p style="margin: 8px 0; font-size: 16px;"><strong>👨‍🏫 Tutor:</strong> ${tutorName}</p>
+          </div>
+          
+          <div style="background: #ecfdf5; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
+            <p style="margin: 0; font-size: 14px; color: #065f46;">
+              <strong>💡 Tip:</strong> Please arrive 5-10 minutes early and bring any materials you need for the session.
+            </p>
+          </div>
+          
+          <p style="margin-top: 30px; font-size: 16px;">
+            Best regards,<br>
+            <strong>The Bug House Team</strong>
+          </p>
+        </div>
+      </div>
+    `
+  };
+  
+  try {
+    await sgMail.send(msg);
+    console.log(`✅ Reminder email sent to ${studentEmail}`);
+  } catch (err) {
+    console.error('SendGrid error:', err);
+    throw err;
+  }
+}
+
 // ---- Student calendar events (booked sessions) ----
 app.get('/api/student/calendar', authRequired, requireRole('Student'), async (req, res) => {
   try {
@@ -861,6 +1011,8 @@ app.post('/api/auth/signup', async (req, res) => {
     res.status(500).json({ message: 'Signup failed' });
   }
 });
+
+
 
 // ---- Analytics endpoints ----
 app.get('/api/analytics/overview', authRequired, requireRole('Admin'), async (req, res) => {
