@@ -45,14 +45,15 @@ export default function StudentBook() {
 
   const bookAvailability = async (availability) => {
     try {
-      await api.post('/api/sessions/book-from-availability', {
-        tutorID: availability.tutorID,
+      const bookingData = {
+        tutorID: availability.tutorUserID, 
         dayOfWeek: availability.dayOfWeek,
         startTime: availability.startTime,
         date,
         subjectID: subjectId,
         sessionLength
-      });
+      };
+      await api.post('/api/sessions/book-from-availability', bookingData);
       setMsg('✅ Booked!');
       await searchAvailability();
     } catch (e) {

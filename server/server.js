@@ -99,40 +99,163 @@ app.delete('/api/subjects/:id', authRequired, requireRole('Admin'), async (req, 
   }
 });
 
+// ---- Session booking endpoints ----
+
+// Book from existing timeslot
+app.post('/api/sessions/book', authRequired, requireRole('Student'), async (req, res) => {
+  const { timeslotID, scheduleID } = req.body;
+  
+  if (!timeslotID || !scheduleID) {
+    return res.status(400).json({ message: 'timeslotID and scheduleID required' });
+  }
+  
+  try {
+    // Check if timeslot exists and is not already booked
+    const [timeslotCheck] = await pool.execute(
+      'SELECT t.*, sub.subjectID FROM Timeslot t JOIN Academic_Subject sub ON sub.subjectID = t.Academic_Subject_subjectID WHERE t.timeslotID = ? AND t.Daily_Schedule_scheduleID = ?',
+      [timeslotID, scheduleID]
+    );
+    
+    if (timeslotCheck.length === 0) {
+      return res.status(404).json({ message: 'Timeslot not found' });
+    }
+    
+    // Check if already booked
+    const [existingSession] = await pool.execute(
+      'SELECT sessionID FROM Tutor_Session WHERE Timeslot_timeslotID = ? AND Timeslot_Daily_Schedule_scheduleID = ?',
+      [timeslotID, scheduleID]
+    );
+    
+    if (existingSession.length > 0) {
+      return res.status(409).json({ message: 'Timeslot already booked' });
+    }
+    
+    const timeslot = timeslotCheck[0];
+    
+    // Create session
+    await pool.execute(
+      'INSERT INTO Tutor_Session (Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID, Tutor_System_User_userID, Student_System_User_userID) VALUES (?, ?, ?, ?, ?)',
+      [timeslotID, scheduleID, timeslot.subjectID, timeslot.Tutor_System_User_userID, req.user.userID]
+    );
+    
+    res.json({ message: 'Session booked successfully' });
+  } catch (e) {
+    console.error('Book session error:', e);
+    res.status(500).json({ message: 'Failed to book session' });
+  }
+});
+
+// Book from tutor availability
+app.post('/api/sessions/book-from-availability', authRequired, requireRole('Student'), async (req, res) => {
+  const { tutorID, dayOfWeek, startTime, date, subjectID, sessionLength } = req.body;
+  
+  if (!tutorID || !dayOfWeek || !startTime || !date || !subjectID || !sessionLength) {
+    return res.status(400).json({ message: 'All fields required: tutorID, dayOfWeek, startTime, date, subjectID, sessionLength' });
+  }
+  
+  try {
+    // Check if tutor is available on this day/time
+    const [availabilityCheck] = await pool.execute(
+      'SELECT * FROM Tutor_Availability WHERE Tutor_System_User_userID = ? AND dayOfWeek = ? AND startTime <= ? AND endTime >= ?',
+      [tutorID, dayOfWeek, startTime, startTime]
+    );
+    
+    if (availabilityCheck.length === 0) {
+      return res.status(404).json({ message: 'Tutor not available at this time' });
+    }
+    
+    // Check if schedule exists for this date, create if not
+    let scheduleID;
+    const [existingSchedule] = await pool.execute(
+      'SELECT scheduleID FROM Daily_Schedule WHERE scheduleDate = ?',
+      [date]
+    );
+    
+    if (existingSchedule.length > 0) {
+      scheduleID = existingSchedule[0].scheduleID;
+    } else {
+      // Create new schedule (need an admin user ID - use first admin)
+      const [adminUser] = await pool.execute(
+        'SELECT System_User_userID FROM Administrator LIMIT 1'
+      );
+      
+      if (adminUser.length === 0) {
+        return res.status(500).json({ message: 'No admin user found to create schedule' });
+      }
+      
+      const [scheduleResult] = await pool.execute(
+        'INSERT INTO Daily_Schedule (Administrator_System_User_userID, scheduleDate) VALUES (?, ?)',
+        [adminUser[0].System_User_userID, date]
+      );
+      scheduleID = scheduleResult.insertId;
+    }
+    
+    // Calculate end time based on session length
+    const startDateTime = new Date(`${date}T${startTime}`);
+    const endDateTime = new Date(startDateTime.getTime() + sessionLength * 60000);
+    const endTime = endDateTime.toTimeString().slice(0, 5);
+    
+    // Create timeslot
+    const [timeslotResult] = await pool.execute(
+      'INSERT INTO Timeslot (Daily_Schedule_scheduleID, Academic_Subject_subjectID, Tutor_System_User_userID, timeslotStartTime, timeslotEndTime) VALUES (?, ?, ?, ?, ?)',
+      [scheduleID, subjectID, tutorID, startTime, endTime]
+    );
+    
+    const timeslotID = timeslotResult.insertId;
+    
+    // Create session
+    await pool.execute(
+      'INSERT INTO Tutor_Session (Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID, Tutor_System_User_userID, Student_System_User_userID) VALUES (?, ?, ?, ?, ?)',
+      [timeslotID, scheduleID, subjectID, tutorID, req.user.userID]
+    );
+    
+    res.json({ 
+      message: 'Session booked successfully from availability',
+      timeslotID,
+      scheduleID
+    });
+  } catch (e) {
+    console.error('Book from availability error:', e);
+    res.status(500).json({ message: 'Failed to book session from availability' });
+  }
+});
+
 // ---- Available timeslots (filter by date & subject) ----
 // GET /api/timeslots/available?date=YYYY-MM-DD&subjectId=#
 app.get('/api/timeslots/available', authRequired, async (req, res) => {
   const { date, subjectId } = req.query;
-  if (!date || !subjectId) return res.status(400).json({ message: 'date and subjectId required' });
-
+  
+  if (!date || !subjectId) {
+    return res.status(400).json({ message: 'date and subjectId required' });
+  }
+  
   try {
-    const [rows] = await pool.execute(
-      `
-      SELECT
+    const [rows] = await pool.execute(`
+      SELECT 
+        t.timeslotID,
+        t.timeslotStartTime,
+        t.timeslotEndTime,
+        ds.scheduleID,
         ds.scheduleDate,
-        tl.Daily_Schedule_scheduleID AS scheduleID,
-        tl.timeslotID,
-        subj.subjectID,
-        subj.subjectName,
-        t.System_User_userID AS tutorUserID,
+        sub.subjectName,
         su.userFirstName AS tutorFirstName,
-        su.userLastName  AS tutorLastName
-      FROM Timeslot tl
-      JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
-      JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
-      JOIN Tutor t ON t.System_User_userID = tl.Tutor_System_User_userID
-      JOIN System_User su ON su.userID = t.System_User_userID
-      LEFT JOIN Tutor_Session sess
-        ON sess.Timeslot_timeslotID = tl.timeslotID
-       AND sess.Timeslot_Daily_Schedule_scheduleID = tl.Daily_Schedule_scheduleID
-      WHERE ds.scheduleDate = ? AND subj.subjectID = ? AND sess.sessionID IS NULL
-      ORDER BY su.userLastName, su.userFirstName, tl.timeslotID
-      `,
-      [date, subjectId]
-    );
+        su.userLastName AS tutorLastName,
+        CASE WHEN ts.sessionID IS NOT NULL THEN 1 ELSE 0 END as isBooked
+      FROM Timeslot t
+      JOIN Daily_Schedule ds ON ds.scheduleID = t.Daily_Schedule_scheduleID
+      JOIN Academic_Subject sub ON sub.subjectID = t.Academic_Subject_subjectID
+      JOIN System_User su ON su.userID = t.Tutor_System_User_userID
+      LEFT JOIN Tutor_Session ts ON ts.Timeslot_timeslotID = t.timeslotID 
+                                 AND ts.Timeslot_Daily_Schedule_scheduleID = t.Daily_Schedule_scheduleID
+      WHERE ds.scheduleDate = ? 
+        AND t.Academic_Subject_subjectID = ?
+        AND ts.sessionID IS NULL
+      ORDER BY t.timeslotStartTime
+    `, [date, subjectId]);
+    
     res.json(rows);
   } catch (e) {
-    console.error('available slots error', e);
+    console.error('Available timeslots error:', e);
     res.status(500).json({ message: 'Failed to load available timeslots' });
   }
 });
@@ -250,6 +373,8 @@ app.get('/api/student/calendar', authRequired, requireRole('Student'), async (re
       SELECT
         sess.sessionID,
         ds.scheduleDate,
+        tl.timeslotStartTime,
+        tl.timeslotEndTime,
         subj.subjectName,
         tsu.userFirstName AS tutorFirstName,
         tsu.userLastName  AS tutorLastName,
@@ -262,7 +387,7 @@ app.get('/api/student/calendar', authRequired, requireRole('Student'), async (re
       JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
       JOIN System_User tsu ON tsu.userID = sess.Tutor_System_User_userID
       WHERE sess.Student_System_User_userID = ?
-      ORDER BY COALESCE(sess.sessionSignInTime, ds.scheduleDate), sess.sessionID
+      ORDER BY ds.scheduleDate, tl.timeslotStartTime, sess.sessionID
       `,
       [req.user.userID]
     );
@@ -271,17 +396,32 @@ app.get('/api/student/calendar', authRequired, requireRole('Student'), async (re
       const title = `${r.subjectName} with ${r.tutorFirstName} ${r.tutorLastName}`;
       const ext = { subject: r.subjectName, tutorName: `${r.tutorFirstName} ${r.tutorLastName}` };
 
-      if (r.sessionSignInTime && r.sessionSignOutTime) {
+      // Use actual timeslot times instead of sign-in/out times
+      if (r.timeslotStartTime && r.timeslotEndTime) {
+        // Combine schedule date with timeslot times
+        const scheduleDate = new Date(r.scheduleDate);
+        const year = scheduleDate.getFullYear();
+        const month = scheduleDate.getMonth();
+        const day = scheduleDate.getDate();
+        
+        // Parse time strings (format: "HH:MM:SS" or "HH:MM")
+        const [startHour, startMin] = r.timeslotStartTime.split(':').map(Number);
+        const [endHour, endMin] = r.timeslotEndTime.split(':').map(Number);
+        
+        const startDateTime = new Date(year, month, day, startHour, startMin, 0);
+        const endDateTime = new Date(year, month, day, endHour, endMin, 0);
+        
         return {
           id: r.sessionID,
           title,
-          start: new Date(r.sessionSignInTime).toISOString(),
-          end: new Date(r.sessionSignOutTime).toISOString(),
+          start: startDateTime.toISOString(),
+          end: endDateTime.toISOString(),
           allDay: false,
           extendedProps: ext,
         };
       }
-      // Fallback: all-day on scheduleDate
+      
+      // Fallback: all-day if no timeslot times
       const d = new Date(r.scheduleDate);
       const startISO = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString();
       const endISO = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate() + 1)).toISOString();
@@ -1075,7 +1215,7 @@ app.get('/api/admin/session-analytics', authRequired, requireRole('Admin'), asyn
   }
 });
 
-// Complete signup for Firebase users (add this if missing)
+// Complete signup for Firebase users (fix the missing userID)
 app.post('/api/auth/complete-signup', async (req, res) => {
   const { firebaseUID, name, email, role } = req.body;
   
@@ -1095,6 +1235,7 @@ app.post('/api/auth/complete-signup', async (req, res) => {
       [userFirstName, userLastName, email, 'firebase_user', role, firebaseUID]
     );
     
+    const userID = result.insertId; 
     
     // Insert into role-specific table
     if (role === 'Admin') {
@@ -1141,6 +1282,34 @@ app.get('/test-db', async (req, res) => {
       message: 'Database connection failed', 
       error: e.message 
     });
+  }
+});
+
+// Get completed sessions (for dashboard)
+app.get('/api/sessions/completed', authRequired, requireRole('Tutor'), async (req, res) => {
+  try {
+    const [rows] = await pool.execute(`
+      SELECT 
+        sess.sessionID,
+        sess.sessionSignInTime,
+        sess.sessionSignOutTime,
+        sess.sessionRating,
+        sub.subjectName,
+        stu.userFirstName AS studentFirstName,
+        stu.userLastName AS studentLastName
+      FROM Tutor_Session sess
+      JOIN Academic_Subject sub ON sub.subjectID = sess.Academic_Subject_subjectID
+      JOIN System_User stu ON stu.userID = sess.Student_System_User_userID
+      WHERE sess.Tutor_System_User_userID = ?
+        AND sess.sessionSignOutTime IS NOT NULL
+      ORDER BY sess.sessionSignOutTime DESC
+      LIMIT 10
+    `, [req.user.userID]);
+    
+    res.json(rows);
+  } catch (e) {
+    console.error('Completed sessions error:', e);
+    res.status(500).json({ message: 'Failed to load completed sessions' });
   }
 });
 
