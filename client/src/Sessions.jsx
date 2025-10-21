@@ -8,7 +8,9 @@ export default function Sessions() {
   const [selectedSessionID, setSelectedSessionID] = useState(null);
   const [rating, setRating] = useState('');
   const [feedback, setFeedback] = useState('');
-  const [filter, setFilter] = useState('all'); // 'all', 'upcoming', 'past'
+  const [filter, setFilter] = useState('all');
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [sessionToCancel, setSessionToCancel] = useState(null); 
   const role = localStorage.getItem('role');
 
   const load = async () => {
@@ -48,6 +50,21 @@ export default function Sessions() {
       load();
     } catch {
       alert('Failed to update attendance');
+    }
+  };
+
+  const confirmCancelSession = async () => {
+    try {
+      await api.delete(`/api/sessions/${sessionToCancel}`);
+      setMsg('Session cancelled successfully');
+      setShowCancelModal(false);
+      setSessionToCancel(null);
+      load(); // Reload the sessions list
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to cancel session';
+      alert(errorMsg);
+      setShowCancelModal(false);
+      setSessionToCancel(null);
     }
   };
 
@@ -231,7 +248,10 @@ export default function Sessions() {
                 {role === 'Student' && isUpcoming && !r.sessionSignOutTime && (
                   <button 
                     className="btn danger" 
-                    onClick={() => console.log('Cancel session', r.sessionID)}
+                    onClick={() => {
+                      setSessionToCancel(r.sessionID);
+                      setShowCancelModal(true);
+                    }}
                     style={{
                       padding: '6px 12px', fontSize: 12, background: '#dc2626', 
                       color: '#fff', border: 'none', borderRadius: 4
@@ -330,6 +350,61 @@ export default function Sessions() {
                 }}
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Confirmation Modal */}
+      {showCancelModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+          background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', 
+          justifyContent: 'center', zIndex: 10000
+        }}>
+          <div style={{
+            background: '#fff', padding: 24, borderRadius: 12, minWidth: 320, 
+            boxShadow: '0 8px 22px rgba(0,0,0,0.15)'
+          }}>
+            <div style={{ 
+              marginBottom: 16, 
+              fontWeight: 700
+            }}>
+              Are you sure you want to cancel this session?
+            </div>
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                className="btn"
+                onClick={() => {
+                  setShowCancelModal(false);
+                  setSessionToCancel(null);
+                }}
+                style={{
+                  padding: '8px 16px', 
+                  background: '#e5e7eb', 
+                  color: '#111827',
+                  border: 'none', 
+                  borderRadius: 6, 
+                  fontSize: 14
+                }}
+              >
+                Keep Session
+              </button>
+              <button
+                className="btn danger"
+                onClick={confirmCancelSession}
+                style={{
+                  padding: '8px 16px', 
+                  background: '#dc2626', 
+                  color: '#fff',
+                  border: 'none', 
+                  borderRadius: 6, 
+                  fontSize: 14
+                }}
+              >
+                Yes, Cancel
               </button>
             </div>
           </div>

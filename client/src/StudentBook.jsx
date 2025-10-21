@@ -7,7 +7,7 @@ export default function StudentBook() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0,10));
   const [slots, setSlots] = useState([]);
   const [msg, setMsg] = useState('');
-  const [sessionLength, setSessionLength] = useState(60); // default 60 minutes
+  const [sessionLength, setSessionLength] = useState(60); 
 
   useEffect(() => {
     api.get('/api/subjects').then(res => setSubjects(res.data)).catch(() => setSubjects([]));
@@ -104,7 +104,6 @@ export default function StudentBook() {
                 </div>
               </div>
             ) : (
-              // Render timeslot/session
               <div>
                 <div className="font-medium">{s.subjectName}</div>
                 <div className="muted">{s.tutorFirstName} {s.tutorLastName} — {s.scheduleDate}</div>
