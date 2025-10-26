@@ -80,8 +80,10 @@ DROP TABLE IF EXISTS `Academic_Subject`;
 CREATE TABLE `Academic_Subject` (
   `subjectID` INT NOT NULL AUTO_INCREMENT,
   `subjectName` VARCHAR(50) NOT NULL,
+  `subjectCode` VARCHAR(20) NULL,
   PRIMARY KEY (`subjectID`),
-  UNIQUE KEY `subjectName_UNIQUE` (`subjectName`)
+  UNIQUE KEY `subjectName_UNIQUE` (`subjectName`),
+  UNIQUE KEY `subjectCode_UNIQUE` (`subjectCode`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 DROP TABLE IF EXISTS `Timeslot`;

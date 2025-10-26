@@ -65,9 +65,10 @@ function App() {
 
   const bgStyle = {
     minHeight: '100vh',
+    background: 'linear-gradient(to bottom, #1e3a8a, #1e40af)',
     backgroundImage: `url(${bg})`,
     backgroundSize: 'cover',
-    backgroundPosition: 'center',
+    backgroundPosition: 'center'
   };
 
   return (

@@ -1461,6 +1461,217 @@ app.get('/api/sessions/completed', authRequired, requireRole('Tutor'), async (re
   }
 });
 
+
+// ---- Admin: Course Management Endpoints ----
+
+// Get all courses/subjects
+app.get('/api/admin/courses', authRequired, requireRole('Admin'), async (req, res) => {
+  try {
+    const [rows] = await pool.execute(`
+      SELECT subjectID, subjectName, subjectCode 
+      FROM Academic_Subject 
+      ORDER BY subjectName
+    `);
+    res.json(rows);
+  } catch (e) {
+    console.error('Get courses error:', e);
+    res.status(500).json({ message: 'Failed to load courses' });
+  }
+});
+
+// Add new course
+app.post('/api/admin/courses', authRequired, requireRole('Admin'), async (req, res) => {
+  const { courseCode, courseTitle } = req.body;
+  
+  if (!courseCode || !courseTitle) {
+    return res.status(400).json({ message: 'Course code and title are required' });
+  }
+  
+  try {
+    // Check if course code already exists
+    const [existing] = await pool.execute(
+      'SELECT subjectID FROM Academic_Subject WHERE subjectCode = ?',
+      [courseCode]
+    );
+    
+    if (existing.length > 0) {
+      return res.status(409).json({ message: 'Course code already exists' });
+    }
+    
+    const [result] = await pool.execute(
+      'INSERT INTO Academic_Subject (subjectName, subjectCode) VALUES (?, ?)',
+      [courseTitle, courseCode]
+    );
+    
+    res.json({ 
+      message: 'Course added successfully',
+      subjectID: result.insertId,
+      courseCode,
+      courseTitle
+    });
+  } catch (e) {
+    console.error('Add course error:', e);
+    if (e.code === 'ER_DUP_ENTRY') {
+      res.status(409).json({ message: 'Course code already exists' });
+    } else {
+      res.status(500).json({ message: 'Failed to add course' });
+    }
+  }
+});
+
+// Update existing course
+app.put('/api/admin/courses/:id', authRequired, requireRole('Admin'), async (req, res) => {
+  const { id } = req.params;
+  const { courseCode, courseTitle } = req.body;
+  
+  if (!courseCode || !courseTitle) {
+    return res.status(400).json({ message: 'Course code and title are required' });
+  }
+  
+  try {
+    // Check if course exists
+    const [existing] = await pool.execute(
+      'SELECT subjectID FROM Academic_Subject WHERE subjectID = ?',
+      [id]
+    );
+    
+    if (existing.length === 0) {
+      return res.status(404).json({ message: 'Course not found' });
+    }
+    
+    // Check if new course code conflicts with other courses
+    const [codeConflict] = await pool.execute(
+      'SELECT subjectID FROM Academic_Subject WHERE subjectCode = ? AND subjectID != ?',
+      [courseCode, id]
+    );
+    
+    if (codeConflict.length > 0) {
+      return res.status(409).json({ message: 'Course code already exists for another course' });
+    }
+    
+    const [result] = await pool.execute(
+      'UPDATE Academic_Subject SET subjectName = ?, subjectCode = ? WHERE subjectID = ?',
+      [courseTitle, courseCode, id]
+    );
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Course not found' });
+    }
+    
+    res.json({ 
+      message: 'Course updated successfully',
+      subjectID: id,
+      courseCode,
+      courseTitle
+    });
+  } catch (e) {
+    console.error('Update course error:', e);
+    if (e.code === 'ER_DUP_ENTRY') {
+      res.status(409).json({ message: 'Course code already exists' });
+    } else {
+      res.status(500).json({ message: 'Failed to update course' });
+    }
+  }
+});
+
+// Delete course
+app.delete('/api/admin/courses/:id', authRequired, requireRole('Admin'), async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    // Check if course has active sessions or timeslots
+    const [activeSessions] = await pool.execute(`
+      SELECT COUNT(*) as count 
+      FROM Tutor_Session ts 
+      WHERE ts.Academic_Subject_subjectID = ?
+    `, [id]);
+    
+    const [activeTimeslots] = await pool.execute(`
+      SELECT COUNT(*) as count 
+      FROM Timeslot t 
+      WHERE t.Academic_Subject_subjectID = ?
+    `, [id]);
+    
+    if (activeSessions[0].count > 0) {
+      return res.status(409).json({ 
+        message: `Cannot delete course: ${activeSessions[0].count} sessions exist for this course` 
+      });
+    }
+    
+    if (activeTimeslots[0].count > 0) {
+      return res.status(409).json({ 
+        message: `Cannot delete course: ${activeTimeslots[0].count} timeslots exist for this course` 
+      });
+    }
+    
+    const [result] = await pool.execute(
+      'DELETE FROM Academic_Subject WHERE subjectID = ?',
+      [id]
+    );
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Course not found' });
+    }
+    
+    res.json({ message: 'Course deleted successfully' });
+  } catch (e) {
+    console.error('Delete course error:', e);
+    res.status(500).json({ message: 'Failed to delete course' });
+  }
+});
+
+// Get course statistics
+app.get('/api/admin/courses/:id/stats', authRequired, requireRole('Admin'), async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    const [courseInfo] = await pool.execute(
+      'SELECT subjectName, subjectCode FROM Academic_Subject WHERE subjectID = ?',
+      [id]
+    );
+    
+    if (courseInfo.length === 0) {
+      return res.status(404).json({ message: 'Course not found' });
+    }
+    
+    const [sessionStats] = await pool.execute(`
+      SELECT 
+        COUNT(*) as totalSessions,
+        COUNT(CASE WHEN sessionSignInTime IS NOT NULL AND sessionSignOutTime IS NOT NULL THEN 1 END) as completedSessions,
+        AVG(sessionRating) as avgRating,
+        COUNT(CASE WHEN sessionRating IS NOT NULL THEN 1 END) as ratedSessions
+      FROM Tutor_Session 
+      WHERE Academic_Subject_subjectID = ?
+    `, [id]);
+    
+    const [tutorCount] = await pool.execute(`
+      SELECT COUNT(DISTINCT Tutor_System_User_userID) as tutorCount
+      FROM Tutor_Session 
+      WHERE Academic_Subject_subjectID = ?
+    `, [id]);
+    
+    const [studentCount] = await pool.execute(`
+      SELECT COUNT(DISTINCT Student_System_User_userID) as studentCount
+      FROM Tutor_Session 
+      WHERE Academic_Subject_subjectID = ?
+    `, [id]);
+    
+    res.json({
+      course: courseInfo[0],
+      stats: {
+        ...sessionStats[0],
+        tutorCount: tutorCount[0].tutorCount,
+        studentCount: studentCount[0].studentCount
+      }
+    });
+  } catch (e) {
+    console.error('Course stats error:', e);
+    res.status(500).json({ message: 'Failed to load course statistics' });
+  }
+});
+
+
+
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
