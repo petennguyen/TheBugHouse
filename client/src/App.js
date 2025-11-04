@@ -13,6 +13,7 @@ import Dashboard from './Dashboard.jsx';
 import Navbar from './Navbar.jsx'; 
 import TimeslotGenerator from './TimeslotGenerator';
 import ManageUsers from './manageusers.js';
+import CourseManagement from './CourseManagement'; 
 
 
 
@@ -101,7 +102,10 @@ function App() {
               <Route path="/admin" element={isLoggedIn && userRole === 'Admin' ? <AdminDashboard /> : <Navigate to="/" replace />} />
               <Route path="/admin/timeslot-generator" element={isLoggedIn && userRole === 'Admin' ? <TimeslotGenerator /> : <Navigate to="/" replace />} />
               <Route path="/admin/users" element={isLoggedIn && userRole === 'Admin' ? <ManageUsers /> : <Navigate to="/" replace />} />
+              <Route path="/admin/courses" element={isLoggedIn && userRole === 'Admin' ? <CourseManagement /> : <Navigate to="/" replace />} />
+
               {/* 404 */}
+
               <Route path="*" element={<Navigate to={isLoggedIn ? '/' : '/login'} replace />} />
             </Routes>
           </main>

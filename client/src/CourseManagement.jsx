@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import api from '../api';
+import api from './api';
 
 function CourseManagement() {
   const [courses, setCourses] = useState([]);
@@ -17,8 +17,9 @@ function CourseManagement() {
     } catch (error) {
       console.error('Failed to load courses:', error);
       setMsg('Error loading courses');
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -39,14 +40,15 @@ function CourseManagement() {
     setIsLoading(true);
     try {
       await api.post('/api/admin/courses', newCourse);
-      setMsg(' Course added successfully!');
+      setMsg('Course added successfully!');
       setNewCourse({ courseCode: '', courseTitle: '' });
       loadCourses();
       setTimeout(() => setMsg(''), 4000);
     } catch (error) {
       setMsg(' ' + (error?.response?.data?.message || 'Error adding course'));
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const updateCourse = async (e) => {
@@ -156,7 +158,7 @@ function CourseManagement() {
         </div>
 
         {/* Course Table */}
-        <div className="bg-white shadow-md rounded-xl border border-gray-100 overflow-hidden">
+        <div className="bg-white/95 shadow-md rounded-xl border border-gray-100 overflow-hidden">
           <div className="flex flex-col md:flex-row md:items-center justify-between px-8 py-6 border-b border-gray-200 gap-4">
             <h2 className="text-xl font-semibold text-gray-800">Course Directory</h2>
             <div className="flex items-center justify-center gap-4">
@@ -178,52 +180,60 @@ function CourseManagement() {
           ) : filteredCourses.length === 0 ? (
             <div className="p-16 text-center text-gray-500 text-lg">No courses found.</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-gray-700">
+            <div className="overflow-x-auto flex justify-center">
+              <table
+                className="min-w-full text-gray-700 table-auto mx-auto w-full max-w-6xl"
+                style={{
+                  borderCollapse: 'separate',
+                  borderSpacing: '6rem 2.5rem' // large horizontal spacing + vertical row spacing
+                }}
+              >
+                <colgroup>
+                  <col style={{ width: '22%' }} />
+                  <col style={{ width: '62%' }} />
+                  <col style={{ width: '16%' }} />
+                </colgroup>
+
                 <thead className="bg-gray-100 border-b border-gray-200">
                   <tr>
-                    <th className="px-12 py-8 font-semibold text-gray-600 text-center text-xl">Code</th>
-                    <th className="px-12 py-8 font-semibold text-gray-600 text-center text-xl">Title</th>
-                    <th className="px-12 py-8 font-semibold text-gray-600 text-center text-xl">Actions</th>
+                    <th className="px-10 sm:px-14 md:px-20 py-8 text-sm font-medium text-gray-700 text-center">Code</th>
+                    <th className="px-10 sm:px-14 md:px-20 py-8 text-sm font-medium text-gray-700 text-center">Title</th>
+                    <th className="px-10 sm:px-14 md:px-20 py-8 text-sm font-medium text-gray-700 text-center">Actions</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {filteredCourses.map((course, index) => (
-                    <tr
-                      key={course.subjectID}
-                      className={`border-b hover:bg-gray-50 transition-colors ${
-                        index % 2 === 0 ? 'bg-white' : 'bg-gray-25'
-                      }`}
-                    >
+
+                <tbody className="divide-y divide-gray-200">
+                  {filteredCourses.map((course) => (
+                    <tr key={course.subjectID} className="hover:bg-gray-50 transition-colors">
                       {editingCourse?.subjectID === course.subjectID ? (
                         <>
-                          <td className="px-12 py-8 text-center">
+                          <td className="py-10 text-center">
                             <input
                               type="text"
                               value={editingCourse.courseCode}
                               onChange={(e) => setEditingCourse({ ...editingCourse, courseCode: e.target.value })}
-                              className="w-full border border-gray-300 rounded-md px-4 py-3 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 text-center text-lg"
+                              className="w-full border border-gray-300 rounded-md px-6 py-4 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 text-center text-lg"
                             />
                           </td>
-                          <td className="px-12 py-8 text-center">
+                          <td className="py-10 text-center">
                             <input
                               type="text"
                               value={editingCourse.courseTitle}
                               onChange={(e) => setEditingCourse({ ...editingCourse, courseTitle: e.target.value })}
-                              className="w-full border border-gray-300 rounded-md px-4 py-3 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 text-center text-lg"
+                              className="w-full border border-gray-300 rounded-md px-6 py-4 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 text-center text-lg"
                             />
                           </td>
-                          <td className="px-12 py-8 text-center">
+                          <td className="py-10 text-center">
                             <div className="flex justify-center gap-6">
                               <button
                                 onClick={updateCourse}
-                                className="bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-md text-sm font-medium"
+                                className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-md text-sm font-medium"
                               >
                                 Save
                               </button>
                               <button
                                 onClick={cancelEdit}
-                                className="bg-gray-400 hover:bg-gray-500 text-white px-8 py-4 rounded-md text-sm font-medium"
+                                className="bg-gray-400 hover:bg-gray-500 text-white px-6 py-3 rounded-md text-sm font-medium"
                               >
                                 Cancel
                               </button>
@@ -232,23 +242,23 @@ function CourseManagement() {
                         </>
                       ) : (
                         <>
-                          <td className="px-12 py-8 text-center text-lg font-medium">
+                          <td className="py-10 text-center text-lg font-medium">
                             {course.subjectCode || '—'}
                           </td>
-                          <td className="px-12 py-8 text-center text-lg font-medium">
+                          <td className="py-10 text-center text-lg font-medium">
                             {course.subjectName}
                           </td>
-                          <td className="px-12 py-8 text-center">
-                            <div className="flex justify-center gap-6">
+                          <td className="py-10 text-center">
+                            <div className="flex items-center justify-center gap-6">
                               <button
                                 onClick={() => startEdit(course)}
-                                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-md text-sm font-medium"
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md text-sm font-medium"
                               >
                                 Edit
                               </button>
                               <button
                                 onClick={() => deleteCourse(course.subjectID, course.subjectName)}
-                                className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-md text-sm font-medium"
+                                className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-md text-sm font-medium"
                               >
                                 Delete
                               </button>
@@ -258,6 +268,14 @@ function CourseManagement() {
                       )}
                     </tr>
                   ))}
+
+                  {filteredCourses.length === 0 && (
+                    <tr>
+                      <td colSpan="3" className="p-16 text-center text-gray-500">
+                        No courses found
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

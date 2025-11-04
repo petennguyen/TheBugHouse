@@ -107,6 +107,12 @@ export default function Navbar({ isLoggedIn, userFirstName, userRole, onLogout }
                 >
                   Manage Users
                 </Link>
+                <Link
+                to="/admin/courses"
+                className={location.pathname === '/admin/courses' || location.pathname.startsWith('/admin/courses') ? 'active' : ''}
+              >
+                Manage Courses
+              </Link>
               </>
             )}
             
