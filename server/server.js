@@ -1800,3 +1800,174 @@ const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
+
+// ---- Student check-in endpoint ----
+app.post('/api/sessions/:sessionID/check-in', authRequired, requireRole('Student'), async (req, res) => {
+  const { sessionID } = req.params;
+  
+  try {
+    // Verify session belongs to student
+    const [[session]] = await pool.execute(
+      `SELECT sessionID, sessionSignInTime FROM Tutor_Session 
+       WHERE sessionID = ? AND Student_System_User_userID = ?`,
+      [sessionID, req.user.userID]
+    );
+    
+    if (!session) {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+    
+    if (session.sessionSignInTime) {
+      return res.status(400).json({ message: 'Already checked in' });
+    }
+    
+    // Record check-in time
+    await pool.execute(
+      `UPDATE Tutor_Session 
+       SET sessionSignInTime = NOW(3) 
+       WHERE sessionID = ?`,
+      [sessionID]
+    );
+    
+    res.json({ message: 'Checked in successfully' });
+  } catch (e) {
+    console.error('Check-in error:', e);
+    res.status(500).json({ message: 'Failed to check in' });
+  }
+});
+
+// ---- Tutor update session status endpoint ----
+app.post('/api/sessions/:sessionID/status', authRequired, requireRole('Tutor'), async (req, res) => {
+  const { sessionID } = req.params;
+  const { status } = req.body;
+  
+  if (!['completed', 'no_show', 'cancelled'].includes(status)) {
+    return res.status(400).json({ message: 'Invalid status' });
+  }
+  
+  try {
+    // Verify session belongs to tutor
+    const [[session]] = await pool.execute(
+      `SELECT sessionID, sessionSignInTime, sessionSignOutTime FROM Tutor_Session 
+       WHERE sessionID = ? AND Tutor_System_User_userID = ?`,
+      [sessionID, req.user.userID]
+    );
+    
+    if (!session) {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+    
+    let updateQuery = '';
+    let updateParams = [];
+    
+    if (status === 'completed') {
+      // Mark as completed - set both sign-in and sign-out if not already set
+      updateQuery = `
+        UPDATE Tutor_Session 
+        SET sessionSignInTime = COALESCE(sessionSignInTime, NOW(3)),
+            sessionSignOutTime = NOW(3),
+            sessionStatus = 'completed'
+        WHERE sessionID = ?
+      `;
+      updateParams = [sessionID];
+    } else if (status === 'no_show') {
+      // Mark as no show
+      updateQuery = `
+        UPDATE Tutor_Session 
+        SET sessionStatus = 'no_show'
+        WHERE sessionID = ?
+      `;
+      updateParams = [sessionID];
+    } else if (status === 'cancelled') {
+      // Mark as cancelled
+      updateQuery = `
+        UPDATE Tutor_Session 
+        SET sessionStatus = 'cancelled'
+        WHERE sessionID = ?
+      `;
+      updateParams = [sessionID];
+    }
+    
+    await pool.execute(updateQuery, updateParams);
+    
+    res.json({ message: `Session marked as ${status}` });
+  } catch (e) {
+    console.error('Update status error:', e);
+    res.status(500).json({ message: 'Failed to update session status' });
+  }
+});
+
+// ---- Update the "my sessions" endpoint to include status ----
+// Replace the existing /api/sessions/mine endpoint with this updated version:
+
+app.get('/api/sessions/mine', authRequired, async (req, res) => {
+  try {
+    let query = '';
+    let params = [];
+
+    if (req.user.role === 'Student') {
+      query = `
+        SELECT
+          sess.sessionID, ds.scheduleDate,
+          subj.subjectName,
+          tsu.userFirstName AS tutorFirstName, tsu.userLastName AS tutorLastName,
+          sess.sessionSignInTime, sess.sessionSignOutTime, 
+          sess.sessionFeedback, sess.sessionRating,
+          sess.sessionStatus
+        FROM Tutor_Session sess
+        JOIN Timeslot tl ON tl.timeslotID = sess.Timeslot_timeslotID 
+                         AND tl.Daily_Schedule_scheduleID = sess.Timeslot_Daily_Schedule_scheduleID
+        JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+        JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+        JOIN System_User tsu ON tsu.userID = sess.Tutor_System_User_userID
+        WHERE sess.Student_System_User_userID = ?
+        ORDER BY ds.scheduleDate DESC, sess.sessionID DESC
+      `;
+      params = [req.user.userID];
+    } else if (req.user.role === 'Tutor') {
+      query = `
+        SELECT
+          sess.sessionID, ds.scheduleDate,
+          subj.subjectName,
+          ssu.userFirstName AS studentFirstName, ssu.userLastName AS studentLastName,
+          sess.sessionSignInTime, sess.sessionSignOutTime, 
+          sess.sessionFeedback, sess.sessionRating,
+          sess.sessionStatus
+        FROM Tutor_Session sess
+        JOIN Timeslot tl ON tl.timeslotID = sess.Timeslot_timeslotID 
+                         AND tl.Daily_Schedule_scheduleID = sess.Timeslot_Daily_Schedule_scheduleID
+        JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+        JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+        JOIN System_User ssu ON ssu.userID = sess.Student_System_User_userID
+        WHERE sess.Tutor_System_User_userID = ?
+        ORDER BY ds.scheduleDate DESC, sess.sessionID DESC
+      `;
+      params = [req.user.userID];
+    } else {
+      // Admin sees all
+      query = `
+        SELECT
+          sess.sessionID, ds.scheduleDate, subj.subjectName,
+          tsu.userFirstName AS tutorFirstName, tsu.userLastName AS tutorLastName,
+          ssu.userFirstName AS studentFirstName, ssu.userLastName AS studentLastName,
+          sess.sessionSignInTime, sess.sessionSignOutTime, 
+          sess.sessionFeedback, sess.sessionRating,
+          sess.sessionStatus
+        FROM Tutor_Session sess
+        JOIN Timeslot tl ON tl.timeslotID = sess.Timeslot_timeslotID 
+                         AND tl.Daily_Schedule_scheduleID = sess.Timeslot_Daily_Schedule_scheduleID
+        JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+        JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+        JOIN System_User tsu ON tsu.userID = sess.Tutor_System_User_userID
+        JOIN System_User ssu ON ssu.userID = sess.Student_System_User_userID
+        ORDER BY ds.scheduleDate DESC, sess.sessionID DESC
+      `;
+    }
+
+    const [rows] = await pool.execute(query, params);
+    res.json(rows);
+  } catch (e) {
+    console.error('mine sessions error', e);
+    res.status(500).json({ message: 'Failed to load sessions' });
+  }
+});
