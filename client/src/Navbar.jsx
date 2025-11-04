@@ -97,9 +97,17 @@ export default function Navbar({ isLoggedIn, userFirstName, userRole, onLogout }
             
             {/* Only show Admin link for Admins */}
             {userRole === 'Admin' && (
+              <>
               <Link to="/admin" className={location.pathname === '/admin' ? 'active' : ''}>
                 Admin
               </Link>
+              <Link
+                  to="/admin/users"
+                  className={location.pathname === '/admin/users' || location.pathname.startsWith('/admin/users') ? 'active' : ''}
+                >
+                  Manage Users
+                </Link>
+              </>
             )}
             
             <button className="btn ghost logout" onClick={onLogout}>

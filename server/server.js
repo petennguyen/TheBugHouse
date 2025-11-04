@@ -1049,7 +1049,6 @@ app.get('/api/analytics/overview', authRequired, requireRole('Admin'), async (re
   }
 });
 
-
 // Get all students
 app.get('/api/admin/students', authRequired, requireRole('Admin'), async (req, res) => {
   try {
@@ -1670,6 +1669,131 @@ app.get('/api/admin/courses/:id/stats', authRequired, requireRole('Admin'), asyn
   }
 });
 
+// ---- Admin: Manage users (list, toggle active, delete) ----
+
+// GET all users (admin)
+app.get('/api/admin/users', authRequired, requireRole('Admin'), async (req, res) => {
+  try {
+    // Get basic user info and any tutor availability subject names (if present)
+    const [rows] = await pool.execute(
+      `
+      SELECT 
+        su.userID,
+        su.userFirstName,
+        su.userLastName,
+        su.userEmail,
+        su.userRole,
+        GROUP_CONCAT(DISTINCT ta.subjects SEPARATOR '||') AS subjects_concat
+      FROM System_User su
+      LEFT JOIN Tutor_Availability ta ON ta.Tutor_System_User_userID = su.userID
+      GROUP BY su.userID
+      ORDER BY su.userLastName, su.userFirstName
+      `
+    );
+
+    const users = rows.map(r => {
+      // subjects_concat may contain comma-separated subject lists already stored in ta.subjects,
+      // we used '||' as separator between rows so we need to split and flatten safely.
+      let subjects = [];
+      if (r.subjects_concat) {
+        subjects = r.subjects_concat
+          .split('||')
+          .map(s => s || '')
+          .flatMap(s => s.split(',').map(x => x.trim()).filter(Boolean));
+        // unique
+        subjects = Array.from(new Set(subjects));
+      }
+      return {
+        userID: r.userID,
+        userFirstName: r.userFirstName,
+        userLastName: r.userLastName,
+        email: r.userEmail,
+        role: r.userRole,
+        // best-effort fields expected by client
+        phone: null,
+        createdAt: null,
+        active: true, // default (DB may not have an active column)
+        subjects,
+      };
+    });
+
+    res.json(users);
+  } catch (err) {
+    console.error('Get admin users error:', err);
+    res.status(500).json({ message: 'Failed to load users' });
+  }
+});
+
+// PATCH update user (e.g. toggle active) - admin only
+app.patch('/api/admin/users/:id', authRequired, requireRole('Admin'), async (req, res) => {
+  const { id } = req.params;
+  const updates = req.body || {};
+
+  // Only allow toggling "active" via this endpoint for now
+  if (typeof updates.active === 'undefined') {
+    return res.status(400).json({ message: 'No updatable fields provided. Supported: active' });
+  }
+
+  try {
+    // Try to perform update. If your System_User table doesn't have an 'active' column,
+    // this will throw — catch and return a helpful error.
+    const [result] = await pool.execute(
+      'UPDATE System_User SET active = ? WHERE userID = ?',
+      [updates.active ? 1 : 0, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({ message: 'User updated' });
+  } catch (err) {
+    console.error('Patch admin user error:', err);
+    // If column doesn't exist or other DB error, return 400 with hint
+    if (err.code === 'ER_BAD_FIELD_ERROR') {
+      return res.status(400).json({ message: "Database missing 'active' column on System_User. Add boolean `active` column or adjust endpoint." });
+    }
+    res.status(500).json({ message: 'Failed to update user' });
+  }
+});
+
+// DELETE user (admin) - cleans up role-specific records then user
+app.delete('/api/admin/users/:id', authRequired, requireRole('Admin'), async (req, res) => {
+  const userId = Number(req.params.id);
+  if (!userId) return res.status(400).json({ message: 'Invalid user id' });
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    // Remove tutor availability (safe), tutor role, student role, administrator role if present
+    await conn.execute('DELETE FROM Tutor_Availability WHERE Tutor_System_User_userID = ?', [userId]);
+    await conn.execute('DELETE FROM Tutor WHERE System_User_userID = ?', [userId]);
+    await conn.execute('DELETE FROM Student WHERE System_User_userID = ?', [userId]);
+    await conn.execute('DELETE FROM Administrator WHERE System_User_userID = ?', [userId]);
+
+    // Delete any sessions where this user is student or tutor — optional, but better to avoid FK issues.
+    await conn.execute('DELETE FROM Tutor_Session WHERE Student_System_User_userID = ? OR Tutor_System_User_userID = ?', [userId, userId]);
+
+    // Finally delete the user
+    const [result] = await conn.execute('DELETE FROM System_User WHERE userID = ?', [userId]);
+
+    if (result.affectedRows === 0) {
+      await conn.rollback();
+      conn.release();
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    await conn.commit();
+    conn.release();
+    res.json({ message: 'User deleted' });
+  } catch (err) {
+    await conn.rollback();
+    conn.release();
+    console.error('Delete admin user error:', err);
+    res.status(500).json({ message: 'Failed to delete user' });
+  }
+});
 
 
 const PORT = process.env.PORT || 8000;
