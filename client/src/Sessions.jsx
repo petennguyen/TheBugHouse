@@ -11,6 +11,8 @@ export default function Sessions() {
   const [filter, setFilter] = useState('all');
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [sessionToCancel, setSessionToCancel] = useState(null); 
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [sessionToUpdate, setSessionToUpdate] = useState(null);
   const role = localStorage.getItem('role');
 
   const load = async () => {
@@ -38,9 +40,34 @@ export default function Sessions() {
         feedback 
       });
       setShowFeedbackModal(false);
+      setMsg('✅ Feedback submitted successfully');
       load();
     } catch {
       alert('Failed to save feedback');
+    }
+  };
+
+   // Student check-in
+  const checkIn = async (sessionID) => {
+    try {
+      await api.post(`/api/sessions/${sessionID}/check-in`);
+      setMsg('✅ Checked in successfully');
+      load();
+    } catch (error) {
+      alert(error.response?.data?.message || 'Failed to check in');
+    }
+  };
+
+  // Tutor: Mark session status
+  const updateSessionStatus = async (sessionID, status) => {
+    try {
+      await api.post(`/api/sessions/${sessionID}/status`, { status });
+      setShowStatusModal(false);
+      setSessionToUpdate(null);
+      setMsg(`✅ Session marked as ${status}`);
+      load();
+    } catch (error) {
+      alert(error.response?.data?.message || 'Failed to update session status');
     }
   };
 
@@ -68,6 +95,24 @@ export default function Sessions() {
     }
   };
 
+  // Determine session status
+  const getSessionStatus = (session) => {
+    const sessionDate = new Date(session.scheduleDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    sessionDate.setHours(0, 0, 0, 0);
+
+    if (session.sessionStatus === 'no_show') return { label: 'No Show', color: '#dc2626', bg: '#fef2f2' };
+    if (session.sessionStatus === 'cancelled') return { label: 'Cancelled', color: '#6b7280', bg: '#f3f4f6' };
+    
+    if (session.sessionSignOutTime) return { label: 'Completed', color: '#059669', bg: '#d1fae5' };
+    if (session.sessionSignInTime) return { label: 'Ongoing', color: '#f59e0b', bg: '#fef3c7' };
+    if (sessionDate > today) return { label: 'Upcoming', color: '#2563eb', bg: '#dbeafe' };
+    if (sessionDate < today && !session.sessionSignInTime) return { label: 'Missed', color: '#dc2626', bg: '#fef2f2' };
+    
+    return { label: 'Scheduled', color: '#6b7280', bg: '#f3f4f6' };
+  };
+
   // Filter sessions based on selected filter
   const getFilteredSessions = () => {
     const today = new Date();
@@ -78,15 +123,16 @@ export default function Sessions() {
         return rows.filter(session => {
           const sessionDate = new Date(session.scheduleDate);
           sessionDate.setHours(0, 0, 0, 0);
-          return sessionDate >= today;
+          return sessionDate >= today && !session.sessionSignOutTime;
         });
+
+      case 'ongoing':
+        return rows.filter(session => 
+          session.sessionSignInTime && !session.sessionSignOutTime
+        );
       
-      case 'past':
-        return rows.filter(session => {
-          const sessionDate = new Date(session.scheduleDate);
-          sessionDate.setHours(0, 0, 0, 0);
-          return sessionDate < today;
-        });
+      case 'completed':
+        return rows.filter(session => session.sessionSignOutTime);
       
       default:
         return rows;
@@ -99,16 +145,15 @@ export default function Sessions() {
     sessionDate.setHours(0, 0, 0, 0);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return sessionDate >= today;
+    return sessionDate >= today && !session.sessionSignOutTime;
   }).length;
   
-  const pastCount = rows.filter(session => {
-    const sessionDate = new Date(session.scheduleDate);
-    sessionDate.setHours(0, 0, 0, 0);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return sessionDate < today;
-  }).length;
+  const ongoingCount = rows.filter(session => 
+    session.sessionSignInTime && !session.sessionSignOutTime
+  ).length;
+
+  const completedCount = rows.filter(session => session.sessionSignOutTime).length;
+
 
   return (
     <div className="card">
@@ -144,18 +189,32 @@ export default function Sessions() {
             Upcoming ({upcomingCount})
           </button>
           <button
-            className={`btn ${filter === 'past' ? 'primary' : ''}`}
-            onClick={() => setFilter('past')}
+            className={`btn ${filter === 'ongoing' ? 'primary' : ''}`}
+            onClick={() => setFilter('ongoing')}
             style={{
               padding: '6px 12px',
               fontSize: 14,
-              background: filter === 'past' ? '#2563eb' : '#e5e7eb',
+              background: filter === 'past' ? '#f59e0b' : '#e5e7eb',
               color: filter === 'past' ? '#fff' : '#111827',
               border: 'none',
               borderRadius: 6
             }}
           >
-            Past ({pastCount})
+          Ongoing ({ongoingCount})
+          </button>
+          <button
+            className={`btn ${filter === 'completed' ? 'primary' : ''}`}
+            onClick={() => setFilter('completed')}
+            style={{
+              padding: '6px 12px',
+              fontSize: 14,
+              background: filter === 'completed' ? '#059669' : '#e5e7eb',
+              color: filter === 'completed' ? '#fff' : '#111827',
+              border: 'none',
+              borderRadius: 6
+            }}
+          >
+            Completed ({completedCount})
           </button>
         </div>
       </div>
@@ -169,6 +228,7 @@ export default function Sessions() {
           today.setHours(0, 0, 0, 0);
           sessionDate.setHours(0, 0, 0, 0);
           const isUpcoming = sessionDate >= today;
+          const status = getSessionStatus(r);
           
           return (
             <li key={r.sessionID} className="item">
@@ -181,10 +241,10 @@ export default function Sessions() {
                     padding: '2px 6px',
                     fontSize: 10,
                     borderRadius: 4,
-                    background: isUpcoming ? '#dcfce7' : '#f3f4f6',
-                    color: isUpcoming ? '#166534' : '#6b7280'
+                    background: status.bg,
+                    color: status.color
                   }}>
-                    {isUpcoming ? 'UPCOMING' : 'PAST'}
+                    {status.label}
                   </span>
                   <br />
                   {new Date(r.scheduleDate).toLocaleString('en-US', {
@@ -192,9 +252,6 @@ export default function Sessions() {
                     year: 'numeric',
                     month: 'short',
                     day: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true,
                   })}
                 </div>
                 {role === 'Student' && (
@@ -212,7 +269,7 @@ export default function Sessions() {
                       })
                     : '-'}
                   <span> · </span>
-                  Out: {r.sessionSignOutTime
+                  Check-Out: {r.sessionSignOutTime
                     ? new Date(r.sessionSignOutTime).toLocaleString('en-US', {
                         hour: 'numeric',
                         minute: '2-digit',
@@ -220,50 +277,103 @@ export default function Sessions() {
                       })
                     : '-'}
                   <span> · </span>
-                  Rating: {r.sessionRating ?? '-'}
+                  Rating: {'⭐'.repeat(r.sessionRating)}
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: 8 }}>
-                {/* Feedback button - only for past completed sessions */}
-                {role === 'Student' && !isUpcoming && r.sessionSignInTime && r.sessionSignOutTime && (
-                  <button className="btn primary" onClick={() => leaveFeedback(r.sessionID)}>
-                    Feedback
-                  </button>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {/* STUDENT ACTIONS */}
+                {role === 'Student' && (
+                  <>
+                    {/* Check-in button */}
+                    {!r.sessionSignInTime && status.label === 'Upcoming' && (
+                      <button 
+                        className="btn success" 
+                        onClick={() => checkIn(r.sessionID)}
+                        style={{
+                          padding: '6px 12px', 
+                          fontSize: 12, 
+                          background: '#059669', 
+                          color: '#fff', 
+                          border: 'none', 
+                          borderRadius: 4
+                        }}
+                      >
+                        Check In
+                      </button>
+                    )}
+                    
+                    {/* Feedback button */}
+                    {status.label === 'Completed' && (
+                      <button 
+                        className="btn primary" 
+                        onClick={() => leaveFeedback(r.sessionID)}
+                        style={{
+                          padding: '6px 12px', 
+                          fontSize: 12
+                        }}
+                      >
+                        {r.sessionRating ? 'Update Feedback' : 'Leave Feedback'}
+                      </button>
+                    )}
+                    
+                    {/* Cancel button */}
+                    {(status.label === 'Upcoming' || status.label === 'Scheduled') && (
+                      <button 
+                        className="btn danger" 
+                        onClick={() => {
+                          setSessionToCancel(r.sessionID);
+                          setShowCancelModal(true);
+                        }}
+                        style={{
+                          padding: '6px 12px', 
+                          fontSize: 12, 
+                          background: '#dc2626', 
+                          color: '#fff', 
+                          border: 'none', 
+                          borderRadius: 4
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </>
                 )}
-                {/* Check-in button - only for upcoming sessions */}
-                {role === 'Student' && isUpcoming && !r.sessionSignInTime && (
-                  <button 
-                    className="btn success" 
-                    onClick={() => console.log('Check in to session', r.sessionID)}
-                    style={{
-                      padding: '6px 12px', fontSize: 12, background: '#059669', 
-                      color: '#fff', border: 'none', borderRadius: 4
-                    }}
-                  >
-                    Check In
-                  </button>
-                )}
-                {/* Cancel button - only for upcoming sessions */}
-                {role === 'Student' && isUpcoming && !r.sessionSignOutTime && (
-                  <button 
-                    className="btn danger" 
-                    onClick={() => {
-                      setSessionToCancel(r.sessionID);
-                      setShowCancelModal(true);
-                    }}
-                    style={{
-                      padding: '6px 12px', fontSize: 12, background: '#dc2626', 
-                      color: '#fff', border: 'none', borderRadius: 4
-                    }}
-                  >
-                    Cancel
-                  </button>
-                )}
+
+                {/* TUTOR ACTIONS */}
                 {role === 'Tutor' && (
-                  <button className="btn" onClick={() => toggleAttend(r.sessionID)}>
-                    Mark Attend/Out
-                  </button>
+                  <>
+                    {/* Update Status button */}
+                    {!r.sessionSignOutTime && (status.label === 'Upcoming' || status.label === 'Ongoing' || status.label === 'Scheduled') && (
+                      <button 
+                        className="btn primary" 
+                        onClick={() => {
+                          setSessionToUpdate(r.sessionID);
+                          setShowStatusModal(true);
+                        }}
+                        style={{
+                          padding: '6px 12px', 
+                          fontSize: 12
+                        }}
+                      >
+                        Update Status
+                      </button>
+                    )}
+                    
+                    {/* View Feedback */}
+                    {r.sessionFeedback && (
+                      <button 
+                        className="btn" 
+                        onClick={() => alert(`Feedback: ${r.sessionFeedback}\nRating: ${r.sessionRating || 'N/A'}`)}
+                        style={{
+                          padding: '6px 12px', 
+                          fontSize: 12
+                        }}
+                      >
+                        View Feedback
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </li>
@@ -272,7 +382,8 @@ export default function Sessions() {
         {!filteredRows.length && (
           <li className="muted">
             {filter === 'upcoming' && 'No upcoming sessions.'}
-            {filter === 'past' && 'No past sessions.'}
+            {filter === 'ongoing' && 'No ongoing sessions.'}
+            {filter === 'completed' && 'No completed sessions.'}
             {filter === 'all' && 'No sessions.'}
           </li>
         )}
@@ -305,11 +416,11 @@ export default function Sessions() {
                 }}
               >
                 <option value="">Select rating...</option>
-                <option value="1">1 - Poor</option>
-                <option value="2">2 - Fair</option>
-                <option value="3">3 - Good</option>
-                <option value="4">4 - Very Good</option>
-                <option value="5">5 - Excellent</option>
+                <option value="1">⭐ - Poor</option>
+                <option value="2">⭐⭐ - Fair</option>
+                <option value="3">⭐⭐⭐ - Good</option>
+                <option value="4">⭐⭐⭐⭐ - Very Good</option>
+                <option value="5">⭐⭐⭐⭐⭐ - Excellent</option>
               </select>
             </div>
 
@@ -320,8 +431,8 @@ export default function Sessions() {
               <textarea
                 value={feedback}
                 onChange={(e) => setFeedback(e.target.value)}
-                placeholder="Optional feedback..."
-                rows={3}
+                placeholder="Share your experience..."
+                rows={4}
                 style={{
                   width: '100%', padding: '8px 12px', border: '1px solid #d1d5db',
                   borderRadius: 6, fontSize: 14, resize: 'vertical'
@@ -336,7 +447,8 @@ export default function Sessions() {
                 disabled={!rating}
                 style={{
                   padding: '8px 16px', background: rating ? '#2563eb' : '#9ca3af',
-                  color: '#fff', border: 'none', borderRadius: 6, fontSize: 14
+                  color: '#fff', border: 'none', borderRadius: 6, fontSize: 14,
+                  cursor: rating ? 'pointer' : 'not-allowed'
                 }}
               >
                 Submit Feedback
@@ -369,9 +481,13 @@ export default function Sessions() {
           }}>
             <div style={{ 
               marginBottom: 16, 
-              fontWeight: 700
+              fontWeight: 700,
+              fontSize: 18
             }}>
-              Are you sure you want to cancel this session?
+              Cancel Session?
+            </div>
+            <div style={{ marginBottom: 20, color: '#6b7280' }}>
+              Are you sure you want to cancel this session? This action cannot be undone.
             </div>
 
             <div style={{ display: 'flex', gap: 12 }}>
@@ -382,6 +498,7 @@ export default function Sessions() {
                   setSessionToCancel(null);
                 }}
                 style={{
+                  flex: 1,
                   padding: '8px 16px', 
                   background: '#e5e7eb', 
                   color: '#111827',
@@ -396,6 +513,7 @@ export default function Sessions() {
                 className="btn danger"
                 onClick={confirmCancelSession}
                 style={{
+                  flex: 1,
                   padding: '8px 16px', 
                   background: '#dc2626', 
                   color: '#fff',
@@ -405,6 +523,101 @@ export default function Sessions() {
                 }}
               >
                 Yes, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tutor Status Update Modal */}
+      {showStatusModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+          background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', 
+          justifyContent: 'center', zIndex: 10000
+        }}>
+          <div style={{
+            background: '#fff', padding: 24, borderRadius: 12, minWidth: 400, 
+            boxShadow: '0 8px 22px rgba(0,0,0,0.15)'
+          }}>
+            <div style={{ 
+              marginBottom: 16, 
+              fontWeight: 700,
+              fontSize: 18
+            }}>
+              Update Session Status
+            </div>
+            <div style={{ marginBottom: 20, color: '#6b7280' }}>
+              Select the status for this tutoring session:
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <button
+                onClick={() => updateSessionStatus(sessionToUpdate, 'completed')}
+                style={{
+                  padding: '12px 16px', 
+                  background: '#059669', 
+                  color: '#fff',
+                  border: 'none', 
+                  borderRadius: 6, 
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  fontWeight: 600
+                }}
+              >
+                ✓ Mark as Completed
+              </button>
+              <button
+                onClick={() => updateSessionStatus(sessionToUpdate, 'no_show')}
+                style={{
+                  padding: '12px 16px', 
+                  background: '#dc2626', 
+                  color: '#fff',
+                  border: 'none', 
+                  borderRadius: 6, 
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  fontWeight: 600
+                }}
+              >
+                ✗ Mark as No Show
+              </button>
+              <button
+                onClick={() => {
+                  setShowStatusModal(false);
+                  setSessionToCancel(sessionToUpdate);
+                  setSessionToUpdate(null);
+                  setShowCancelModal(true);
+                }}
+                style={{
+                  padding: '12px 16px', 
+                  background: '#6b7280', 
+                  color: '#fff',
+                  border: 'none', 
+                  borderRadius: 6, 
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  fontWeight: 600
+                }}
+              >
+                🚫 Cancel Session
+              </button>
+              <button
+                onClick={() => {
+                  setShowStatusModal(false);
+                  setSessionToUpdate(null);
+                }}
+                style={{
+                  padding: '12px 16px', 
+                  background: '#e5e7eb', 
+                  color: '#111827',
+                  border: 'none', 
+                  borderRadius: 6, 
+                  fontSize: 14,
+                  cursor: 'pointer'
+                }}
+              >
+                Close
               </button>
             </div>
           </div>

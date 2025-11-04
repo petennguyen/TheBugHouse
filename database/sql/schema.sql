@@ -124,6 +124,7 @@ CREATE TABLE `Tutor_Session` (
   `sessionSignOutTime` DATETIME(3) NULL,
   `sessionFeedback`    VARCHAR(255) NULL,
   `sessionRating`      INT NULL,
+  `sessionStatus` VARCHAR(20) DEFAULT NULL,
   PRIMARY KEY (`sessionID`, `Timeslot_timeslotID`, `Timeslot_Daily_Schedule_scheduleID`),
   KEY `idx_Session_Timeslot` (`Timeslot_timeslotID`,`Timeslot_Daily_Schedule_scheduleID`),
   KEY `idx_Session_Tutor` (`Tutor_System_User_userID`),
