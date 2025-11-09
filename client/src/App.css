@@ -526,3 +526,37 @@ input:focus, select:focus, textarea:focus {
   outline: none;
 }
 
+/* FullCalendar event blocks */
+.fc .ev-cancelled {
+  background: #ef4444 !important;   /* red-500 */
+  border-color: #ef4444 !important;
+  color: #ffffff !important;
+}
+.fc .ev-ongoing {
+  background: #3b82f6 !important;   /* blue-500 */
+  border-color: #3b82f6 !important;
+  color: #ffffff !important;
+}
+.fc .ev-completed {
+  background: #10b981 !important;   /* emerald-500 */
+  border-color: #10b981 !important;
+  color: #ffffff !important;
+}
+.fc .ev-no-show {
+  background: #6b7280 !important;   /* gray-500 */
+  border-color: #6b7280 !important;
+  color: #ffffff !important;
+}
+.fc .ev-upcoming {
+  background: #8b5cf6 !important;   /* violet-500 */
+  border-color: #8b5cf6 !important;
+  color: #ffffff !important;
+}
+
+/* Legend dots reuse the same color classes */
+.legend-dot.ev-cancelled { background: #ef4444; }
+.legend-dot.ev-ongoing   { background: #3b82f6; }
+.legend-dot.ev-completed { background: #10b981; }
+.legend-dot.ev-no-show   { background: #6b7280; }
+.legend-dot.ev-upcoming  { background: #8b5cf6; }
+

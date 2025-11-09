@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import Login from './Login';
 import Signup from './Signup';
@@ -14,8 +14,25 @@ import Navbar from './Navbar.jsx';
 import TimeslotGenerator from './TimeslotGenerator';
 import ManageUsers from './manageusers.js';
 import CourseManagement from './CourseManagement'; 
+import TutorCalendar from './TutorCalendar';
 
+// (tuỳ chọn) Verify route – dùng khi handleCodeInApp:true
+function Verify() {
+  return <div style={{ padding: 24 }}>Verifying…</div>;
+}
 
+// Helper: đọc query param
+function useQuery() {
+  const { search } = useLocation();
+  return new URLSearchParams(search);
+}
+
+// Wrapper cho /login để truyền message
+function LoginRoute({ onLogin }) {
+  const q = useQuery();
+  const message = q.get('message') || '';
+  return <Login onLogin={onLogin} message={message} />;
+}
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -77,7 +94,6 @@ function App() {
     <Router>
       <div className="App" style={bgStyle}>
         <div className="overlay">
-          {/* Use the new Navbar component */}
           <Navbar 
             isLoggedIn={isLoggedIn}
             userFirstName={userFirstName}
@@ -85,12 +101,14 @@ function App() {
             onLogout={handleLogout}
           />
 
-          {/* MAIN */}
           <main className="app-main">
             <Routes>
               {/* Auth */}
-              <Route path="/login" element={isLoggedIn ? <Navigate to="/" replace /> : <Login onLogin={handleLogin} />} />
+              <Route path="/login" element={isLoggedIn ? <Navigate to="/" replace /> : <LoginRoute onLogin={handleLogin} />} />
               <Route path="/signup" element={isLoggedIn ? <Navigate to="/" replace /> : <Signup onLogin={handleLogin} />} />
+
+              {/* (tuỳ chọn) Verify route khi handleCodeInApp:true */}
+              <Route path="/verify" element={<Verify />} />
 
               {/* Dashboard */}
               <Route path="/" element={isLoggedIn ? <Dashboard /> : <Navigate to="/login" replace />} />
@@ -103,9 +121,8 @@ function App() {
               <Route path="/admin/timeslot-generator" element={isLoggedIn && userRole === 'Admin' ? <TimeslotGenerator /> : <Navigate to="/" replace />} />
               <Route path="/admin/users" element={isLoggedIn && userRole === 'Admin' ? <ManageUsers /> : <Navigate to="/" replace />} />
               <Route path="/admin/courses" element={isLoggedIn && userRole === 'Admin' ? <CourseManagement /> : <Navigate to="/" replace />} />
-
+              <Route path="/tutor/calendar" element={isLoggedIn && userRole === 'Tutor' ? <TutorCalendar /> : <Navigate to="/" replace />} />
               {/* 404 */}
-
               <Route path="*" element={<Navigate to={isLoggedIn ? '/' : '/login'} replace />} />
             </Routes>
           </main>
