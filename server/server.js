@@ -1,4 +1,3 @@
-// server/server.js
 require('dotenv').config();
 
 const express = require('express');
@@ -7,7 +6,7 @@ const jwt = require('jsonwebtoken');
 const mysql = require('mysql2/promise');
 const cron = require('node-cron');
 
-// ---- SendGrid (an toàn khi dev) ----
+// ---- SendGrid ----
 let sgMail = null;
 try {
   sgMail = require('@sendgrid/mail');
@@ -68,7 +67,7 @@ function authRequired(req, res, next) {
     const token = getTokenFromHeader(req);
     if (!token) return res.status(401).json({ message: 'No token provided' });
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'change_me_now');
-    req.user = decoded; // { email, role, userID, ... }
+    req.user = decoded;
     next();
   } catch (err) {
     console.error('authRequired error:', err);
@@ -262,7 +261,7 @@ app.get('/api/timeslots/available', authRequired, async (req, res) => {
   }
 });
 
-// ---- My sessions (bản hợp nhất) ----
+// ---- My sessions ----
 app.get('/api/sessions/mine', authRequired, async (req, res) => {
   try {
     let query = '';
@@ -393,7 +392,7 @@ app.get('/api/student/calendar', authRequired, requireRole('Student'), async (re
   }
 });
 
-// ---- Tutor calendar (KÈM STATUS để tô màu) ----
+// ---- Tutor calendar ----
 app.get('/api/tutor/calendar', authRequired, requireRole('Tutor'), async (req, res) => {
   try {
     const [rows] = await pool.execute(
@@ -702,7 +701,6 @@ app.post('/api/auth/login-database-first', async (req, res) => {
     if (rows.length === 0) return res.status(401).json({ message: 'Invalid credentials' });
 
     const user = rows[0];
-    // NOTE: demo plain text compare (KHÔNG an toàn)
     if (user.userPassword !== password) return res.status(401).json({ message: 'Invalid credentials' });
 
     const token = jwt.sign(
@@ -740,7 +738,6 @@ app.post('/api/auth/login', async (req, res) => {
   }
 
   try {
-    // ---- Nhánh Firebase UID (khuyến nghị) ----
     if (firebaseUID) {
       const [rows] = await pool.execute(
         'SELECT userID, userFirstName, userLastName, userEmail, userPassword, userRole, firebaseUID FROM System_User WHERE userEmail = ?',
@@ -751,9 +748,6 @@ app.post('/api/auth/login', async (req, res) => {
       }
       const user = rows[0];
 
-      // (tuỳ chọn) verify UID với Firebase Admin tại đây
-
-      // Liên kết UID nếu chưa có
       if (!user.firebaseUID || user.firebaseUID === 'firebase_user') {
         await pool.execute('UPDATE System_User SET firebaseUID = ? WHERE userID = ?', [firebaseUID, user.userID]);
       } else if (user.firebaseUID !== firebaseUID) {
@@ -788,7 +782,6 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
 
-    // ---- Nhánh DB-first (email/password) ----
     const [rows] = await pool.execute(
       'SELECT userID, userFirstName, userLastName, userEmail, userPassword, userRole FROM System_User WHERE userEmail = ?',
       [email]
@@ -884,7 +877,6 @@ app.post('/api/auth/signup', async (req, res) => {
   }
 });
 
-// 🔧 COMPLETE-SIGNUP: FIND-OR-CREATE (vá duplicate)
 app.post('/api/auth/complete-signup', async (req, res) => {
   const { firebaseUID, name, email, role } = req.body;
   if (!firebaseUID || !email || !role) {
@@ -967,7 +959,6 @@ app.post('/api/auth/complete-signup', async (req, res) => {
   }
 });
 
-// 🔗 PHÁT LINK VERIFY (hosted page của Firebase, redirect về /login)
 app.post('/api/auth/send-verification', authRequired, async (req, res) => {
   try {
     if (!admin.apps.length) {

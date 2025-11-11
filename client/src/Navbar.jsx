@@ -41,7 +41,7 @@ const NavbarBug = () => (
 );
 
 export default function Navbar({ isLoggedIn, userFirstName, userRole, onLogout }) {
-  const location = useLocation(); // inside Router
+  const location = useLocation();
 
   return (
     <header className="navbar blue-navbar">
@@ -59,14 +59,22 @@ export default function Navbar({ isLoggedIn, userFirstName, userRole, onLogout }
               Dashboard
             </Link>
 
-            {/* Sessions for Student/Tutor */}
+            {/* Sessions & Calendar cho Student/Tutor */}
             {(userRole === 'Student' || userRole === 'Tutor') && (
-              <Link
-                to="/sessions"
-                className={location.pathname === '/sessions' ? 'active' : ''}
-              >
-                My Sessions
-              </Link>
+              <>
+                <Link
+                  to="/sessions"
+                  className={location.pathname === '/sessions' ? 'active' : ''}
+                >
+                  My Sessions
+                </Link>
+                <Link
+                  to="/calendar"
+                  className={location.pathname === '/calendar' ? 'active' : ''}
+                >
+                  Calendar
+                </Link>
+              </>
             )}
 
             {/* Student-only */}
@@ -82,14 +90,6 @@ export default function Navbar({ isLoggedIn, userFirstName, userRole, onLogout }
             {/* Tutor-only */}
             {userRole === 'Tutor' && (
               <>
-                <Link
-                  to="/tutor/calendar"
-                  className={
-                    location.pathname === '/tutor/calendar' ? 'active' : ''
-                  }
-                >
-                  Calendar
-                </Link>
                 <Link
                   to="/availability"
                   className={location.pathname === '/availability' ? 'active' : ''}

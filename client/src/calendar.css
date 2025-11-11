@@ -1,0 +1,21 @@
+.bh-calendar-wrap {
+  background: rgba(255,255,255,.92);
+  backdrop-filter: blur(2px);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.08);
+}
+
+.bh-event { display:flex; gap:8px; align-items:stretch; width:100%; }
+.bh-event-bar { width:4px; border-radius:3px; flex:0 0 auto; }
+.bh-event-body { display:grid; gap:2px; line-height:1.2; }
+.bh-event-time { font-size:.78rem; color:#6b7280; }
+.bh-event-title { font-weight:600; font-size:.9rem; color:#111827; }
+.bh-event-chip {
+  margin-top:2px; display:inline-block; border:1px solid currentColor;
+  border-radius:9999px; padding:1px 6px; font-size:.68rem; font-weight:600; background:#fff;
+}
+
+.bh-legend { display:flex; gap:14px; align-items:center; margin-top:8px; color:#4b5563; font-size:.85rem; }
+.bh-legend-item { display:inline-flex; gap:6px; align-items:center; }
+.bh-dot { width:10px; height:10px; border-radius:9999px; display:inline-block; }

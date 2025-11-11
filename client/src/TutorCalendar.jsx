@@ -5,10 +5,21 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 
+function LegendChip({ colorClass, label }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+      <span
+        className={`legend-dot ${colorClass}`}
+        style={{ width: 12, height: 12, borderRadius: 9999, display: 'inline-block' }}
+      />
+      <span style={{ fontSize: 13 }}>{label}</span>
+    </span>
+  );
+}
+
 export default function TutorCalendar() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  // trigger re-render mỗi phút để cập nhật class "ongoing"
   const [tick, setTick] = useState(0);
 
   const token = useMemo(() => localStorage.getItem('token'), []);
@@ -30,7 +41,7 @@ export default function TutorCalendar() {
   }, [token]);
 
   useEffect(() => {
-    const id = setInterval(() => setTick((x) => x + 1), 60 * 1000); // mỗi 60s
+    const id = setInterval(() => setTick((x) => x + 1), 60 * 1000); 
     return () => clearInterval(id);
   }, []);
 
@@ -44,18 +55,19 @@ export default function TutorCalendar() {
         ext.status ? `Status: ${ext.status}` : null,
         `Start: ${e.start?.toLocaleString()}`,
         `End: ${e.end?.toLocaleString()}`,
-      ].filter(Boolean).join('\n')
+      ]
+        .filter(Boolean)
+        .join('\n')
     );
   }
 
-  // Gán class theo status + ongoing
   function eventClassNames(arg) {
-    // dùng tick để buộc tính toán lại mỗi phút
     void tick;
 
-    const status = (arg.event.extendedProps?.status || '').toLowerCase(); // completed / cancelled / no_show / ''
+    const status = (arg.event.extendedProps?.status || '').toLowerCase(); 
     const now = new Date();
-    const s = arg.event.start, e = arg.event.end;
+    const s = arg.event.start,
+      e = arg.event.end;
     const isOngoing = s && e && now >= s && now < e && status !== 'cancelled';
 
     const classes = [];
@@ -63,8 +75,8 @@ export default function TutorCalendar() {
     else if (status === 'completed') classes.push('ev-completed');
     else if (status === 'no_show') classes.push('ev-no-show');
 
-    if (!status && s && e && now < s) classes.push('ev-upcoming'); // mặc định upcoming
-    if (isOngoing) classes.push('ev-ongoing'); // ưu tiên blue
+    if (!status && s && e && now < s) classes.push('ev-upcoming'); 
+    if (isOngoing) classes.push('ev-ongoing'); 
 
     return classes;
   }
@@ -74,7 +86,10 @@ export default function TutorCalendar() {
       <h2 style={{ marginBottom: 12 }}>My Calendar</h2>
 
       {/* Legend */}
-      <div className="legend" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+      <div
+        className="legend"
+        style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}
+      >
         <LegendChip colorClass="ev-ongoing" label="Ongoing" />
         <LegendChip colorClass="ev-completed" label="Completed" />
         <LegendChip colorClass="ev-cancelled" label="Cancelled" />
@@ -101,16 +116,5 @@ export default function TutorCalendar() {
         />
       )}
     </div>
-  );
-}
-
-function LegendChip({ colorClass, label }) {
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-      <span className={`legend-dot ${colorClass}`} style={{
-        width: 12, height: 12, borderRadius: 9999, display: 'inline-block'
-      }} />
-      <span style={{ fontSize: 13 }}>{label}</span>
-    </span>
   );
 }

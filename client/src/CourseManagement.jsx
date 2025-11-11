@@ -185,7 +185,7 @@ function CourseManagement() {
                 className="min-w-full text-gray-700 table-auto mx-auto w-full max-w-6xl"
                 style={{
                   borderCollapse: 'separate',
-                  borderSpacing: '6rem 2.5rem' // large horizontal spacing + vertical row spacing
+                  borderSpacing: '6rem 2.5rem'
                 }}
               >
                 <colgroup>

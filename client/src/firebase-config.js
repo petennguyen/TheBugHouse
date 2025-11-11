@@ -1,4 +1,3 @@
-// client/src/firebase-config.js
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, setPersistence, browserLocalPersistence, onAuthStateChanged } from 'firebase/auth';
 
@@ -11,9 +10,7 @@ const firebaseConfig = {
   appId: process.env.REACT_APP_FIREBASE_APP_ID,
 };
 
-// Hard guard so you know exactly why it fails during setup
 if (!firebaseConfig.apiKey) {
-  // eslint-disable-next-line no-console
   console.error('❌ Missing Firebase API key. Did you create client/.env (next to package.json) and restart?');
   throw new Error('Firebase config is missing. Check client/.env');
 }
@@ -32,11 +29,9 @@ export async function ensureAuthReady() {
   try {
     await setPersistence(auth, browserLocalPersistence);
   } catch (e) {
-    // Non-fatal (e.g., browsers blocking third-party cookies)
-    // eslint-disable-next-line no-console
+
     console.warn('Auth persistence not applied:', e?.message || e);
   }
-  // Wait for the first auth state resolution so routes/guards don’t crash
   await new Promise((resolve) => {
     const unsub = onAuthStateChanged(auth, () => {
       unsub();

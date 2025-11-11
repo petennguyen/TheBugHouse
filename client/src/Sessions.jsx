@@ -86,7 +86,7 @@ export default function Sessions() {
       setMsg('Session cancelled successfully');
       setShowCancelModal(false);
       setSessionToCancel(null);
-      load(); // Reload the sessions list
+      load(); 
     } catch (error) {
       const errorMsg = error.response?.data?.message || 'Failed to cancel session';
       alert(errorMsg);

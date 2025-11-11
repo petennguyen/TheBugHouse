@@ -14,12 +14,12 @@ const api = axios.create({ baseURL: API });
 export default function Signup() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState('Student'); // Student or Tutor
+  const [role, setRole] = useState('Student'); 
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
 
   const [msg, setMsg] = useState('');
-  const [type, setType] = useState('error'); // 'success' | 'error'
+  const [type, setType] = useState('error'); 
   const [loading, setLoading] = useState(false);
 
   // ----- Password requirement checks -----
@@ -72,13 +72,12 @@ export default function Signup() {
         });
       } catch {}
 
-      // 4) Pre-create DB record so first login is seamless (ignore 400 "already exists")
       try {
         await api.post('/api/auth/complete-signup', {
           firebaseUID: user.uid,
           name: name.trim(),
           email: user.email,
-          role, // 'Student' or 'Tutor'
+          role, 
         });
       } catch (err) {
         if (err?.response?.status !== 400) {

@@ -8,10 +8,6 @@ export default function AdminDashboard() {
   const [subjectName, setSubjectName] = useState('');
   const [msg, setMsg] = useState("");
   const navigate = useNavigate();
-
-  // tabs removed — always render dashboard + course management sections
-
-  // New state variables for feedback analytics
   const [feedbackAnalytics, setFeedbackAnalytics] = useState(null);
   const [allFeedback, setAllFeedback] = useState([]);
   const [showFeedback, setShowFeedback] = useState(false);

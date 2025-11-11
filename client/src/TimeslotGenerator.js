@@ -39,7 +39,7 @@ function TimeslotGenerator() {
       const { data } = await api.post('/api/schedules/generate', { date });
       setScheduleID(data.scheduleID);
       setMsg(`Schedule created: ${data.scheduleID}`);
-      await load(); // Reload schedules to include the new one
+      await load();
     } catch (error) {
       setMsg(error?.response?.data?.error || 'Error creating schedule');
     }
@@ -60,7 +60,7 @@ function TimeslotGenerator() {
         durationMinutes: Number(dur),
       });
       setMsg(data.message);
-      await load(); // Reload schedules to update new timeslots
+      await load();
     } catch (error) {
       setMsg(error?.response?.data?.error || 'Error generating timeslots');
     }

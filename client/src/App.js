@@ -10,24 +10,24 @@ import Sessions from './Sessions';
 import TutorAvailability from './TutorAvailability';
 import AdminDashboard from './AdminDashboard';
 import Dashboard from './Dashboard.jsx';
-import Navbar from './Navbar.jsx'; 
+import Navbar from './Navbar.jsx';
 import TimeslotGenerator from './TimeslotGenerator';
 import ManageUsers from './manageusers.js';
-import CourseManagement from './CourseManagement'; 
+import CourseManagement from './CourseManagement';
 import TutorCalendar from './TutorCalendar';
+import StudentCalendar from './StudentCalendar';
 
-// (tuỳ chọn) Verify route – dùng khi handleCodeInApp:true
 function Verify() {
   return <div style={{ padding: 24 }}>Verifying…</div>;
 }
 
-// Helper: đọc query param
+
 function useQuery() {
   const { search } = useLocation();
   return new URLSearchParams(search);
 }
 
-// Wrapper cho /login để truyền message
+
 function LoginRoute({ onLogin }) {
   const q = useQuery();
   const message = q.get('message') || '';
@@ -94,7 +94,7 @@ function App() {
     <Router>
       <div className="App" style={bgStyle}>
         <div className="overlay">
-          <Navbar 
+          <Navbar
             isLoggedIn={isLoggedIn}
             userFirstName={userFirstName}
             userRole={userRole}
@@ -107,7 +107,7 @@ function App() {
               <Route path="/login" element={isLoggedIn ? <Navigate to="/" replace /> : <LoginRoute onLogin={handleLogin} />} />
               <Route path="/signup" element={isLoggedIn ? <Navigate to="/" replace /> : <Signup onLogin={handleLogin} />} />
 
-              {/* (tuỳ chọn) Verify route khi handleCodeInApp:true */}
+              {/*Verify route */}
               <Route path="/verify" element={<Verify />} />
 
               {/* Dashboard */}
@@ -116,12 +116,23 @@ function App() {
               {/* App pages */}
               <Route path="/book" element={isLoggedIn ? <StudentBook /> : <Navigate to="/login" replace />} />
               <Route path="/sessions" element={isLoggedIn ? <Sessions /> : <Navigate to="/login" replace />} />
+
+              {/* Shared calendar route */}
+              <Route
+                path="/calendar"
+                element={
+                  isLoggedIn
+                    ? (userRole === 'Tutor' ? <TutorCalendar /> : <StudentCalendar />)
+                    : <Navigate to="/login" replace />
+                }
+              />
+
               <Route path="/availability" element={isLoggedIn && userRole === 'Tutor' ? <TutorAvailability /> : <Navigate to="/" replace />} />
               <Route path="/admin" element={isLoggedIn && userRole === 'Admin' ? <AdminDashboard /> : <Navigate to="/" replace />} />
               <Route path="/admin/timeslot-generator" element={isLoggedIn && userRole === 'Admin' ? <TimeslotGenerator /> : <Navigate to="/" replace />} />
               <Route path="/admin/users" element={isLoggedIn && userRole === 'Admin' ? <ManageUsers /> : <Navigate to="/" replace />} />
               <Route path="/admin/courses" element={isLoggedIn && userRole === 'Admin' ? <CourseManagement /> : <Navigate to="/" replace />} />
-              <Route path="/tutor/calendar" element={isLoggedIn && userRole === 'Tutor' ? <TutorCalendar /> : <Navigate to="/" replace />} />
+
               {/* 404 */}
               <Route path="*" element={<Navigate to={isLoggedIn ? '/' : '/login'} replace />} />
             </Routes>
