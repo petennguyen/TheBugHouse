@@ -7,20 +7,37 @@ import interactionPlugin from '@fullcalendar/interaction';
 import { STATUS_COLORS, decorateStatus } from './statusUtils';
 import './calendar.css';
 
+function stripZ(dt) {
+  // '2025-11-11T19:00:00Z' -> '2025-11-11T19:00:00'
+  // '2025-11-11' stays the same
+  return typeof dt === 'string' ? dt.replace(/Z$/, '') : dt;
+}
+
 export default function SharedCalendar({ fetchUrl, roleLabel = '' }) {
   const [events, setEvents] = useState([]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
-    axios.get(`http://localhost:8000${fetchUrl}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    .then((res) => setEvents(Array.isArray(res.data) ? res.data : []))
-    .catch((err) => {
-      console.error('calendar fetch error', err);
-      setEvents([]);
-    });
+
+    axios
+      .get(`http://localhost:8000${fetchUrl}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => {
+        const raw = Array.isArray(res.data) ? res.data : [];
+        // Chuẩn hoá để tránh lệch múi giờ nếu có 'Z'
+        const normalized = raw.map((ev) => ({
+          ...ev,
+          start: stripZ(ev.start),
+          end: stripZ(ev.end),
+        }));
+        setEvents(normalized);
+      })
+      .catch((err) => {
+        console.error('calendar fetch error', err);
+        setEvents([]);
+      });
   }, [fetchUrl]);
 
   const eventContent = (arg) => {
@@ -57,11 +74,14 @@ export default function SharedCalendar({ fetchUrl, roleLabel = '' }) {
     );
   };
 
-  const toolbar = useMemo(() => ({
-    left: 'prev,next today',
-    center: 'title',
-    right: 'dayGridMonth,timeGridWeek,timeGridDay',
-  }), []);
+  const toolbar = useMemo(
+    () => ({
+      left: 'prev,next today',
+      center: 'title',
+      right: 'dayGridMonth,timeGridWeek,timeGridDay',
+    }),
+    []
+  );
 
   return (
     <div className="bh-calendar-wrap">
@@ -76,7 +96,8 @@ export default function SharedCalendar({ fetchUrl, roleLabel = '' }) {
         slotMinTime="07:00:00"
         slotMaxTime="21:00:00"
         stickyHeaderDates
-        businessHours={{ daysOfWeek: [1,2,3,4,5], startTime: '08:00', endTime: '18:00' }}
+        businessHours={{ daysOfWeek: [1, 2, 3, 4, 5], startTime: '08:00', endTime: '18:00' }}
+        timeZone="local"                 // 👈 Quan trọng: luôn hiển thị theo giờ địa phương
         events={events}
         eventContent={eventContent}
         eventDidMount={eventDidMount}

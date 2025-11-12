@@ -21,7 +21,6 @@ export default function TutorCalendar() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tick, setTick] = useState(0);
-
   const token = useMemo(() => localStorage.getItem('token'), []);
 
   useEffect(() => {
@@ -41,7 +40,7 @@ export default function TutorCalendar() {
   }, [token]);
 
   useEffect(() => {
-    const id = setInterval(() => setTick((x) => x + 1), 60 * 1000); 
+    const id = setInterval(() => setTick((x) => x + 1), 60 * 1000);
     return () => clearInterval(id);
   }, []);
 
@@ -63,11 +62,9 @@ export default function TutorCalendar() {
 
   function eventClassNames(arg) {
     void tick;
-
-    const status = (arg.event.extendedProps?.status || '').toLowerCase(); 
+    const status = (arg.event.extendedProps?.status || '').toLowerCase();
     const now = new Date();
-    const s = arg.event.start,
-      e = arg.event.end;
+    const s = arg.event.start, e = arg.event.end;
     const isOngoing = s && e && now >= s && now < e && status !== 'cancelled';
 
     const classes = [];
@@ -75,9 +72,8 @@ export default function TutorCalendar() {
     else if (status === 'completed') classes.push('ev-completed');
     else if (status === 'no_show') classes.push('ev-no-show');
 
-    if (!status && s && e && now < s) classes.push('ev-upcoming'); 
-    if (isOngoing) classes.push('ev-ongoing'); 
-
+    if (!status && s && e && now < s) classes.push('ev-upcoming');
+    if (isOngoing) classes.push('ev-ongoing');
     return classes;
   }
 
@@ -85,11 +81,7 @@ export default function TutorCalendar() {
     <div className="page-wrap" style={{ padding: 16 }}>
       <h2 style={{ marginBottom: 12 }}>My Calendar</h2>
 
-      {/* Legend */}
-      <div
-        className="legend"
-        style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}
-      >
+      <div className="legend" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
         <LegendChip colorClass="ev-ongoing" label="Ongoing" />
         <LegendChip colorClass="ev-completed" label="Completed" />
         <LegendChip colorClass="ev-cancelled" label="Cancelled" />
@@ -108,6 +100,7 @@ export default function TutorCalendar() {
             right: 'dayGridMonth,timeGridWeek,timeGridDay',
           }}
           initialView="timeGridWeek"
+          timeZone="local"             // 👈 đảm bảo hiển thị theo giờ địa phương
           events={events}
           eventClick={handleEventClick}
           height="auto"

@@ -365,24 +365,27 @@ app.get('/api/student/calendar', authRequired, requireRole('Student'), async (re
       const ext = { subject: r.subjectName, tutorName: `${r.tutorFirstName} ${r.tutorLastName}` };
 
       if (r.timeslotStartTime && r.timeslotEndTime) {
-        const d = new Date(r.scheduleDate);
-        const [sh, sm] = r.timeslotStartTime.split(':').map(Number);
-        const [eh, em] = r.timeslotEndTime.split(':').map(Number);
-        const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), sh, sm, 0);
-        const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), eh, em, 0);
+        const startHHMM = r.timeslotStartTime.slice(0, 5);
+        const endHHMM   = r.timeslotEndTime.slice(0, 5);
         return {
           id: r.sessionID,
           title,
-          start: start.toISOString(),
-          end: end.toISOString(),
+          start: `${r.scheduleDate}T${startHHMM}`, // local (không Z)
+          end:   `${r.scheduleDate}T${endHHMM}`,
           allDay: false,
           extendedProps: ext,
         };
       }
-      const dt = new Date(r.scheduleDate);
-      const startISO = new Date(Date.UTC(dt.getFullYear(), dt.getMonth(), dt.getDate())).toISOString();
-      const endISO = new Date(Date.UTC(dt.getFullYear(), dt.getMonth(), dt.getDate() + 1)).toISOString();
-      return { id: r.sessionID, title, start: startISO, end: endISO, allDay: true, extendedProps: ext };
+
+      // All-day fallback (ít dùng)
+      return {
+        id: r.sessionID,
+        title,
+        start: r.scheduleDate,
+        end: r.scheduleDate,
+        allDay: true,
+        extendedProps: ext,
+      };
     });
 
     res.json(events);
@@ -422,35 +425,36 @@ app.get('/api/tutor/calendar', authRequired, requireRole('Tutor'), async (req, r
 
     const events = rows.map((r) => {
       const title = `${r.subjectName} with ${r.studentFirstName} ${r.studentLastName}`;
-      const ext = {
-        subject: r.subjectName,
-        studentName: `${r.studentFirstName} ${r.studentLastName}`,
-        status: r.sessionStatus || null,
-        signIn: r.sessionSignInTime,
-        signOut: r.sessionSignOutTime,
-      };
 
       if (r.timeslotStartTime && r.timeslotEndTime) {
-        const d = new Date(r.scheduleDate);
-        const [sh, sm] = r.timeslotStartTime.split(':').map(Number);
-        const [eh, em] = r.timeslotEndTime.split(':').map(Number);
-        const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), sh, sm || 0, 0);
-        const end   = new Date(d.getFullYear(), d.getMonth(), d.getDate(), eh, em || 0, 0);
+        const startHHMM = r.timeslotStartTime.slice(0, 5);
+        const endHHMM   = r.timeslotEndTime.slice(0, 5);
         return {
           id: r.sessionID,
           title,
-          start: start.toISOString(),
-          end: end.toISOString(),
+          start: `${r.scheduleDate}T${startHHMM}`, // local
+          end:   `${r.scheduleDate}T${endHHMM}`,
           allDay: false,
-          extendedProps: ext,
+          extendedProps: {
+            subject: r.subjectName,
+            studentName: `${r.studentFirstName} ${r.studentLastName}`,
+            status: r.sessionStatus || '',
+          },
         };
       }
 
-      // fallback all-day
-      const dt = new Date(r.scheduleDate);
-      const startISO = new Date(Date.UTC(dt.getFullYear(), dt.getMonth(), dt.getDate())).toISOString();
-      const endISO   = new Date(Date.UTC(dt.getFullYear(), dt.getMonth(), dt.getDate() + 1)).toISOString();
-      return { id: r.sessionID, title, start: startISO, end: endISO, allDay: true, extendedProps: ext };
+      return {
+        id: r.sessionID,
+        title,
+        start: r.scheduleDate,
+        end: r.scheduleDate,
+        allDay: true,
+        extendedProps: {
+          subject: r.subjectName,
+          studentName: `${r.studentFirstName} ${r.studentLastName}`,
+          status: r.sessionStatus || '',
+        },
+      };
     });
 
     res.json(events);
@@ -459,6 +463,7 @@ app.get('/api/tutor/calendar', authRequired, requireRole('Tutor'), async (req, r
     res.status(500).json({ message: 'Failed to load tutor calendar' });
   }
 });
+
 
 // ---- Student feedback ----
 app.post('/api/sessions/:sessionID/feedback', authRequired, requireRole('Student'), async (req, res) => {
