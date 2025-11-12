@@ -1,7 +1,47 @@
 import React, { useEffect, useState } from 'react';
 import api from './api';
 
-function CourseManagement() {
+// small reusable message box with dismiss button
+function MessageBox({ msg, onClose }) {
+  if (!msg) return null;
+  const isError = String(msg).toLowerCase().includes('error');
+  const style = {
+    padding: '12px 16px',
+    borderRadius: 8,
+    marginBottom: 16,
+    background: isError ? '#fee2e2' : '#dcfce7',
+    color: isError ? '#dc2626' : '#166534',
+    border: `1px solid ${isError ? '#fecaca' : '#bbf7d0'}`,
+    fontSize: 14,
+    textAlign: 'center',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  };
+
+  return (
+    <div style={style} role="status" aria-live="polite">
+      <span style={{ flex: 1 }}>{msg}</span>
+      <button
+        onClick={onClose}
+        aria-label="Dismiss message"
+        style={{
+          background: 'transparent',
+          border: 'none',
+          fontSize: 18,
+          lineHeight: 1,
+          cursor: 'pointer',
+          color: isError ? '#9f1239' : '#14532d'
+        }}
+      >
+        ×
+      </button>
+    </div>
+  );
+}
+
+export default function CourseManagement() {
   const [courses, setCourses] = useState([]);
   const [newCourse, setNewCourse] = useState({ courseCode: '', courseTitle: '' });
   const [editingCourse, setEditingCourse] = useState(null);
@@ -9,14 +49,27 @@ function CourseManagement() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // auto-dismiss messages after 4s
+  useEffect(() => {
+    if (!msg) return;
+    const t = setTimeout(() => setMsg(''), 4000);
+    return () => clearTimeout(t);
+  }, [msg]);
+
   const loadCourses = async () => {
     setIsLoading(true);
     try {
       const { data } = await api.get('/api/admin/courses');
       setCourses(data);
+      setMsg('');
     } catch (error) {
+      // Improved error reporting for Axios errors
       console.error('Failed to load courses:', error);
-      setMsg('Error loading courses');
+      const serverMsg = error?.response?.data?.message;
+      const status = error?.response?.status;
+      const errMsg = serverMsg || (status ? `Request failed (${status})` : error?.message || 'Unknown error');
+      setMsg(`Error loading courses: ${errMsg}`);
+      setCourses([]); // clear out potentially stale data
     } finally {
       setIsLoading(false);
     }
@@ -43,7 +96,6 @@ function CourseManagement() {
       setMsg('Course added successfully!');
       setNewCourse({ courseCode: '', courseTitle: '' });
       loadCourses();
-      setTimeout(() => setMsg(''), 4000);
     } catch (error) {
       setMsg(' ' + (error?.response?.data?.message || 'Error adding course'));
     } finally {
@@ -52,22 +104,37 @@ function CourseManagement() {
   };
 
   const updateCourse = async (e) => {
-    e.preventDefault();
-    if (!editingCourse.courseTitle.trim()) {
+    // support being called as onClick or as a form submit handler
+    e?.preventDefault?.();
+    if (!editingCourse?.courseTitle || !editingCourse.courseTitle.trim()) {
       setMsg('Course title is required');
       return;
     }
+    setIsLoading(true);
     try {
       await api.put(`/api/admin/courses/${editingCourse.subjectID}`, {
         courseCode: editingCourse.courseCode,
         courseTitle: editingCourse.courseTitle
       });
+
+      // optimistic UI update so courseCode / courseTitle changes are visible immediately
+      setCourses((prev) =>
+        prev.map((c) =>
+          c.subjectID === editingCourse.subjectID
+            ? { ...c, subjectName: editingCourse.courseTitle, subjectCode: editingCourse.courseCode }
+            : c
+        )
+      );
+
       setMsg('Course updated successfully!');
       setEditingCourse(null);
-      loadCourses();
-      setTimeout(() => setMsg(''), 4000);
+      // do NOT call loadCourses() immediately — backend may not persist optional subjectCode column,
+      // this keeps the UI reflecting the user's change. Use manual refresh if needed.
     } catch (error) {
+      console.error('Update course error:', error);
       setMsg(' ' + (error?.response?.data?.message || 'Error updating course'));
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -77,7 +144,6 @@ function CourseManagement() {
       await api.delete(`/api/admin/courses/${courseId}`);
       setMsg('🗑️ Course deleted successfully!');
       loadCourses();
-      setTimeout(() => setMsg(''), 4000);
     } catch (error) {
       setMsg(' ' + (error?.response?.data?.message || 'Error deleting course'));
     }
@@ -106,17 +172,16 @@ function CourseManagement() {
         </div>
 
         {/* Message */}
-        {msg && (
-          <div
-            className={`p-4 rounded-lg shadow-sm text-sm font-medium transition-all ${
-              msg.includes('✅')
-                ? 'bg-green-100 text-green-800 border border-green-200'
-                : msg.includes('❌')
-                ? 'bg-red-100 text-red-800 border border-red-200'
-                : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
-            }`}
-          >
-            {msg}
+        <MessageBox msg={msg} onClose={() => setMsg('')} />
+        {/* Retry button for load errors (kept separate to ensure layout) */}
+        {msg?.toLowerCase().includes('error loading courses') && (
+          <div className="flex justify-center mt-2">
+            <button
+              onClick={loadCourses}
+              className="bg-white/80 hover:bg-white text-sm text-blue-600 px-3 py-1 rounded-md border border-blue-100"
+            >
+              Retry
+            </button>
           </div>
         )}
 
@@ -178,7 +243,9 @@ function CourseManagement() {
           {isLoading ? (
             <div className="p-16 text-center text-gray-500 text-lg">Loading courses...</div>
           ) : filteredCourses.length === 0 ? (
-            <div className="p-16 text-center text-gray-500 text-lg">No courses found.</div>
+            <div className="p-8">
+              <MessageBox msg="No courses found." onClose={() => setMsg('')} />
+            </div>
           ) : (
             <div className="overflow-x-auto flex justify-center">
               <table
@@ -268,14 +335,6 @@ function CourseManagement() {
                       )}
                     </tr>
                   ))}
-
-                  {filteredCourses.length === 0 && (
-                    <tr>
-                      <td colSpan="3" className="p-16 text-center text-gray-500">
-                        No courses found
-                      </td>
-                    </tr>
-                  )}
                 </tbody>
               </table>
             </div>
@@ -285,5 +344,3 @@ function CourseManagement() {
     </div>
   );
 }
-
-export default CourseManagement;

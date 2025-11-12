@@ -45,3 +45,6 @@ coverage/
 
 
 server/firebaseAdmin/serviceAccountKey.json
+
+
+server/uploads/resumes/*

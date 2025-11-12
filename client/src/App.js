@@ -10,12 +10,14 @@ import Sessions from './Sessions';
 import TutorAvailability from './TutorAvailability';
 import AdminDashboard from './AdminDashboard';
 import Dashboard from './Dashboard.jsx';
-import Navbar from './Navbar.jsx';
 import TimeslotGenerator from './TimeslotGenerator';
 import ManageUsers from './manageusers.js';
 import CourseManagement from './CourseManagement';
 import TutorCalendar from './TutorCalendar';
 import StudentCalendar from './StudentCalendar';
+import Navbar from './Navbar.jsx';
+import TutorApplications from './components/Admins/TutorApplications.jsx';
+import ApplyToTutor from './components/ApplyTutor.jsx';
 
 function Verify() {
   return <div style={{ padding: 24 }}>Verifying…</div>;
@@ -132,6 +134,8 @@ function App() {
               <Route path="/admin/timeslot-generator" element={isLoggedIn && userRole === 'Admin' ? <TimeslotGenerator /> : <Navigate to="/" replace />} />
               <Route path="/admin/users" element={isLoggedIn && userRole === 'Admin' ? <ManageUsers /> : <Navigate to="/" replace />} />
               <Route path="/admin/courses" element={isLoggedIn && userRole === 'Admin' ? <CourseManagement /> : <Navigate to="/" replace />} />
+              <Route path="/admin/tutor-applications" element={isLoggedIn && userRole === 'Admin' ? <TutorApplications initialTab="tutor-applications" /> : <Navigate to="/" replace />} />
+              <Route path="/apply-to-tutor" element={isLoggedIn && userRole === 'Student' ? <ApplyToTutor initialTab="apply" /> : <Navigate to="/" replace />} />
 
               {/* 404 */}
               <Route path="*" element={<Navigate to={isLoggedIn ? '/' : '/login'} replace />} />

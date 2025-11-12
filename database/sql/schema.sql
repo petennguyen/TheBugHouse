@@ -165,6 +165,28 @@ CREATE TABLE `Tutor_Availability` (
     ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ----------------------------------------------------------------------
+-- Tutor applications (students apply to be tutors)
+-- ----------------------------------------------------------------------
+DROP TABLE IF EXISTS `Tutor_Applications`;
+CREATE TABLE `Tutor_Applications` (
+  `applicationID` INT NOT NULL AUTO_INCREMENT,
+  `userID` INT NOT NULL,
+  `coverText` TEXT NULL,
+  `resumePath` VARCHAR(512) NULL,
+  `resumeMime` VARCHAR(128) NULL,
+  `resumeSize` INT NULL,
+  `status` ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+  `adminNote` VARCHAR(255) NULL,
+  `createdAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updatedAt` DATETIME NULL,
+  PRIMARY KEY (`applicationID`),
+  KEY `idx_TutorApplications_user` (`userID`),
+  CONSTRAINT `fk_TutorApplications_User`
+    FOREIGN KEY (`userID`) REFERENCES `System_User`(`userID`)
+    ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
