@@ -1,5 +1,13 @@
 require('dotenv').config();
 
+// Provide safe defaults for local development so the main server pool connects
+// to the same database the repository schema creates (database/sql/schema.sql -> `BugHouse`).
+process.env.DB_HOST = process.env.DB_HOST || 'localhost';
+process.env.DB_PORT = process.env.DB_PORT || '3306';
+process.env.DB_USER = process.env.DB_USER || 'root';
+process.env.DB_PASS = process.env.DB_PASS || 'bughouse123';
+process.env.DB_NAME = process.env.DB_NAME || 'BugHouse';
+
 const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
@@ -27,6 +35,9 @@ app.use(
   })
 );
 app.use(express.json());
+
+// Mount modular routes (tutor applications, etc.)
+// NOTE: route mounting moved further down so auth helpers/middleware are available first
 
 // ---- Firebase Admin ----
 const admin = require('firebase-admin');
@@ -81,6 +92,30 @@ function requireRole(...roles) {
     }
     next();
   };
+}
+
+// Populate req.user from Authorization header if a valid JWT is present.
+// This is lightweight (doesn't enforce auth) and allows route handlers
+// to attribute actions to the authenticated user when available.
+app.use((req, res, next) => {
+  const token = getTokenFromHeader(req);
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'change_me_now');
+      req.user = decoded;
+    } catch (e) {
+      // invalid token: leave req.user undefined and let authRequired handle enforcement when needed
+    }
+  }
+  next();
+});
+
+// Mount tutor application routes (and related admin endpoints)
+try {
+  const tutorAppRouter = require('./routes/tutorApplication');
+  app.use('/api', tutorAppRouter);
+} catch (e) {
+  console.warn('Could not mount tutor application routes:', e && e.message ? e.message : e);
 }
 
 // ---- Subjects ----
@@ -1370,6 +1405,98 @@ app.delete('/api/admin/users/:id', authRequired, requireRole('Admin'), async (re
     conn.release();
     console.error('Delete admin user error:', err);
     res.status(500).json({ message: 'Failed to delete user' });
+  }
+});
+
+// helper: check if a column exists (used to support optional subjectCode column)
+async function columnExists(table, column) {
+  try {
+    const [rows] = await pool.execute(
+      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+      [dbConfig.database, table, column]
+    );
+    return rows && rows[0] && rows[0].cnt > 0;
+  } catch (e) {
+    console.warn('columnExists check failed:', e && e.message ? e.message : e);
+    return false;
+  }
+}
+
+// ---- Admin: Courses CRUD ----
+app.get('/api/admin/courses', authRequired, requireRole('Admin'), async (req, res) => {
+  try {
+    // return subjectID and subjectName; include subjectCode as null for client compatibility
+    const [rows] = await pool.execute('SELECT subjectID, subjectName FROM Academic_Subject ORDER BY subjectName');
+    const data = rows.map(r => ({ subjectID: r.subjectID, subjectName: r.subjectName, subjectCode: null }));
+    res.json(data);
+  } catch (e) {
+    console.error('Get courses error:', e);
+    res.status(500).json({ message: 'Failed to load courses' });
+  }
+});
+
+app.post('/api/admin/courses', authRequired, requireRole('Admin'), async (req, res) => {
+  const { courseCode, courseTitle } = req.body || {};
+  if (!courseTitle || !courseTitle.trim()) return res.status(400).json({ message: 'courseTitle required' });
+
+  try {
+    const hasCode = await columnExists('Academic_Subject', 'subjectCode');
+    let result;
+    if (hasCode) {
+      [result] = await pool.execute(
+        'INSERT INTO Academic_Subject (subjectName, subjectCode) VALUES (?, ?)',
+        [courseTitle.trim(), courseCode || null]
+      );
+    } else {
+      [result] = await pool.execute(
+        'INSERT INTO Academic_Subject (subjectName) VALUES (?)',
+        [courseTitle.trim()]
+      );
+    }
+    res.status(201).json({ message: 'Course created', subjectID: result.insertId });
+  } catch (e) {
+    console.error('Create course error:', e);
+    res.status(500).json({ message: 'Failed to create course' });
+  }
+});
+
+app.put('/api/admin/courses/:id', authRequired, requireRole('Admin'), async (req, res) => {
+  const { id } = req.params;
+  const { courseCode, courseTitle } = req.body || {};
+  if (!courseTitle || !courseTitle.trim()) return res.status(400).json({ message: 'courseTitle required' });
+
+  try {
+    const [exists] = await pool.execute('SELECT subjectID FROM Academic_Subject WHERE subjectID = ?', [id]);
+    if (exists.length === 0) return res.status(404).json({ message: 'Course not found' });
+
+    const hasCode = await columnExists('Academic_Subject', 'subjectCode');
+    if (hasCode) {
+      await pool.execute(
+        'UPDATE Academic_Subject SET subjectName = ?, subjectCode = ? WHERE subjectID = ?',
+        [courseTitle.trim(), courseCode || null, id]
+      );
+    } else {
+      await pool.execute(
+        'UPDATE Academic_Subject SET subjectName = ? WHERE subjectID = ?',
+        [courseTitle.trim(), id]
+      );
+    }
+    res.json({ message: 'Course updated' });
+  } catch (e) {
+    console.error('Update course error:', e);
+    res.status(500).json({ message: 'Failed to update course' });
+  }
+});
+
+app.delete('/api/admin/courses/:id', authRequired, requireRole('Admin'), async (req, res) => {
+  const { id } = req.params;
+  try {
+    const [result] = await pool.execute('DELETE FROM Academic_Subject WHERE subjectID = ?', [id]);
+    if (result.affectedRows === 0) return res.status(404).json({ message: 'Course not found' });
+    res.json({ message: 'Course deleted' });
+  } catch (e) {
+    console.error('Delete course error:', e);
+    res.status(500).json({ message: 'Failed to delete course' });
   }
 });
 

@@ -79,12 +79,21 @@ export default function Navbar({ isLoggedIn, userFirstName, userRole, onLogout }
 
             {/* Student-only */}
             {userRole === 'Student' && (
-              <Link
-                to="/book"
-                className={location.pathname === '/book' ? 'active' : ''}
-              >
-                Book
-              </Link>
+              <>
+                <Link
+                  to="/book"
+                  className={location.pathname === '/book' ? 'active' : ''}
+                >
+                  Book
+                </Link>
+
+                <Link 
+                  to="/apply-to-tutor"
+                  className={location.pathname === '/apply-to-tutor' ? 'active' : ''}
+                >
+                  Apply to be a Tutor
+                </Link>
+              </>
             )}
 
             {/* Tutor-only */}
@@ -135,6 +144,18 @@ export default function Navbar({ isLoggedIn, userFirstName, userRole, onLogout }
                   }
                 >
                   Manage Courses
+                </Link>
+                
+                <Link
+                  to="/admin/tutor-applications"
+                  className={
+                    location.pathname === '/admin/tutor-applications' ||
+                    location.pathname.startsWith('/admin/tutor-applications')
+                      ? 'active'
+                      : ''
+                  }
+                >
+                  Manage Tutor Applications
                 </Link>
               </>
             )}
