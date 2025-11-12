@@ -19,3 +19,6 @@
 .bh-legend { display:flex; gap:14px; align-items:center; margin-top:8px; color:#4b5563; font-size:.85rem; }
 .bh-legend-item { display:inline-flex; gap:6px; align-items:center; }
 .bh-dot { width:10px; height:10px; border-radius:9999px; display:inline-block; }
+.fc .fc-button {
+  text-transform: none;
+}

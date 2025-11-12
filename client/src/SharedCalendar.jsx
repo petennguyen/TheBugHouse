@@ -82,13 +82,19 @@ export default function SharedCalendar({ fetchUrl, roleLabel = '' }) {
     }),
     []
   );
-
+  const buttonText = useMemo(() => ({
+    today: 'Today',
+    month: 'Month',
+    week: 'Week',
+    day: 'Day',
+  }), []);
   return (
     <div className="bh-calendar-wrap">
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView="timeGridWeek"
         headerToolbar={toolbar}
+        buttonText={buttonText}
         height="auto"
         expandRows
         dayMaxEventRows={3}
@@ -97,7 +103,7 @@ export default function SharedCalendar({ fetchUrl, roleLabel = '' }) {
         slotMaxTime="21:00:00"
         stickyHeaderDates
         businessHours={{ daysOfWeek: [1, 2, 3, 4, 5], startTime: '08:00', endTime: '18:00' }}
-        timeZone="local"                 // 👈 Quan trọng: luôn hiển thị theo giờ địa phương
+        timeZone="local"                 
         events={events}
         eventContent={eventContent}
         eventDidMount={eventDidMount}
