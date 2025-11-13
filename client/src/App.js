@@ -18,6 +18,8 @@ import StudentCalendar from './StudentCalendar';
 import Navbar from './Navbar.jsx';
 import TutorApplications from './components/Admins/TutorApplications.jsx';
 import ApplyToTutor from './components/ApplyTutor.jsx';
+import TutorPerformance from './components/Admins/TutorPerformance.jsx';
+
 
 function Verify() {
   return <div style={{ padding: 24 }}>Verifying…</div>;
@@ -136,6 +138,7 @@ function App() {
               <Route path="/admin/courses" element={isLoggedIn && userRole === 'Admin' ? <CourseManagement /> : <Navigate to="/" replace />} />
               <Route path="/admin/tutor-applications" element={isLoggedIn && userRole === 'Admin' ? <TutorApplications initialTab="tutor-applications" /> : <Navigate to="/" replace />} />
               <Route path="/apply-to-tutor" element={isLoggedIn && userRole === 'Student' ? <ApplyToTutor initialTab="apply" /> : <Navigate to="/" replace />} />
+              <Route path="/admin/tutor-performance" element={isLoggedIn && userRole === 'Admin' ? <TutorPerformance /> : <Navigate to="/" replace />} />
 
               {/* 404 */}
               <Route path="*" element={<Navigate to={isLoggedIn ? '/' : '/login'} replace />} />

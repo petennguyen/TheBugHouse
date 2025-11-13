@@ -93,7 +93,7 @@ export default function TutorAvailability() {
 
   return (
     <div className="grid gap-3">
-      <div className="card">
+      <div className="card" style={{ background: 'white', color: '#111' }}>
         <h2 className="h2">Add Availability</h2>
         {msg && (
           <div style={{
@@ -346,7 +346,7 @@ export default function TutorAvailability() {
         </button>
       </div>
 
-      <div className="card">
+  <div className="card" style={{ background: 'white', color: '#111' }}>
         <h2 className="h2">My Current Availability</h2>
         <ul className="list">
           {rows.map((r) => (

@@ -1157,6 +1157,84 @@ app.get('/api/admin/availableTutors', authRequired, requireRole('Admin'), async 
   } 
 });
 
+// Admin: search/list tutors (supports ?search=)
+app.get('/api/admin/tutors', authRequired, requireRole('Admin'), async (req, res) => {
+  try {
+    const q = (req.query.search || '').trim();
+    let sql = `
+      SELECT userID, userFirstName, userLastName, userEmail
+      FROM System_User
+      WHERE userRole = 'Tutor'
+    `;
+    const params = [];
+    if (q) {
+      sql += ` AND (CONCAT(userFirstName, ' ', userLastName) LIKE ? OR userEmail LIKE ?)`;
+      params.push(`%${q}%`, `%${q}%`);
+    }
+    sql += ' ORDER BY userLastName, userFirstName LIMIT 200';
+    const [rows] = await pool.execute(sql, params);
+    res.json(rows.map(r => ({ userID: r.userID, firstName: r.userFirstName, lastName: r.userLastName, email: r.userEmail })));
+  } catch (err) {
+    console.error('Error searching tutors:', err);
+    res.status(500).json({ message: 'Failed to search tutors' });
+  }
+});
+
+// Admin: tutor performance report
+app.get('/api/admin/tutor-performance/:id', authRequired, requireRole('Admin'), async (req, res) => {
+  const tutorId = Number(req.params.id);
+  if (!tutorId) return res.status(400).json({ message: 'Invalid tutor id' });
+  try {
+    const [[tutorRow]] = await pool.execute('SELECT userID, userFirstName, userLastName, userEmail FROM System_User WHERE userID = ? AND userRole = ?', [tutorId, 'Tutor']);
+    if (!tutorRow) return res.status(404).json({ message: 'Tutor not found' });
+
+    const [[{ totalSessions }]] = await pool.execute(
+      `SELECT COUNT(*) AS totalSessions FROM Tutor_Session WHERE Tutor_System_User_userID = ?`,
+      [tutorId]
+    );
+
+    const [[{ averageRating }]] = await pool.execute(
+      `SELECT AVG(sessionRating) AS averageRating FROM Tutor_Session WHERE Tutor_System_User_userID = ? AND sessionRating IS NOT NULL`,
+      [tutorId]
+    );
+
+    const [frequentSubjects] = await pool.execute(
+      `SELECT sub.subjectName, COUNT(*) AS count
+       FROM Tutor_Session ts
+       JOIN Academic_Subject sub ON sub.subjectID = ts.Academic_Subject_subjectID
+       WHERE ts.Tutor_System_User_userID = ?
+       GROUP BY sub.subjectID, sub.subjectName
+       ORDER BY count DESC
+       LIMIT 10`,
+      [tutorId]
+    );
+
+    const [reviews] = await pool.execute(
+      `SELECT ts.sessionFeedback, ts.sessionRating, sub.subjectName, ssu.userFirstName AS studentFirstName, ssu.userLastName AS studentLastName, ds.scheduleDate
+       FROM Tutor_Session ts
+       JOIN Academic_Subject sub ON sub.subjectID = ts.Academic_Subject_subjectID
+       JOIN System_User ssu ON ssu.userID = ts.Student_System_User_userID
+       LEFT JOIN Timeslot t ON t.timeslotID = ts.Timeslot_timeslotID
+       LEFT JOIN Daily_Schedule ds ON ds.scheduleID = t.Daily_Schedule_scheduleID
+       WHERE ts.Tutor_System_User_userID = ? AND (ts.sessionFeedback IS NOT NULL OR ts.sessionRating IS NOT NULL)
+       ORDER BY ds.scheduleDate DESC, ts.sessionID DESC
+       LIMIT 200`,
+      [tutorId]
+    );
+
+    res.json({
+      tutor: { userID: tutorRow.userID, firstName: tutorRow.userFirstName, lastName: tutorRow.userLastName, email: tutorRow.userEmail },
+      totalSessions: totalSessions || 0,
+      averageRating: averageRating || null,
+      frequentSubjects,
+      reviews,
+    });
+  } catch (err) {
+    console.error('Error building tutor performance report:', err);
+    res.status(500).json({ message: 'Failed to load tutor performance' });
+  }
+});
+
 app.post('/api/schedules/generate', authRequired, requireRole('Admin'), async (req, res) => {
   const { date } = req.body || {};
   if (!date) return res.status(400).json({ message: 'date required (YYYY-MM-DD)' });

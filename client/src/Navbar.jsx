@@ -157,6 +157,18 @@ export default function Navbar({ isLoggedIn, userFirstName, userRole, onLogout }
                 >
                   Manage Tutor Applications
                 </Link>
+
+                <Link
+                  to="/admin/tutor-performance"
+                  className={
+                    location.pathname === '/admin/tutor-performance' ||
+                    location.pathname.startsWith('/admin/tutor-performance')
+                      ? 'active'
+                      : ''
+                  }
+                >
+                  Tutor Performance Report
+                </Link>
               </>
             )}
 
