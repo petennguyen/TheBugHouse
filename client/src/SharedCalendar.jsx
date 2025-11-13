@@ -118,6 +118,7 @@ export default function SharedCalendar({ fetchUrl, roleLabel = '' }) {
         selectable={false}
         editable={false}
         eventTimeFormat={{ hour: '2-digit', minute: '2-digit', meridiem: false }}
+        buttonText={buttonText}
       />
       <Legend />
     </div>
