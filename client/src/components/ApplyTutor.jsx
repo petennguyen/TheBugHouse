@@ -109,7 +109,7 @@ export default function ApplyToTutor() {
       <header>
         <h2 className="text-2xl font-semibold mb-1">Apply to be a Tutor</h2>
         <p className="text-sm text-gray-600">
-          Submit your resume and an optional cover note. We review applications and will notify you by email.
+          Submit your resume and an optional cover note. We review applications and will notify you shortly.
         </p>
       </header>
 
@@ -148,8 +148,7 @@ export default function ApplyToTutor() {
             onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
             onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); }}
             onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); }}
-            // increased padding for larger drop target and breathing room
-            className="flex items-center justify-center border-2 border-dashed border-gray-200 rounded p-8 cursor-pointer hover:bg-gray-50"
+            className="flex items-center justify-center border-2 border-dashed border-gray-200 rounded-lg p-8 cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
             role="button"
             tabIndex={0}
             onClick={openFilePicker}
@@ -157,10 +156,7 @@ export default function ApplyToTutor() {
             aria-label="Drop resume PDF here or click to select"
           >
             <div className="text-center">
-              <div className="text-sm text-gray-500">Drop PDF here or</div>
-              <div className="mt-2 text-sm">
-                <button type="button" onClick={openFilePicker} className="text-blue-600 underline">Choose a file</button>
-              </div>
+              <div className="text-sm text-gray-500">Drop PDF here or click to select</div>
               <div className="mt-4 text-xs text-gray-400">
                 Allowed: PDF only • Max size: {fmtBytes(MAX_BYTES)}
               </div>
@@ -176,13 +172,18 @@ export default function ApplyToTutor() {
           </div>
 
           {file && (
-            <div className="mt-4 flex items-center justify-between bg-gray-50 p-4 rounded">
+            <div className="mt-4 flex items-center justify-between bg-gray-50 p-4 rounded-md shadow-sm">
               <div>
                 <div className="font-medium">{file.name}</div>
-                <div className="text-xs text-gray-500">{fmtBytes(file.size)} • {file.type}</div>
               </div>
               <div className="flex items-center gap-2">
-                <button type="button" onClick={() => onFile(null)} className="text-sm text-red-600">Remove</button>
+                <button
+                  type="button"
+                  onClick={() => onFile(null)}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-red-50 text-red-700 border border-red-100 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-200 text-sm"
+                >
+                  Remove
+                </button>
               </div>
             </div>
           )}
@@ -201,12 +202,20 @@ export default function ApplyToTutor() {
           <button
             type="submit"
             disabled={uploading}
-            className={`px-5 py-3 rounded text-white ${uploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+            className={`inline-flex items-center justify-center gap-2 px-6 py-3 rounded-md text-white font-medium shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+              uploading ? 'bg-blue-400 cursor-not-allowed opacity-80' : 'bg-blue-600 hover:bg-blue-700'
+            }`}
           >
             {uploading ? `Uploading ${progress}%` : 'Apply to be a Tutor'}
           </button>
 
-          <button type="button" onClick={clearForm} className="px-4 py-2 rounded border text-sm">Clear</button>
+          <button
+            type="button"
+            onClick={clearForm}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-200 shadow-sm"
+          >
+            Clear
+          </button>
         </div>
       </form>
 

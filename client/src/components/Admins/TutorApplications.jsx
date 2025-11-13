@@ -21,6 +21,14 @@ export default function TutorApplications() {
   // helper to capitalize status text
   const capitalize = (s) => (typeof s === 'string' && s.length ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
+  // new: centralized status color/background mapping (approve => green, reject => red)
+  const statusStyles = (status) => {
+    const s = String(status || 'pending').toLowerCase();
+    if (s === 'approved') return { color: '#059669', bg: '#ecfdf5' };
+    if (s === 'rejected') return { color: '#dc2626', bg: '#fff1f2' };
+    return { color: '#b45309', bg: '#fffbeb' }; // pending/other
+  };
+
   const load = async () => {
     setLoading(true);
     setError('');
@@ -182,9 +190,12 @@ export default function TutorApplications() {
                             {new Date(a.createdAt).toLocaleDateString()}
                           </td>
                           <td className="px-20 sm:px-24 md:px-32 py-6 border-l border-gray-100 text-center align-middle">
-                            <span className={
-                              a.status === 'approved' ? 'text-green-700 font-medium' : a.status === 'rejected' ? 'text-red-700 font-medium' : 'text-yellow-700 font-medium'
-                            }>{capitalize(a.status)}</span>
+                            <span
+                              className="font-medium"
+                              style={{ color: statusStyles(a.status).color }}
+                            >
+                              {capitalize(a.status)}
+                            </span>
                           </td>
                           <td className="px-20 sm:px-24 md:px-32 py-6 border-l border-gray-100 text-center align-middle">
                             <div className="flex items-center gap-2 justify-center">
@@ -259,10 +270,15 @@ export default function TutorApplications() {
 
             <div style={{ marginBottom: 12 }}>
               <div className="text-sm text-gray-600 mb-2">Status</div>
-              <div className="inline-block px-2 py-1 rounded-md text-sm font-medium" style={{
-                background: selectedApp.status === 'approved' ? '#ecfdf5' : selectedApp.status === 'rejected' ? '#fff1f2' : '#fffbeb',
-                color: selectedApp.status === 'approved' ? '#059669' : selectedApp.status === 'rejected' ? '#dc2626' : '#b45309'
-              }}>{capitalize(selectedApp.status)}</div>
+              <div
+                className="inline-block px-2 py-1 rounded-md text-sm font-medium"
+                style={{
+                  background: statusStyles(selectedApp.status).bg,
+                  color: statusStyles(selectedApp.status).color
+                }}
+              >
+                {capitalize(selectedApp.status)}
+              </div>
             </div>
 
             <div style={{ marginBottom: 12 }}>
