@@ -100,7 +100,7 @@ export default function TutorCalendar() {
             right: 'dayGridMonth,timeGridWeek,timeGridDay',
           }}
           initialView="timeGridWeek"
-          timeZone="local"             // 👈 đảm bảo hiển thị theo giờ địa phương
+          timeZone="local"           
           events={events}
           eventClick={handleEventClick}
           height="auto"

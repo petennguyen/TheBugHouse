@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from './api';
 
-// format ngày theo local (tránh toISOString() gây UTC lệch ngày)
 function todayLocalYYYYMMDD() {
   const d = new Date();
   const off = d.getTimezoneOffset();
@@ -34,7 +33,7 @@ export default function StudentBook() {
 
   const searchAvailability = async () => {
     try {
-      const wday = new Date(date).toLocaleString('en-US', { weekday: 'short' }); // Mon/Tue/...
+      const wday = new Date(date).toLocaleString('en-US', { weekday: 'short' }); 
       const { data } = await api.get('/api/tutor/availability', { params: { dayOfWeek: wday } });
       setSlots(data);
     } catch (e) {

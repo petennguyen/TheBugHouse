@@ -1,7 +1,5 @@
 require('dotenv').config();
 
-// Provide safe defaults for local development so the main server pool connects
-// to the same database the repository schema creates (database/sql/schema.sql -> `BugHouse`).
 process.env.DB_HOST = process.env.DB_HOST || 'localhost';
 process.env.DB_PORT = process.env.DB_PORT || '3306';
 process.env.DB_USER = process.env.DB_USER || 'root';
@@ -35,9 +33,6 @@ app.use(
   })
 );
 app.use(express.json());
-
-// Mount modular routes (tutor applications, etc.)
-// NOTE: route mounting moved further down so auth helpers/middleware are available first
 
 // ---- Firebase Admin ----
 const admin = require('firebase-admin');
@@ -94,9 +89,6 @@ function requireRole(...roles) {
   };
 }
 
-// Populate req.user from Authorization header if a valid JWT is present.
-// This is lightweight (doesn't enforce auth) and allows route handlers
-// to attribute actions to the authenticated user when available.
 app.use((req, res, next) => {
   const token = getTokenFromHeader(req);
   if (token) {
@@ -104,13 +96,11 @@ app.use((req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'change_me_now');
       req.user = decoded;
     } catch (e) {
-      // invalid token: leave req.user undefined and let authRequired handle enforcement when needed
     }
   }
   next();
 });
 
-// Mount tutor application routes (and related admin endpoints)
 try {
   const tutorAppRouter = require('./routes/tutorApplication');
   app.use('/api', tutorAppRouter);
@@ -154,7 +144,7 @@ app.delete('/api/subjects/:id', authRequired, requireRole('Admin'), async (req, 
   }
 });
 
-// ---- Session booking (rút gọn) ----
+// ---- Session booking ----
 app.post('/api/sessions/book', authRequired, requireRole('Student'), async (req, res) => {
   const { timeslotID, scheduleID } = req.body;
   if (!timeslotID || !scheduleID) {
@@ -382,7 +372,8 @@ app.get('/api/student/calendar', authRequired, requireRole('Student'), async (re
         tsu.userFirstName AS tutorFirstName,
         tsu.userLastName  AS tutorLastName,
         sess.sessionSignInTime,
-        sess.sessionSignOutTime
+        sess.sessionSignOutTime,
+        sess.sessionStatus
       FROM Tutor_Session sess
       JOIN Timeslot tl ON tl.timeslotID = sess.Timeslot_timeslotID
                        AND tl.Daily_Schedule_scheduleID = sess.Timeslot_Daily_Schedule_scheduleID
@@ -396,28 +387,39 @@ app.get('/api/student/calendar', authRequired, requireRole('Student'), async (re
     );
 
     const events = rows.map((r) => {
+      const dateStr =
+        r.scheduleDate instanceof Date
+          ? r.scheduleDate.toISOString().slice(0, 10)
+          : String(r.scheduleDate).slice(0, 10);
+
       const title = `${r.subjectName} with ${r.tutorFirstName} ${r.tutorLastName}`;
-      const ext = { subject: r.subjectName, tutorName: `${r.tutorFirstName} ${r.tutorLastName}` };
+      const ext = {
+        subject: r.subjectName,
+        tutorName: `${r.tutorFirstName} ${r.tutorLastName}`,
+        status: r.sessionStatus || '',
+        sessionSignInTime: r.sessionSignInTime,
+        sessionSignOutTime: r.sessionSignOutTime,
+      };
 
       if (r.timeslotStartTime && r.timeslotEndTime) {
-        const startHHMM = r.timeslotStartTime.slice(0, 5);
-        const endHHMM   = r.timeslotEndTime.slice(0, 5);
+        const startHHMM = String(r.timeslotStartTime).slice(0, 5);
+        const endHHMM   = String(r.timeslotEndTime).slice(0, 5);
         return {
           id: r.sessionID,
           title,
-          start: `${r.scheduleDate}T${startHHMM}`, // local (không Z)
-          end:   `${r.scheduleDate}T${endHHMM}`,
+          start: `${dateStr}T${startHHMM}`,
+          end:   `${dateStr}T${endHHMM}`,
           allDay: false,
           extendedProps: ext,
         };
       }
 
-      // All-day fallback (ít dùng)
+      // Fallback all-day
       return {
         id: r.sessionID,
         title,
-        start: r.scheduleDate,
-        end: r.scheduleDate,
+        start: dateStr,
+        end: dateStr,
         allDay: true,
         extendedProps: ext,
       };
@@ -429,6 +431,7 @@ app.get('/api/student/calendar', authRequired, requireRole('Student'), async (re
     res.status(500).json({ message: 'Failed to load calendar' });
   }
 });
+
 
 // ---- Tutor calendar ----
 app.get('/api/tutor/calendar', authRequired, requireRole('Tutor'), async (req, res) => {
@@ -458,39 +461,45 @@ app.get('/api/tutor/calendar', authRequired, requireRole('Tutor'), async (req, r
       [req.user.userID]
     );
 
-    const events = rows.map((r) => {
-      const title = `${r.subjectName} with ${r.studentFirstName} ${r.studentLastName}`;
+        const events = rows.map((r) => {
+          const dateStr =
+            r.scheduleDate instanceof Date
+              ? r.scheduleDate.toISOString().slice(0, 10)
+              : String(r.scheduleDate).slice(0, 10);
 
-      if (r.timeslotStartTime && r.timeslotEndTime) {
-        const startHHMM = r.timeslotStartTime.slice(0, 5);
-        const endHHMM   = r.timeslotEndTime.slice(0, 5);
-        return {
-          id: r.sessionID,
-          title,
-          start: `${r.scheduleDate}T${startHHMM}`, // local
-          end:   `${r.scheduleDate}T${endHHMM}`,
-          allDay: false,
-          extendedProps: {
+          const title = `${r.subjectName} with ${r.studentFirstName} ${r.studentLastName}`;
+
+          const baseExt = {
             subject: r.subjectName,
             studentName: `${r.studentFirstName} ${r.studentLastName}`,
             status: r.sessionStatus || '',
-          },
-        };
-      }
+            sessionSignInTime: r.sessionSignInTime,
+            sessionSignOutTime: r.sessionSignOutTime,
+          };
 
-      return {
-        id: r.sessionID,
-        title,
-        start: r.scheduleDate,
-        end: r.scheduleDate,
-        allDay: true,
-        extendedProps: {
-          subject: r.subjectName,
-          studentName: `${r.studentFirstName} ${r.studentLastName}`,
-          status: r.sessionStatus || '',
-        },
-      };
-    });
+          if (r.timeslotStartTime && r.timeslotEndTime) {
+            const startHHMM = String(r.timeslotStartTime).slice(0, 5);
+            const endHHMM   = String(r.timeslotEndTime).slice(0, 5);
+            return {
+              id: r.sessionID,
+              title,
+              start: `${dateStr}T${startHHMM}`,
+              end:   `${dateStr}T${endHHMM}`,
+              allDay: false,
+              extendedProps: baseExt,
+            };
+          }
+
+          return {
+            id: r.sessionID,
+            title,
+            start: dateStr,
+            end: dateStr,
+            allDay: true,
+            extendedProps: baseExt,
+          };
+        });
+
 
     res.json(events);
   } catch (e) {
@@ -498,7 +507,6 @@ app.get('/api/tutor/calendar', authRequired, requireRole('Tutor'), async (req, r
     res.status(500).json({ message: 'Failed to load tutor calendar' });
   }
 });
-
 
 // ---- Student feedback ----
 app.post('/api/sessions/:sessionID/feedback', authRequired, requireRole('Student'), async (req, res) => {
@@ -587,7 +595,7 @@ app.post('/api/sessions/:sessionID/status', authRequired, requireRole('Tutor'), 
   }
 });
 
-// ---- Cancel session (role-aware) ----
+// ---- Cancel session ----
 app.delete('/api/sessions/:id', authRequired, async (req, res) => {
   const sessionID = Number(req.params.id);
   if (!sessionID) return res.status(400).json({ message: 'Invalid session id' });
@@ -1277,7 +1285,7 @@ app.get('/api/admin/feedback-analytics', authRequired, requireRole('Admin'), asy
 
     res.json({ subjectRatings, tutorRatings, recentFeedback });
   } catch (e) {
-    console.error('Feedback analytics error:', e);
+    console.error('Feedback analytics error', e);
     res.status(500).json({ message: 'Failed to load feedback analytics' });
   }
 });
@@ -1310,7 +1318,7 @@ app.get('/api/admin/session-analytics', authRequired, requireRole('Admin'), asyn
 
     res.json({ monthlyStats, subjectStats });
   } catch (e) {
-    console.error('Session analytics error:', e);
+    console.error('Session analytics error', e);
     res.status(500).json({ message: 'Failed to load session analytics' });
   }
 });
@@ -1430,7 +1438,6 @@ async function columnExists(table, column) {
 // ---- Admin: Courses CRUD ----
 app.get('/api/admin/courses', authRequired, requireRole('Admin'), async (req, res) => {
   try {
-    // return subjectID and subjectName; include subjectCode as null for client compatibility
     const [rows] = await pool.execute('SELECT subjectID, subjectName FROM Academic_Subject ORDER BY subjectName');
     const data = rows.map(r => ({ subjectID: r.subjectID, subjectName: r.subjectName, subjectCode: null }));
     res.json(data);

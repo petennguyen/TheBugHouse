@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from './api';
 
-// small reusable message box with dismiss button
 function MessageBox({ msg, onClose }) {
   if (!msg) return null;
   const isError = String(msg).toLowerCase().includes('error');
@@ -49,7 +48,6 @@ export default function CourseManagement() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // auto-dismiss messages after 4s
   useEffect(() => {
     if (!msg) return;
     const t = setTimeout(() => setMsg(''), 4000);
@@ -63,7 +61,6 @@ export default function CourseManagement() {
       setCourses(data);
       setMsg('');
     } catch (error) {
-      // Improved error reporting for Axios errors
       console.error('Failed to load courses:', error);
       const serverMsg = error?.response?.data?.message;
       const status = error?.response?.status;
@@ -104,7 +101,6 @@ export default function CourseManagement() {
   };
 
   const updateCourse = async (e) => {
-    // support being called as onClick or as a form submit handler
     e?.preventDefault?.();
     if (!editingCourse?.courseTitle || !editingCourse.courseTitle.trim()) {
       setMsg('Course title is required');
@@ -117,7 +113,6 @@ export default function CourseManagement() {
         courseTitle: editingCourse.courseTitle
       });
 
-      // optimistic UI update so courseCode / courseTitle changes are visible immediately
       setCourses((prev) =>
         prev.map((c) =>
           c.subjectID === editingCourse.subjectID
@@ -128,8 +123,7 @@ export default function CourseManagement() {
 
       setMsg('Course updated successfully!');
       setEditingCourse(null);
-      // do NOT call loadCourses() immediately — backend may not persist optional subjectCode column,
-      // this keeps the UI reflecting the user's change. Use manual refresh if needed.
+
     } catch (error) {
       console.error('Update course error:', error);
       setMsg(' ' + (error?.response?.data?.message || 'Error updating course'));

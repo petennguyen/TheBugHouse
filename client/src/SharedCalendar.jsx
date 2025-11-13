@@ -8,8 +8,6 @@ import { STATUS_COLORS, decorateStatus } from './statusUtils';
 import './calendar.css';
 
 function stripZ(dt) {
-  // '2025-11-11T19:00:00Z' -> '2025-11-11T19:00:00'
-  // '2025-11-11' stays the same
   return typeof dt === 'string' ? dt.replace(/Z$/, '') : dt;
 }
 
@@ -26,7 +24,6 @@ export default function SharedCalendar({ fetchUrl, roleLabel = '' }) {
       })
       .then((res) => {
         const raw = Array.isArray(res.data) ? res.data : [];
-        // Chuẩn hoá để tránh lệch múi giờ nếu có 'Z'
         const normalized = raw.map((ev) => ({
           ...ev,
           start: stripZ(ev.start),
@@ -94,16 +91,27 @@ export default function SharedCalendar({ fetchUrl, roleLabel = '' }) {
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView="timeGridWeek"
         headerToolbar={toolbar}
-        buttonText={buttonText}
         height="auto"
         expandRows
         dayMaxEventRows={3}
         nowIndicator
-        slotMinTime="07:00:00"
-        slotMaxTime="21:00:00"
+        slotMinTime="08:00:00"
+        slotMaxTime="18:00:00"
         stickyHeaderDates
-        businessHours={{ daysOfWeek: [1, 2, 3, 4, 5], startTime: '08:00', endTime: '18:00' }}
-        timeZone="local"                 
+
+        businessHours={[
+          {
+            daysOfWeek: [1, 2, 3, 4, 5],
+            startTime: '08:00',
+            endTime: '18:00',
+          },
+          {
+            daysOfWeek: [0, 6],
+            startTime: '09:00',
+            endTime: '16:00',
+          },
+        ]}
+
         events={events}
         eventContent={eventContent}
         eventDidMount={eventDidMount}

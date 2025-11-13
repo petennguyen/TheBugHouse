@@ -116,7 +116,7 @@ export default function Sessions() {
   // Filter sessions based on selected filter
   const getFilteredSessions = () => {
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Reset to start of day for comparison
+    today.setHours(0, 0, 0, 0);
 
     switch (filter) {
       case 'upcoming':
