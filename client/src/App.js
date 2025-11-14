@@ -21,7 +21,8 @@ import Reports from "./Reports";
 import AttendanceReport from "./AttendanceReport";
 import SubjectSessionCount from "./SubjectSessionCount";
 import TutorAverageRating from "./TutorAverageRatings";
-
+import TutorProfile from './TutorProfile';
+import TutorSearch from './TutorSearch';
 
 function Verify() {
   return <div style={{ padding: 24 }}>Verifying…</div>;
@@ -123,6 +124,8 @@ function App() {
               <Route path="/book" element={isLoggedIn ? <StudentBook /> : <Navigate to="/login" replace />} />
               <Route path="/sessions" element={isLoggedIn ? <Sessions /> : <Navigate to="/login" replace />} />            
               <Route path="/availability" element={isLoggedIn && userRole === 'Tutor' ? <TutorAvailability /> : <Navigate to="/" replace />} />
+              <Route path="/profile" element={isLoggedIn && userRole === 'Tutor' ? <TutorProfile /> : <Navigate to="/" replace />} />
+              <Route path="/tutors" element={isLoggedIn && userRole === 'Student' ? <TutorSearch /> : <Navigate to="/" replace />} />
               <Route path="/admin" element={isLoggedIn && userRole === 'Admin' ? <AdminDashboard /> : <Navigate to="/" replace />} />
               <Route path="/admin/timeslot-generator" element={isLoggedIn && userRole === 'Admin' ? <TimeslotGenerator /> : <Navigate to="/" replace />} />
               <Route path="/admin/users" element={isLoggedIn && userRole === 'Admin' ? <ManageUsers /> : <Navigate to="/" replace />} />

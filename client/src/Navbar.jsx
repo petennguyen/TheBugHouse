@@ -1,3 +1,4 @@
+// Navbar.jsx (Updated)
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -74,23 +75,16 @@ export default function Navbar({ isLoggedIn, userFirstName, userRole, onLogout }
             {/* Student-only */}
             {userRole === 'Student' && (
               <>
-                <Link
-                  to="/book"
-                  className={location.pathname === '/book' ? 'active' : ''}
-                >
+                <Link to="/book" className={location.pathname === '/book' ? 'active' : ''}>
                   Book
                 </Link>
-
-                <Link 
-                  to="/apply-to-tutor"
-                  className={location.pathname === '/apply-to-tutor' ? 'active' : ''}
-                >
-                  Apply to be a Tutor
+                <Link to="/tutors" className={location.pathname === '/tutors' ? 'active' : ''}>
+                  Find Tutors
                 </Link>
               </>
             )}
-
-            {/* Tutor-only */}
+            
+            {/* Only show Tutor-specific links for Tutors */}
             {userRole === 'Tutor' && (
               <>
                 <Link
@@ -99,11 +93,8 @@ export default function Navbar({ isLoggedIn, userFirstName, userRole, onLogout }
                 >
                   My Availability
                 </Link>
-                <Link
-                  to="/profile"
-                  className={location.pathname === '/profile' ? 'active' : ''}
-                >
-                  Profile
+                <Link to="/profile" className={location.pathname === '/profile' ? 'active' : ''}>
+                  My Profile
                 </Link>
               </>
             )}

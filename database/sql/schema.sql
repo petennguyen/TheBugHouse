@@ -54,6 +54,8 @@ CREATE TABLE `Tutor` (
   `System_User_userID` INT NOT NULL,
   `tutorBiography` VARCHAR(255) NULL,
   `tutorQualifications` VARCHAR(255) NULL,
+  `tutorMajor` VARCHAR(50) NULL,
+  `tutorYear` ENUM('Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate') NULL,
   PRIMARY KEY (`System_User_userID`),
   CONSTRAINT `fk_Tutor_User`
     FOREIGN KEY (`System_User_userID`) REFERENCES `System_User`(`userID`)
@@ -184,6 +186,46 @@ CREATE TABLE `Tutor_Applications` (
   KEY `idx_TutorApplications_user` (`userID`),
   CONSTRAINT `fk_TutorApplications_User`
     FOREIGN KEY (`userID`) REFERENCES `System_User`(`userID`)
+    ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ----------------------------------------------------------------------
+-- Tutor applications (students apply to be tutors)
+-- ----------------------------------------------------------------------
+DROP TABLE IF EXISTS `Tutor_Applications`;
+CREATE TABLE `Tutor_Applications` (
+  `applicationID` INT NOT NULL AUTO_INCREMENT,
+  `userID` INT NOT NULL,
+  `coverText` TEXT NULL,
+  `resumePath` VARCHAR(512) NULL,
+  `resumeMime` VARCHAR(128) NULL,
+  `resumeSize` INT NULL,
+  `status` ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+  `adminNote` VARCHAR(255) NULL,
+  `createdAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updatedAt` DATETIME NULL,
+  PRIMARY KEY (`applicationID`),
+  KEY `idx_TutorApplications_user` (`userID`),
+  CONSTRAINT `fk_TutorApplications_User`
+    FOREIGN KEY (`userID`) REFERENCES `System_User`(`userID`)
+    ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ----------------------------------------------------------------------
+-- Tutor Subjects (many-to-many)
+-- ----------------------------------------------------------------------
+DROP TABLE IF EXISTS `Tutor_Subjects`;
+CREATE TABLE `Tutor_Subjects` (
+  `Tutor_System_User_userID` INT NOT NULL,
+  `Academic_Subject_subjectID` INT NOT NULL,
+  PRIMARY KEY (`Tutor_System_User_userID`, `Academic_Subject_subjectID`),
+  CONSTRAINT `fk_TutorSubjects_Tutor`
+    FOREIGN KEY (`Tutor_System_User_userID`) 
+    REFERENCES `Tutor`(`System_User_userID`) 
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_TutorSubjects_Subject`
+    FOREIGN KEY (`Academic_Subject_subjectID`) 
+    REFERENCES `Academic_Subject`(`subjectID`) 
     ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
