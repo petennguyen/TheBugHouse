@@ -13,9 +13,9 @@ import Dashboard from './Dashboard.jsx';
 import Navbar from './Navbar.jsx'; 
 import TimeslotGenerator from './TimeslotGenerator';
 import ManageUsers from './manageusers.js';
-import CourseManagement from './CourseManagement'; 
-
-
+import CourseManagement from './CourseManagement';
+import TutorProfile from './TutorProfile';
+import TutorSearch from './TutorSearch'; 
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -99,13 +99,14 @@ function App() {
               <Route path="/book" element={isLoggedIn ? <StudentBook /> : <Navigate to="/login" replace />} />
               <Route path="/sessions" element={isLoggedIn ? <Sessions /> : <Navigate to="/login" replace />} />
               <Route path="/availability" element={isLoggedIn && userRole === 'Tutor' ? <TutorAvailability /> : <Navigate to="/" replace />} />
+              <Route path="/profile" element={isLoggedIn && userRole === 'Tutor' ? <TutorProfile /> : <Navigate to="/" replace />} />
+              <Route path="/tutors" element={isLoggedIn && userRole === 'Student' ? <TutorSearch /> : <Navigate to="/" replace />} />
               <Route path="/admin" element={isLoggedIn && userRole === 'Admin' ? <AdminDashboard /> : <Navigate to="/" replace />} />
               <Route path="/admin/timeslot-generator" element={isLoggedIn && userRole === 'Admin' ? <TimeslotGenerator /> : <Navigate to="/" replace />} />
               <Route path="/admin/users" element={isLoggedIn && userRole === 'Admin' ? <ManageUsers /> : <Navigate to="/" replace />} />
               <Route path="/admin/courses" element={isLoggedIn && userRole === 'Admin' ? <CourseManagement /> : <Navigate to="/" replace />} />
 
               {/* 404 */}
-
               <Route path="*" element={<Navigate to={isLoggedIn ? '/' : '/login'} replace />} />
             </Routes>
           </main>
