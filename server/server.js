@@ -1591,23 +1591,50 @@ app.delete('/api/admin/courses/:id', authRequired, requireRole('Admin'), async (
 });
 
 // ---- Misc / Email / Cron / DB ----
-async function sendSessionReminder(studentEmail, scheduleDate, tutorName, subjectName) {
+async function sendSessionReminder(studentEmail, scheduleDate, tutorName, subjectName, timeslotStartTime, timeslotEndTime) {
   if (!sgMail || !process.env.SENDGRID_API_KEY) {
     console.log('Email disabled in dev; skipping send.');
     return;
+  }
+  // Format the date and time range
+  let formattedDate = scheduleDate;
+  let formattedTimeRange = '';
+  try {
+    const dateObj = new Date(scheduleDate);
+    if (!isNaN(dateObj)) {
+      const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+      const datePart = dateObj.toLocaleDateString('en-US', options);
+      // Format start and end time (assume timeslotStartTime and timeslotEndTime are 'HH:MM:SS' or 'HH:MM')
+      function formatTime(t) {
+        if (!t) return '';
+        const [h, m] = t.split(':');
+        let hour = parseInt(h, 10);
+        const min = m.padStart(2, '0');
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        hour = hour % 12;
+        hour = hour ? hour : 12;
+        return `${hour}:${min} ${ampm}`;
+      }
+      const startTime = formatTime(timeslotStartTime);
+      const endTime = formatTime(timeslotEndTime);
+      formattedTimeRange = startTime && endTime ? `${startTime} - ${endTime}` : '';
+      formattedDate = `${datePart}`;
+    }
+  } catch (e) {
+    // fallback to original scheduleDate
   }
   const msg = {
     to: studentEmail,
     from: process.env.FROM_EMAIL || 'noreply@thebughouse.com',
     subject: '📚 Reminder: Tutoring Session Tomorrow',
-    text: `Hi! Reminder: ${scheduleDate} - ${subjectName} with ${tutorName}.`,
+    text: `Hi! Reminder: ${formattedDate} ${formattedTimeRange ? '(' + formattedTimeRange + ')' : ''} - ${subjectName} with ${tutorName}.`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc;">
         <div style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
           <h2 style="color: #2563eb; margin-bottom: 20px; text-align: center;">🎓 Session Reminder</h2>
           <div style="background: #f1f5f9; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2563eb;">
             <p><strong>📖 Subject:</strong> ${subjectName}</p>
-            <p><strong>📅 Date:</strong> ${scheduleDate}</p>
+            <p><strong>📅 Date:</strong> ${formattedDate}${formattedTimeRange ? ' (' + formattedTimeRange + ')' : ''}</p>
             <p><strong>👨‍🏫 Tutor:</strong> ${tutorName}</p>
           </div>
           <p>Best regards,<br><strong>The Bug House Team</strong></p>
@@ -1651,7 +1678,8 @@ app.get('/api/manual-reminder-check', async (req, res) => {
     const [rows] = await pool.execute(
       `SELECT sess.sessionID, ds.scheduleDate, subj.subjectName,
               tsu.userFirstName AS tutorFirstName, tsu.userLastName AS tutorLastName,
-              stu.userEmail AS studentEmail, stu.userFirstName AS studentFirstName
+              stu.userEmail AS studentEmail, stu.userFirstName AS studentFirstName,
+              tl.timeslotStartTime, tl.timeslotEndTime
        FROM Tutor_Session sess
        JOIN Timeslot tl ON tl.timeslotID = sess.Timeslot_timeslotID
                         AND tl.Daily_Schedule_scheduleID = sess.Timeslot_Daily_Schedule_scheduleID
@@ -1665,7 +1693,14 @@ app.get('/api/manual-reminder-check', async (req, res) => {
     let sent = 0;
     for (const s of rows) {
       const tutorName = `${s.tutorFirstName} ${s.tutorLastName}`;
-      await sendSessionReminder(s.studentEmail, s.scheduleDate, tutorName, s.subjectName);
+      await sendSessionReminder(
+        s.studentEmail,
+        s.scheduleDate,
+        tutorName,
+        s.subjectName,
+        s.timeslotStartTime,
+        s.timeslotEndTime
+      );
       sent++;
     }
     res.json({ message: `Manual reminder check complete. Sent ${sent} reminders.`, sessionsFound: rows.length, emailsSent: sent });
