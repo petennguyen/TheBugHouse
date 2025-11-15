@@ -14,7 +14,7 @@ export default function StudentBook() {
   const [date, setDate] = useState(() => todayLocalYYYYMMDD());
   const [slots, setSlots] = useState([]);
   const [msg, setMsg] = useState('');
-  const [sessionLength, setSessionLength] = useState(60);
+  const [selectedSlot, setSelectedSlot] = useState({}); // key: idx, value: slot.start
 
   useEffect(() => {
     api.get('/api/subjects').then(res => setSubjects(res.data)).catch(() => setSubjects([]));
@@ -33,7 +33,10 @@ export default function StudentBook() {
 
   const searchAvailability = async () => {
     try {
-      const wday = new Date(date).toLocaleString('en-US', { weekday: 'short' }); 
+      // Use the date string to construct a Date object in local time
+      const [year, month, day] = date.split('-').map(Number);
+      const localDate = new Date(year, month - 1, day);
+      const wday = localDate.toLocaleString('en-US', { weekday: 'short' }); 
       const { data } = await api.get('/api/tutor/availability', { params: { dayOfWeek: wday } });
       setSlots(data);
     } catch (e) {
@@ -51,15 +54,15 @@ export default function StudentBook() {
     }
   };
 
-  const bookAvailability = async (availability) => {
+  const bookAvailability = async (availability, slotStartTime) => {
     try {
       const bookingData = {
         tutorID: availability.tutorUserID,
         dayOfWeek: availability.dayOfWeek,
-        startTime: availability.startTime,
+        startTime: slotStartTime,
         date,
         subjectID: subjectId,
-        sessionLength
+        sessionLength: 60 // always 1 hour
       };
       await api.post('/api/sessions/book-from-availability', bookingData);
       setMsg('✅ Booked!');
@@ -68,6 +71,24 @@ export default function StudentBook() {
       setMsg(e?.response?.data?.message || 'Failed to book from availability');
     }
   };
+
+  // Helper to generate 1-hour slots from startTime to endTime
+  function getOneHourSlots(startTime, endTime) {
+    const slots = [];
+    let [sh, sm] = startTime.split(':').map(Number);
+    let [eh, em] = endTime.split(':').map(Number);
+    let start = sh * 60 + sm;
+    const end = eh * 60 + em;
+    while (start + 60 <= end) {
+      const h1 = String(Math.floor(start / 60)).padStart(2, '0');
+      const m1 = String(start % 60).padStart(2, '0');
+      const h2 = String(Math.floor((start + 60) / 60)).padStart(2, '0');
+      const m2 = String((start + 60) % 60).padStart(2, '0');
+      slots.push({ start: `${h1}:${m1}`, end: `${h2}:${m2}` });
+      start += 60;
+    }
+    return slots;
+  }
 
   return (
     <div className="grid gap-3">
@@ -83,9 +104,16 @@ export default function StudentBook() {
           </select>
 
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        </div>
 
-          <button className="btn" onClick={search}>Search Timeslots</button>
-          <button className="btn" onClick={searchAvailability}>Show Tutor Availability</button>
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}>
+          <button
+            className="btn"
+            style={{ minWidth: 180 }} // adjust as needed for desired length
+            onClick={searchAvailability}
+          >
+            Show Tutor Availability
+          </button>
         </div>
 
         {msg && <p className="muted">{msg}</p>}
@@ -103,13 +131,28 @@ export default function StudentBook() {
                   <div className="muted">
                     {s.dayOfWeek} — {s.startTime} to {s.endTime}
                   </div>
-                  <div>
-                    <select value={sessionLength} onChange={e => setSessionLength(Number(e.target.value))}>
-                      <option value={30}>30 min</option>
-                      <option value={60}>60 min</option>
-                      <option value={90}>90 min</option>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0' }}>
+                    {/* Dropdown for one-hour slots */}
+                    <select
+                      value={selectedSlot[idx] || ''}
+                      onChange={e =>
+                        setSelectedSlot(prev => ({ ...prev, [idx]: e.target.value }))
+                      }
+                    >
+                      <option value="">Select time...</option>
+                      {getOneHourSlots(s.startTime, s.endTime).map(slot => (
+                        <option key={slot.start} value={slot.start}>
+                          {slot.start} - {slot.end}
+                        </option>
+                      ))}
                     </select>
-                    <button className="btn success" onClick={() => bookAvailability(s)}>Book</button>
+                    <button
+                      className="btn success"
+                      disabled={!selectedSlot[idx]}
+                      onClick={() => bookAvailability(s, selectedSlot[idx])}
+                    >
+                      Book
+                    </button>
                   </div>
                 </div>
               ) : (
