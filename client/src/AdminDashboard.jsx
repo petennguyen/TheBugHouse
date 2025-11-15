@@ -120,6 +120,16 @@ export default function AdminDashboard() {
             </div>
 
             <div className="card">
+              <h3 className="font-medium">Reports</h3>
+              <button
+                className="px-3 py-2 bg-blue-500 text-white rounded mt-2"
+                onClick={() => navigate('/admin/reports')}
+              >
+                Go to Reports
+              </button>
+            </div>
+            
+            <div className="card">
               <h3 className="font-medium">Manage Schedules</h3>
               <button
                 className="px-3 py-2 bg-blue-500 text-white rounded mt-2"

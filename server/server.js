@@ -1344,7 +1344,155 @@ app.delete('/api/admin/schedules/:scheduleId', authRequired, requireRole('Admin'
     res.status(500).json({ message: 'Failed to delete schedule' });
   }
 });
+app.get('/api/admin/attendance-report', authRequired, requireRole('Admin'), async (req, res) => {
+  try {
+      const { startDate, endDate } = req.query;
 
+      // Default: last 30 days
+      const today = new Date();
+      const past30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+      const defaultStart = past30.toISOString().slice(0, 10);
+      const defaultEnd = today.toISOString().slice(0, 10);
+
+      const [attendanceReport] = await pool.execute(
+        ` SELECT 
+            s.scheduleDate,
+            a.subjectName,
+            t.timeslotID,
+            t.timeslotStartTime,
+            t.timeslotEndTime,
+            ts.sessionID,
+            CONCAT(tutor.userFirstName, ' ', tutor.userLastName) AS tutorName,
+            CONCAT(student.userFirstName, ' ', student.userLastName) AS studentName,
+            ts.sessionSignInTime,
+            ts.sessionSignOutTime,
+            ts.sessionStatus
+          FROM Daily_Schedule s
+          JOIN Timeslot t 
+            ON s.scheduleID = t.Daily_Schedule_scheduleID
+          JOIN Academic_Subject a
+            ON t.Academic_Subject_subjectID = a.subjectID
+          LEFT JOIN Tutor_Session ts
+            ON ts.Timeslot_timeslotID = t.timeslotID
+            AND ts.Timeslot_Daily_Schedule_scheduleID = t.Daily_Schedule_scheduleID
+          JOIN System_User tutor
+            ON tutor.userID = t.Tutor_System_User_userID
+          LEFT JOIN System_User student
+            ON student.userID = ts.Student_System_User_userID
+          WHERE s.scheduleDate BETWEEN ? AND ?
+          ORDER BY s.scheduleDate ASC, t.timeslotStartTime ASC; `,
+      [
+        startDate || defaultStart,
+        endDate || defaultEnd
+      ]
+      );
+
+    res.json(attendanceReport);
+  } catch (err) {
+    console.error('Error fetching attendance report:', err);
+    res.status(500).json({ error: 'Database query failed' });
+  }
+});
+app.get('/api/admin/session-percentages', authRequired, requireRole('Admin'), async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    const today = new Date();
+    const past30 = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const defaultStart = past30.toISOString().slice(0, 10);
+    const defaultEnd = today.toISOString().slice(0, 10);
+
+    const [rows] = await pool.execute(
+      `SELECT 
+          a.subjectName,
+          COUNT(*) AS sessionCount,
+          ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2) AS percentage
+      FROM Tutor_Session ts
+      JOIN Academic_Subject a
+        ON ts.Academic_Subject_subjectID = a.subjectID
+      WHERE ts.sessionSignInTime BETWEEN ? AND ?
+      GROUP BY a.subjectID, a.subjectName
+      ORDER BY sessionCount DESC;
+      `,
+      [
+        startDate || defaultStart,
+        endDate || defaultEnd
+      ]
+    );
+
+    res.json({
+      labels: rows.map(r => r.subjectName),
+      data: rows.map(r => r.sessionCount),
+      percentages: rows.map(r => r.percentage)
+    });
+
+  } catch (err) {
+    console.error('Error fetching session percentages:', err);
+    res.status(500).json({ error: 'Database query failed' });
+  }
+});
+app.get('/api/admin/subject-session-count', authRequired, requireRole('Admin'), async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    const today = new Date();
+    const past30 = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const defaultStart = past30.toISOString().slice(0, 10);
+    const defaultEnd = today.toISOString().slice(0, 10);
+
+    const [rows] = await pool.execute(
+      `SELECT 
+          a.subjectName,
+          COUNT(*) AS sessionCount
+      FROM Tutor_Session ts
+      JOIN Academic_Subject a
+        ON ts.Academic_Subject_subjectID = a.subjectID
+      WHERE ts.sessionSignInTime BETWEEN ? AND ?
+      GROUP BY a.subjectID, a.subjectName
+      ORDER BY sessionCount DESC;`,
+      [
+        startDate || defaultStart,
+        endDate || defaultEnd
+      ]
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error('Error fetching session totals:', err);
+    res.status(500).json({ error: 'Database query failed' });
+  }
+});
+app.get('/api/admin/tutor-average-ratings', authRequired, requireRole('Admin'), async (req, res) => {
+  try {
+    const [rows] = await pool.execute(`
+      SELECT 
+          CONCAT(su.userFirstName, ' ', su.userLastName) AS tutorName,
+          ROUND(AVG(ts.sessionRating), 2) AS avgRating,
+          COUNT(ts.sessionRating) AS ratingCount
+      FROM Tutor t
+      JOIN System_User su 
+          ON t.System_User_userID = su.userID
+      LEFT JOIN Tutor_Session ts
+          ON ts.Tutor_System_User_userID = t.System_User_userID
+      WHERE ts.sessionRating IS NOT NULL
+      GROUP BY 
+          t.System_User_userID, 
+          su.userFirstName, 
+          su.userLastName
+      HAVING COUNT(ts.sessionRating) > 0
+      ORDER BY avgRating DESC;
+    `);
+
+    console.log("Tutor averages:", rows);
+    res.json(rows);
+  } catch (err) {
+    console.error('Error fetching tutor average ratings:', err);
+    res.status(500).json({ error: 'Database query failed' });
+  }
+});
 app.get('/api/admin/feedback-analytics', authRequired, requireRole('Admin'), async (req, res) => {
   try {
     const [subjectRatings] = await pool.execute(`

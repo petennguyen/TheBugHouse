@@ -109,36 +109,100 @@ ON DUPLICATE KEY UPDATE
 -- =====================================================
 INSERT INTO Daily_Schedule (Administrator_System_User_userID, scheduleDate)
 SELECT * FROM (
-  SELECT su.userID, DATE '2025-08-01' FROM System_User su WHERE su.userEmail='adminA@bughouse.edu'
+  SELECT su.userID, DATE '2025-11-12' FROM System_User su WHERE su.userEmail='adminA@bughouse.edu'
   UNION ALL
-  SELECT su.userID, DATE '2025-08-02' FROM System_User su WHERE su.userEmail='adminB@bughouse.edu'
-  UNION ALL
-  SELECT su.userID, DATE '2025-08-03' FROM System_User su WHERE su.userEmail='adminC@bughouse.edu'
+  SELECT su.userID, DATE '2025-11-13' FROM System_User su WHERE su.userEmail='adminB@bughouse.edu'
 ) AS new;
 
--- =====================================================
--- 5) Timeslots
--- =====================================================
-INSERT INTO Timeslot 
-  (Daily_Schedule_scheduleID, Academic_Subject_subjectID, Tutor_System_User_userID, timeslotStartTime, timeslotEndTime)
+
+INSERT INTO Timeslot (Daily_Schedule_scheduleID, Academic_Subject_subjectID, Tutor_System_User_userID, timeslotStartTime, timeslotEndTime)
 SELECT * FROM (
-  SELECT ds.scheduleID, s.subjectID, t.userID, '09:00:00', '10:00:00'
-    FROM Daily_Schedule ds
-    JOIN Academic_Subject s ON s.subjectName = 'Calculus I'
-    JOIN System_User t ON t.userEmail = 'tutorA@bughouse.edu'
-    WHERE ds.scheduleDate = '2025-08-01'
+  SELECT ds.scheduleID, subj.subjectID, tutor.userID, '08:00:00', '09:00:00'
+  FROM Daily_Schedule ds
+  JOIN Academic_Subject subj ON subj.subjectName='Calculus I'
+  JOIN System_User tutor ON tutor.userEmail='tutorA@bughouse.edu'
+  WHERE ds.scheduleDate='2025-11-12'
+
   UNION ALL
-  SELECT ds.scheduleID, s.subjectID, t.userID, '10:00:00', '11:00:00'
-    FROM Daily_Schedule ds
-    JOIN Academic_Subject s ON s.subjectName = 'Physics I'
-    JOIN System_User t ON t.userEmail = 'tutorB@bughouse.edu'
-    WHERE ds.scheduleDate = '2025-08-01'
+
+  SELECT ds.scheduleID, subj.subjectID, tutor.userID, '10:00:00', '11:00:00'
+  FROM Daily_Schedule ds
+  JOIN Academic_Subject subj ON subj.subjectName='Physics I'
+  JOIN System_User tutor ON tutor.userEmail='tutorB@bughouse.edu'
+  WHERE ds.scheduleDate='2025-11-12'
+
   UNION ALL
-  SELECT ds.scheduleID, s.subjectID, t.userID, '11:00:00', '12:00:00'
-    FROM Daily_Schedule ds
-    JOIN Academic_Subject s ON s.subjectName = 'Statistics'
-    JOIN System_User t ON t.userEmail = 'tutorC@bughouse.edu'
-    WHERE ds.scheduleDate = '2025-08-02'
+
+  SELECT ds.scheduleID, subj.subjectID, tutor.userID, '12:00:00', '13:00:00'
+  FROM Daily_Schedule ds
+  JOIN Academic_Subject subj ON subj.subjectName='Statistics'
+  JOIN System_User tutor ON tutor.userEmail='tutorC@bughouse.edu'
+  WHERE ds.scheduleDate='2025-11-12'
+
+  UNION ALL
+
+  SELECT ds.scheduleID, subj.subjectID, tutor.userID, '13:00:00', '14:00:00'
+  FROM Daily_Schedule ds
+  JOIN Academic_Subject subj ON subj.subjectName='Organic Chemistry'
+  JOIN System_User tutor ON tutor.userEmail='tutorD@bughouse.edu'
+  WHERE ds.scheduleDate='2025-11-12'
+
+  UNION ALL
+
+  SELECT ds.scheduleID, subj.subjectID, tutor.userID, '15:00:00', '16:00:00'
+  FROM Daily_Schedule ds
+  JOIN Academic_Subject subj ON subj.subjectName='Algorithms & Datastructures'
+  JOIN System_User tutor ON tutor.userEmail='tutorE@bughouse.edu'
+  WHERE ds.scheduleDate='2025-11-12'
+
+  UNION ALL
+
+  SELECT ds.scheduleID, subj.subjectID, tutor.userID, '16:00:00', '17:00:00'
+  FROM Daily_Schedule ds
+  JOIN Academic_Subject subj ON subj.subjectName='Calculus II'
+  JOIN System_User tutor ON tutor.userEmail='tutorF@bughouse.edu'
+  WHERE ds.scheduleDate='2025-11-12'
+
+  UNION ALL
+  
+  SELECT ds.scheduleID, subj.subjectID, tutor.userID, '08:00:00', '09:00:00'
+  FROM Daily_Schedule ds
+  JOIN Academic_Subject subj ON subj.subjectName='Calculus I'
+  JOIN System_User tutor ON tutor.userEmail='tutorG@bughouse.edu'
+  WHERE ds.scheduleDate='2025-11-13'
+
+  UNION ALL
+  
+  SELECT ds.scheduleID, subj.subjectID, tutor.userID, '09:00:00', '10:00:00'
+  FROM Daily_Schedule ds
+  JOIN Academic_Subject subj ON subj.subjectName='Physics I'
+  JOIN System_User tutor ON tutor.userEmail='tutorH@bughouse.edu'
+  WHERE ds.scheduleDate='2025-11-13'
+
+  UNION ALL
+  
+  SELECT ds.scheduleID, subj.subjectID, tutor.userID, '11:00:00', '12:00:00'
+  FROM Daily_Schedule ds
+  JOIN Academic_Subject subj ON subj.subjectName='Calculus II'
+  JOIN System_User tutor ON tutor.userEmail='tutorJ@bughouse.edu'
+  WHERE ds.scheduleDate='2025-11-13'
+
+  UNION ALL
+  
+  SELECT ds.scheduleID, subj.subjectID, tutor.userID, '12:00:00', '13:00:00'
+  FROM Daily_Schedule ds
+  JOIN Academic_Subject subj ON subj.subjectName='Calculus III'
+  JOIN System_User tutor ON tutor.userEmail='tutorA@bughouse.edu'
+  WHERE ds.scheduleDate='2025-11-13'
+
+  UNION ALL
+  
+  SELECT ds.scheduleID, subj.subjectID, tutor.userID, '13:00:00', '14:00:00'
+  FROM Daily_Schedule ds
+  JOIN Academic_Subject subj ON subj.subjectName='Organic Chemistry'
+  JOIN System_User tutor ON tutor.userEmail='tutorB@bughouse.edu'
+  WHERE ds.scheduleDate='2025-11-13'
+
 ) AS new;
 
 -- =====================================================
@@ -150,65 +214,210 @@ INSERT INTO Tutor_Session (
   Academic_Subject_subjectID,
   Tutor_System_User_userID,
   Student_System_User_userID,
-  sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating
+  sessionSignInTime,
+  sessionSignOutTime,
+  sessionFeedback,
+  sessionRating,
+  sessionStatus
 )
--- Session 1: 2025-08-01 Calculus I (studentA)
 SELECT
   tl.timeslotID,
   tl.Daily_Schedule_scheduleID,
   tl.Academic_Subject_subjectID,
   tl.Tutor_System_User_userID,
-  stuA.userID,
-  '2025-08-01 09:00:00', '2025-08-01 10:00:00', 'Great session!', 5
+  stu.userID,
+  '2025-11-12 08:00:00','2025-11-12 09:00:00',
+  'Good focus today.', 5, 'Completed'
 FROM Timeslot tl
 JOIN (
   SELECT MIN(tl2.timeslotID) AS min_ts
   FROM Timeslot tl2
-  JOIN Daily_Schedule ds2 ON ds2.scheduleID = tl2.Daily_Schedule_scheduleID
-  JOIN Academic_Subject subj2 ON subj2.subjectID = tl2.Academic_Subject_subjectID
-  WHERE ds2.scheduleDate='2025-08-01' AND subj2.subjectName='Calculus I'
-) pick1 ON pick1.min_ts = tl.timeslotID
-JOIN System_User stuA ON stuA.userEmail='studentA@bughouse.edu'
+  JOIN Daily_Schedule ds2 ON ds2.scheduleID=tl2.Daily_Schedule_scheduleID
+  JOIN Academic_Subject subj2 ON subj2.subjectID=tl2.Academic_Subject_subjectID
+  WHERE ds2.scheduleDate='2025-11-12' AND subj2.subjectName='Calculus I'
+) pick ON pick.min_ts = tl.timeslotID
+JOIN System_User stu ON stu.userEmail='studentD@bughouse.edu'
 
 UNION ALL
 
--- Session 2: 2025-08-01 Physics I (studentB)
 SELECT
-  tl.timeslotID,
-  tl.Daily_Schedule_scheduleID,
-  tl.Academic_Subject_subjectID,
-  tl.Tutor_System_User_userID,
-  stuB.userID,
-  '2025-08-01 11:00:00', '2025-08-01 12:00:00', 'Helpful session.', 4
+  tl.timeslotID, tl.Daily_Schedule_scheduleID,
+  tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+  stu.userID,
+  '2025-11-12 10:00:00','2025-11-12 11:00:00',
+  'Great explanations.', 4, 'Completed'
 FROM Timeslot tl
 JOIN (
   SELECT MIN(tl2.timeslotID) AS min_ts
   FROM Timeslot tl2
-  JOIN Daily_Schedule ds2 ON ds2.scheduleID = tl2.Daily_Schedule_scheduleID
-  JOIN Academic_Subject subj2 ON subj2.subjectID = tl2.Academic_Subject_subjectID
-  WHERE ds2.scheduleDate='2025-08-01' AND subj2.subjectName='Physics I'
-) pick2 ON pick2.min_ts = tl.timeslotID
-JOIN System_User stuB ON stuB.userEmail='studentB@bughouse.edu'
+  JOIN Daily_Schedule ds2 ON ds2.scheduleID=tl2.Daily_Schedule_scheduleID
+  JOIN Academic_Subject subj2 ON subj2.subjectID=tl2.Academic_Subject_subjectID
+  WHERE ds2.scheduleDate='2025-11-12' AND subj2.subjectName='Physics I'
+) pick ON pick.min_ts = tl.timeslotID
+JOIN System_User stu ON stu.userEmail='studentE@bughouse.edu'
 
 UNION ALL
 
--- Session 3: 2025-08-02 Statistics (studentC)
 SELECT
-  tl.timeslotID,
-  tl.Daily_Schedule_scheduleID,
-  tl.Academic_Subject_subjectID,
-  tl.Tutor_System_User_userID,
-  stuC.userID,
-  '2025-08-02 14:00:00', '2025-08-02 15:00:00', 'Very informative.', 5
+  tl.timeslotID, tl.Daily_Schedule_scheduleID,
+  tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+  stu.userID,
+  '2025-11-12 12:00:00','2025-11-12 13:00:00',
+  'Clear and helpful.', 5, 'Completed'
 FROM Timeslot tl
 JOIN (
   SELECT MIN(tl2.timeslotID) AS min_ts
   FROM Timeslot tl2
-  JOIN Daily_Schedule ds2 ON ds2.scheduleID = tl2.Daily_Schedule_scheduleID
-  JOIN Academic_Subject subj2 ON subj2.subjectID = tl2.Academic_Subject_subjectID
-  WHERE ds2.scheduleDate='2025-08-02' AND subj2.subjectName='Statistics'
-) pick3 ON pick3.min_ts = tl.timeslotID
-JOIN System_User stuC ON stuC.userEmail='studentC@bughouse.edu';
+  JOIN Daily_Schedule ds2 ON ds2.scheduleID=tl2.Daily_Schedule_scheduleID
+  JOIN Academic_Subject subj2 ON subj2.subjectID=tl2.Academic_Subject_subjectID
+  WHERE ds2.scheduleDate='2025-11-12' AND subj2.subjectName='Statistics'
+) pick ON pick.min_ts = tl.timeslotID
+JOIN System_User stu ON stu.userEmail='studentF@bughouse.edu'
+
+UNION ALL
+
+SELECT
+  tl.timeslotID, tl.Daily_Schedule_scheduleID,
+  tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+  stu.userID,
+  '2025-11-12 13:00:00','2025-11-12 14:00:00',
+  'Challenging but good.', 4, 'Completed'
+FROM Timeslot tl
+JOIN (
+  SELECT MIN(tl2.timeslotID) AS min_ts
+  FROM Timeslot tl2
+  JOIN Daily_Schedule ds2 ON ds2.scheduleID=tl2.Daily_Schedule_scheduleID
+  JOIN Academic_Subject subj2 ON subj2.subjectID=tl2.Academic_Subject_subjectID
+  WHERE ds2.scheduleDate='2025-11-12' AND subj2.subjectName='Organic Chemistry'
+) pick ON pick.min_ts = tl.timeslotID
+JOIN System_User stu ON stu.userEmail='studentG@bughouse.edu'
+
+UNION ALL
+
+SELECT
+  tl.timeslotID, tl.Daily_Schedule_scheduleID,
+  tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+  stu.userID,
+  '2025-11-12 15:00:00','2025-11-12 16:00:00',
+  'Great writing improvements.', 5, 'Completed'
+FROM Timeslot tl
+JOIN (
+  SELECT MIN(tl2.timeslotID) AS min_ts
+  FROM Timeslot tl2
+  JOIN Daily_Schedule ds2 ON ds2.scheduleID=tl2.Daily_Schedule_scheduleID
+  JOIN Academic_Subject subj2 ON subj2.subjectID=tl2.Academic_Subject_subjectID
+  WHERE ds2.scheduleDate='2025-11-12' AND subj2.subjectName='Algorithms & Datastructures'
+) pick ON pick.min_ts = tl.timeslotID
+JOIN System_User stu ON stu.userEmail='studentH@bughouse.edu'
+
+UNION ALL
+
+SELECT
+  tl.timeslotID, tl.Daily_Schedule_scheduleID,
+  tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+  stu.userID,
+  '2025-11-12 16:00:00','2025-11-12 17:00:00',
+  'Solved many problems.', 4, 'Completed'
+FROM Timeslot tl
+JOIN (
+  SELECT MIN(tl2.timeslotID) AS min_ts
+  FROM Timeslot tl2
+  JOIN Daily_Schedule ds2 ON ds2.scheduleID=tl2.Daily_Schedule_scheduleID
+  JOIN Academic_Subject subj2 ON subj2.subjectID=tl2.Academic_Subject_subjectID
+  WHERE ds2.scheduleDate='2025-11-12' AND subj2.subjectName='Calculus II'
+) pick ON pick.min_ts = tl.timeslotID
+JOIN System_User stu ON stu.userEmail='studentI@bughouse.edu'
+
+UNION ALL
+
+SELECT
+  tl.timeslotID, tl.Daily_Schedule_scheduleID,
+  tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+  stu.userID,
+  '2025-11-13 08:00:00','2025-11-13 09:00:00',
+  'Good session.', 5, 'Completed'
+FROM Timeslot tl
+JOIN (
+  SELECT MIN(tl2.timeslotID) AS min_ts
+  FROM Timeslot tl2
+  JOIN Daily_Schedule ds2 ON ds2.scheduleID=tl2.Daily_Schedule_scheduleID
+  JOIN Academic_Subject subj2 ON subj2.subjectID=tl2.Academic_Subject_subjectID
+  WHERE ds2.scheduleDate='2025-11-13' AND subj2.subjectName='Calculus I'
+) pick ON pick.min_ts = tl.timeslotID
+JOIN System_User stu ON stu.userEmail='studentA@bughouse.edu'
+
+UNION ALL
+
+SELECT
+  tl.timeslotID, tl.Daily_Schedule_scheduleID,
+  tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+  stu.userID,
+  '2025-11-13 09:00:00','2025-11-13 10:00:00',
+  'Solid understanding.', 4, 'Completed'
+FROM Timeslot tl
+JOIN (
+  SELECT MIN(tl2.timeslotID) AS min_ts
+  FROM Timeslot tl2
+  JOIN Daily_Schedule ds2 ON ds2.scheduleID=tl2.Daily_Schedule_scheduleID
+  JOIN Academic_Subject subj2 ON subj2.subjectID=tl2.Academic_Subject_subjectID
+  WHERE ds2.scheduleDate='2025-11-13' AND subj2.subjectName='Physics I'
+) pick ON pick.min_ts = tl.timeslotID
+JOIN System_User stu ON stu.userEmail='studentB@bughouse.edu'
+
+UNION ALL
+
+SELECT
+  tl.timeslotID, tl.Daily_Schedule_scheduleID,
+  tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+  stu.userID,
+  '2025-11-13 11:00:00','2025-11-13 12:00:00',
+  'Improved understanding.', 4, 'Completed'
+FROM Timeslot tl
+JOIN (
+  SELECT MIN(tl2.timeslotID) AS min_ts
+  FROM Timeslot tl2
+  JOIN Daily_Schedule ds2 ON ds2.scheduleID=tl2.Daily_Schedule_scheduleID
+  JOIN Academic_Subject subj2 ON subj2.subjectID=tl2.Academic_Subject_subjectID
+  WHERE ds2.scheduleDate='2025-11-13' AND subj2.subjectName='Calculus II'
+) pick ON pick.min_ts = tl.timeslotID
+JOIN System_User stu ON stu.userEmail='studentD@bughouse.edu'
+
+UNION ALL
+
+SELECT
+  tl.timeslotID, tl.Daily_Schedule_scheduleID,
+  tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+  stu.userID,
+  '2025-11-13 12:00:00','2025-11-13 13:00:00',
+  'Writing improved a lot.', 5, 'Completed'
+FROM Timeslot tl
+JOIN (
+  SELECT MIN(tl2.timeslotID) AS min_ts
+  FROM Timeslot tl2
+  JOIN Daily_Schedule ds2 ON ds2.scheduleID=tl2.Daily_Schedule_scheduleID
+  JOIN Academic_Subject subj2 ON subj2.subjectID=tl2.Academic_Subject_subjectID
+  WHERE ds2.scheduleDate='2025-11-13' AND subj2.subjectName='Calculus III'
+) pick ON pick.min_ts = tl.timeslotID
+JOIN System_User stu ON stu.userEmail='studentE@bughouse.edu'
+
+UNION ALL
+
+SELECT
+  tl.timeslotID, tl.Daily_Schedule_scheduleID,
+  tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+  stu.userID,
+  '2025-11-13 13:00:00','2025-11-13 14:00:00',
+  'Great effort today.', 4, 'Completed'
+FROM Timeslot tl
+JOIN (
+  SELECT MIN(tl2.timeslotID) AS min_ts
+  FROM Timeslot tl2
+  JOIN Daily_Schedule ds2 ON ds2.scheduleID=tl2.Daily_Schedule_scheduleID
+  JOIN Academic_Subject subj2 ON subj2.subjectID=tl2.Academic_Subject_subjectID
+  WHERE ds2.scheduleDate='2025-11-13' AND subj2.subjectName='Organic Chemistry'
+) pick ON pick.min_ts = tl.timeslotID
+JOIN System_User stu ON stu.userEmail='studentF@bughouse.edu';
+
 
 
 -- =====================================================
