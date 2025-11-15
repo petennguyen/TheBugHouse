@@ -110,7 +110,7 @@ export default function Sessions() {
     if (sessionDate > today) return { label: 'Upcoming', color: '#2563eb', bg: '#dbeafe' };
     if (sessionDate < today && !session.sessionSignInTime) return { label: 'Missed', color: '#dc2626', bg: '#fef2f2' };
     
-    return { label: 'Scheduled', color: '#6b7280', bg: '#f3f4f6' };
+    return { label: 'Upcoming', color: '#6b7280', bg: '#f3f4f6' };
   };
 
   // Filter sessions based on selected filter
@@ -123,7 +123,7 @@ export default function Sessions() {
         return rows.filter(session => {
           const sessionDate = new Date(session.scheduleDate);
           sessionDate.setHours(0, 0, 0, 0);
-          return sessionDate >= today && !session.sessionSignOutTime;
+          return sessionDate >= today && !session.sessionSignInTime && !session.sessionSignOutTime;
         });
 
       case 'ongoing':
@@ -145,7 +145,7 @@ export default function Sessions() {
     sessionDate.setHours(0, 0, 0, 0);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return sessionDate >= today && !session.sessionSignOutTime;
+    return sessionDate >= today && !session.sessionSignInTime && !session.sessionSignOutTime;
   }).length;
   
   const ongoingCount = rows.filter(session => 
@@ -194,8 +194,8 @@ export default function Sessions() {
             style={{
               padding: '6px 12px',
               fontSize: 14,
-              background: filter === 'past' ? '#f59e0b' : '#e5e7eb',
-              color: filter === 'past' ? '#fff' : '#111827',
+              background: filter === 'ongoing' ? '#f59e0b' : '#e5e7eb',
+              color: filter === 'ongoing' ? '#fff' : '#111827',
               border: 'none',
               borderRadius: 6
             }}
@@ -286,7 +286,7 @@ export default function Sessions() {
                 {role === 'Student' && (
                   <>
                     {/* Check-in button */}
-                    {!r.sessionSignInTime && status.label === 'Upcoming' && (
+                    {!r.sessionSignInTime && (status.label === 'Upcoming' || status.label === 'Scheduled') && (
                       <button 
                         className="btn success" 
                         onClick={() => checkIn(r.sessionID)}

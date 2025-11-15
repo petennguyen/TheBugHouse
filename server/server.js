@@ -189,6 +189,38 @@ app.post('/api/sessions/book', authRequired, requireRole('Student'), async (req,
   }
 });
 
+app.post('/api/sessions/:sessionID/check-in', authRequired, requireRole('Student'), async (req, res) => {
+  const { sessionID } = req.params;
+  
+  try {
+    const [[session]] = await pool.execute(
+      `SELECT sessionID, sessionSignInTime FROM Tutor_Session 
+       WHERE sessionID = ? AND Student_System_User_userID = ?`,
+      [sessionID, req.user.userID]
+    );
+    
+    if (!session) {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+    
+    if (session.sessionSignInTime) {
+      return res.status(400).json({ message: 'Already checked in' });
+    }
+    
+    await pool.execute(
+      `UPDATE Tutor_Session 
+       SET sessionSignInTime = NOW(3) 
+       WHERE sessionID = ?`,
+      [sessionID]
+    );
+    
+    res.json({ message: 'Checked in successfully' });
+  } catch (e) {
+    console.error('Check-in error:', e);
+    res.status(500).json({ message: 'Failed to check in' });
+  }
+});
+
 app.post('/api/sessions/book-from-availability', authRequired, requireRole('Student'), async (req, res) => {
   const { tutorID, dayOfWeek, startTime, date, subjectID, sessionLength } = req.body;
   if (!tutorID || !dayOfWeek || !startTime || !date || !subjectID || !sessionLength) {
