@@ -1,16 +1,3 @@
-USE BugHouse;
-
--- =====================================================
--- 1) Subjects (no deprecated VALUES() in UPDATE)
--- =====================================================
-INSERT INTO Academic_Subject (subjectName)
-VALUES
-  ('Calculus I'), ('Calculus II'), ('Calculus III'),
-  ('Physics I'), ('Algorithms & Datastructures'),
-  ('Organic Chemistry'), ('Art History'), ('Statistics')
-AS new
-ON DUPLICATE KEY UPDATE subjectName = new.subjectName;
-
 -- =====================================================
 -- 2) System users (bulk upsert without VALUES() function)
 -- =====================================================
@@ -40,23 +27,62 @@ VALUES
   ('Student','G','studentG@bughouse.edu','studentpasswordG','Student'),
   ('Student','H','studentH@bughouse.edu','studentpasswordH','Student'),
   ('Student','I','studentI@bughouse.edu','studentpasswordI','Student'),
-  ('Student','J','studentJ@bughouse.edu','studentpasswordJ','Student')
+  ('Student','J','studentJ@bughouse.edu','studentpasswordJ','Student'),
+  ('Student','KK','studentKK@bughouse.edu','studentpasswordKK','Student')
 AS new
 ON DUPLICATE KEY UPDATE
   userPassword = new.userPassword,
   userRole     = new.userRole;
 
--- =====================================================
--- 3) Role tables (use derived table alias `new` for upsert)
--- =====================================================
--- Admins
-INSERT INTO Administrator (System_User_userID, accessLevel)
-SELECT * FROM (
-  SELECT su.userID AS System_User_userID, 1 AS accessLevel
-  FROM System_User su
-  WHERE su.userEmail IN ('adminA@bughouse.edu','adminB@bughouse.edu','adminC@bughouse.edu')
-) AS new
-ON DUPLICATE KEY UPDATE accessLevel = new.accessLevel;
+
+  -- UTA CSE courses 
+INSERT INTO Academic_Subject (
+   subjectCode ,subjectName)
+VALUES
+('CSE 1106', 'Introduction to Computer Science and Engineering'),
+('CSE 1310', 'Introduction to Computers & Programming'),
+('CSE 1320', 'Intermediate Programming'),
+('CSE 1325', 'Object-Oriented Programming'),
+('CSE 2312', 'Computer Organization & Assembly Language Programming'),
+('CSE 2315', 'Discrete Structures'),
+('CSE 2440', 'Circuit Analysis'),
+('CSE 2441', 'Digital Logic Design I'),
+('CSE 3302', 'Programming Languages'),
+('CSE 3310', 'Fundamentals of Software Engineering'),
+('CSE 3311', 'Object-Oriented Software Engineering'),
+('CSE 3313', 'Introduction to Signal Processing'),
+('CSE 3314', 'Professional Practices'),
+('CSE 3315', 'Theoretical Concepts in Computer Science and Engineering'),
+('CSE 3318', 'Algorithms & Data Structures'),
+('CSE 3320', 'Operating Systems'),
+('CSE 3323', 'Electronics'),
+('CSE 3330', 'Database Systems and File Structures'),
+('CSE 3340', 'Introduction to Human Computer Interaction'),
+('CSE 3341', 'Digital Logic Design II'),
+('CSE 3380', 'Linear Algebra for CSE'),
+('CSE 3442', 'Embedded Systems I'),
+('CSE 4303', 'Computer Graphics'),
+('CSE 4304', 'Game Design and Development'),
+('CSE 4305', 'Compilers for Algorithmic Languages'),
+('CSE 4308', 'Artificial Intelligence'),
+('CSE 4309', 'Fundamentals of Machine Learning'),
+('CSE 4310', 'Fundamentals of Computer Vision'),
+('CSE 4311', 'Neural Networks and Deep Learning'),
+('CSE 4321', 'Software Testing & Maintenance'),
+('CSE 4322', 'Software Project Management'),
+('CSE 4323', 'Quantitative Computer Architecture'),
+('CSE 4331', 'Database Implementation and Theory'),
+('CSE 4333', 'Cloud Computing Fundamentals and Applications'),
+('CSE 4334', 'Data Mining'),
+('CSE 4342', 'Embedded Systems II'),
+('CSE 4344', 'Computer Network Organization'),
+('CSE 4345', 'Computational Methods'),
+('CSE 4351', 'Parallel Processing'),
+('CSE 4352', 'IoT and Networking')
+AS new
+ON DUPLICATE KEY UPDATE subjectName = new.subjectName;
+
+
 
 -- Tutors (batched with UNION ALL)
 INSERT INTO Tutor (System_User_userID, tutorBiography, tutorQualifications)
@@ -86,338 +112,156 @@ ON DUPLICATE KEY UPDATE
   tutorBiography     = new.tutorBiography,
   tutorQualifications = new.tutorQualifications;
 
--- Students (batched)
+-- Restore Student table (required for student foreign key)
 INSERT INTO Student (System_User_userID, studentIDCard, studentLearningGoals)
-SELECT * FROM (
-  SELECT su.userID, 'ID001' AS studentIDCard, 'Calculus I'                     AS studentLearningGoals FROM System_User su WHERE su.userEmail='studentA@bughouse.edu'
-  UNION ALL SELECT su.userID, 'ID002', 'Physics I'           FROM System_User su WHERE su.userEmail='studentB@bughouse.edu'
-  UNION ALL SELECT su.userID, 'ID003', 'Calculus III'        FROM System_User su WHERE su.userEmail='studentC@bughouse.edu'
-  UNION ALL SELECT su.userID, 'ID004', 'Algorithms & Datastructures' FROM System_User su WHERE su.userEmail='studentD@bughouse.edu'
-  UNION ALL SELECT su.userID, 'ID005', 'Art History'         FROM System_User su WHERE su.userEmail='studentE@bughouse.edu'
-  UNION ALL SELECT su.userID, 'ID006', 'Calculus II'         FROM System_User su WHERE su.userEmail='studentF@bughouse.edu'
-  UNION ALL SELECT su.userID, 'ID007', 'Statistics'          FROM System_User su WHERE su.userEmail='studentG@bughouse.edu'
-  UNION ALL SELECT su.userID, 'ID008', 'Organic Chemistry'   FROM System_User su WHERE su.userEmail='studentH@bughouse.edu'
-  UNION ALL SELECT su.userID, 'ID009', 'Physics I'           FROM System_User su WHERE su.userEmail='studentI@bughouse.edu'
-  UNION ALL SELECT su.userID, 'ID010', 'Calculus I'          FROM System_User su WHERE su.userEmail='studentJ@bughouse.edu'
-) AS new
-ON DUPLICATE KEY UPDATE
-  studentIDCard       = new.studentIDCard,
-  studentLearningGoals = new.studentLearningGoals;
+SELECT userID, NULL, NULL FROM System_User WHERE userRole = 'Student';
 
--- =====================================================
--- 4) Schedules
--- =====================================================
+-- Restore Administrator table (required for Daily_Schedule foreign key)
+INSERT INTO Administrator (System_User_userID, accessLevel)
+SELECT userID, 1 FROM System_User WHERE userEmail IN ('adminA@bughouse.edu', 'adminB@bughouse.edu', 'adminC@bughouse.edu');
+
+-- Restore Daily_Schedule for test sessions (using adminA)
 INSERT INTO Daily_Schedule (Administrator_System_User_userID, scheduleDate)
-SELECT * FROM (
-  SELECT su.userID, DATE '2025-11-12' FROM System_User su WHERE su.userEmail='adminA@bughouse.edu'
-  UNION ALL
-  SELECT su.userID, DATE '2025-11-13' FROM System_User su WHERE su.userEmail='adminB@bughouse.edu'
-) AS new;
+SELECT su.userID, '2025-11-12'
+FROM System_User su WHERE su.userEmail = 'adminA@bughouse.edu';
 
+-- Restore Timeslot for each session (subject, tutor, schedule, times)
+INSERT INTO Timeslot (Daily_Schedule_scheduleID, Academic_Subject_subjectID, Tutor_System_User_userID, timeslotStartTime, timeslotEndTime)
+SELECT ds.scheduleID, subj.subjectID, t.userID, '08:00:00', '09:00:00'
+FROM Daily_Schedule ds
+JOIN Academic_Subject subj ON subj.subjectName = 'Introduction to Computers & Programming'
+JOIN System_User t ON t.userEmail = 'tutorA@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12';
 
 INSERT INTO Timeslot (Daily_Schedule_scheduleID, Academic_Subject_subjectID, Tutor_System_User_userID, timeslotStartTime, timeslotEndTime)
-SELECT * FROM (
-  SELECT ds.scheduleID, subj.subjectID, tutor.userID, '08:00:00', '09:00:00'
-  FROM Daily_Schedule ds
-  JOIN Academic_Subject subj ON subj.subjectName='Calculus I'
-  JOIN System_User tutor ON tutor.userEmail='tutorA@bughouse.edu'
-  WHERE ds.scheduleDate='2025-11-12'
+SELECT ds.scheduleID, subj.subjectID, t.userID, '10:00:00', '11:00:00'
+FROM Daily_Schedule ds
+JOIN Academic_Subject subj ON subj.subjectName = 'Circuit Analysis'
+JOIN System_User t ON t.userEmail = 'tutorB@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12';
 
-  UNION ALL
+INSERT INTO Timeslot (Daily_Schedule_scheduleID, Academic_Subject_subjectID, Tutor_System_User_userID, timeslotStartTime, timeslotEndTime)
+SELECT ds.scheduleID, subj.subjectID, t.userID, '12:00:00', '13:00:00'
+FROM Daily_Schedule ds
+JOIN Academic_Subject subj ON subj.subjectName = 'Linear Algebra for CSE'
+JOIN System_User t ON t.userEmail = 'tutorC@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12';
 
-  SELECT ds.scheduleID, subj.subjectID, tutor.userID, '10:00:00', '11:00:00'
-  FROM Daily_Schedule ds
-  JOIN Academic_Subject subj ON subj.subjectName='Physics I'
-  JOIN System_User tutor ON tutor.userEmail='tutorB@bughouse.edu'
-  WHERE ds.scheduleDate='2025-11-12'
+INSERT INTO Timeslot (Daily_Schedule_scheduleID, Academic_Subject_subjectID, Tutor_System_User_userID, timeslotStartTime, timeslotEndTime)
+SELECT ds.scheduleID, subj.subjectID, t.userID, '13:00:00', '14:00:00'
+FROM Daily_Schedule ds
+JOIN Academic_Subject subj ON subj.subjectName = 'Electronics'
+JOIN System_User t ON t.userEmail = 'tutorD@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12';
 
-  UNION ALL
-
-  SELECT ds.scheduleID, subj.subjectID, tutor.userID, '12:00:00', '13:00:00'
-  FROM Daily_Schedule ds
-  JOIN Academic_Subject subj ON subj.subjectName='Statistics'
-  JOIN System_User tutor ON tutor.userEmail='tutorC@bughouse.edu'
-  WHERE ds.scheduleDate='2025-11-12'
-
-  UNION ALL
-
-  SELECT ds.scheduleID, subj.subjectID, tutor.userID, '13:00:00', '14:00:00'
-  FROM Daily_Schedule ds
-  JOIN Academic_Subject subj ON subj.subjectName='Organic Chemistry'
-  JOIN System_User tutor ON tutor.userEmail='tutorD@bughouse.edu'
-  WHERE ds.scheduleDate='2025-11-12'
-
-  UNION ALL
-
-  SELECT ds.scheduleID, subj.subjectID, tutor.userID, '15:00:00', '16:00:00'
-  FROM Daily_Schedule ds
-  JOIN Academic_Subject subj ON subj.subjectName='Algorithms & Datastructures'
-  JOIN System_User tutor ON tutor.userEmail='tutorE@bughouse.edu'
-  WHERE ds.scheduleDate='2025-11-12'
-
-  UNION ALL
-
-  SELECT ds.scheduleID, subj.subjectID, tutor.userID, '16:00:00', '17:00:00'
-  FROM Daily_Schedule ds
-  JOIN Academic_Subject subj ON subj.subjectName='Calculus II'
-  JOIN System_User tutor ON tutor.userEmail='tutorF@bughouse.edu'
-  WHERE ds.scheduleDate='2025-11-12'
-
-  UNION ALL
-  
-  SELECT ds.scheduleID, subj.subjectID, tutor.userID, '08:00:00', '09:00:00'
-  FROM Daily_Schedule ds
-  JOIN Academic_Subject subj ON subj.subjectName='Calculus I'
-  JOIN System_User tutor ON tutor.userEmail='tutorG@bughouse.edu'
-  WHERE ds.scheduleDate='2025-11-13'
-
-  UNION ALL
-  
-  SELECT ds.scheduleID, subj.subjectID, tutor.userID, '09:00:00', '10:00:00'
-  FROM Daily_Schedule ds
-  JOIN Academic_Subject subj ON subj.subjectName='Physics I'
-  JOIN System_User tutor ON tutor.userEmail='tutorH@bughouse.edu'
-  WHERE ds.scheduleDate='2025-11-13'
-
-  UNION ALL
-  
-  SELECT ds.scheduleID, subj.subjectID, tutor.userID, '11:00:00', '12:00:00'
-  FROM Daily_Schedule ds
-  JOIN Academic_Subject subj ON subj.subjectName='Calculus II'
-  JOIN System_User tutor ON tutor.userEmail='tutorJ@bughouse.edu'
-  WHERE ds.scheduleDate='2025-11-13'
-
-  UNION ALL
-  
-  SELECT ds.scheduleID, subj.subjectID, tutor.userID, '12:00:00', '13:00:00'
-  FROM Daily_Schedule ds
-  JOIN Academic_Subject subj ON subj.subjectName='Calculus III'
-  JOIN System_User tutor ON tutor.userEmail='tutorA@bughouse.edu'
-  WHERE ds.scheduleDate='2025-11-13'
-
-  UNION ALL
-  
-  SELECT ds.scheduleID, subj.subjectID, tutor.userID, '13:00:00', '14:00:00'
-  FROM Daily_Schedule ds
-  JOIN Academic_Subject subj ON subj.subjectName='Organic Chemistry'
-  JOIN System_User tutor ON tutor.userEmail='tutorB@bughouse.edu'
-  WHERE ds.scheduleDate='2025-11-13'
-
-) AS new;
+INSERT INTO Timeslot (Daily_Schedule_scheduleID, Academic_Subject_subjectID, Tutor_System_User_userID, timeslotStartTime, timeslotEndTime)
+SELECT ds.scheduleID, subj.subjectID, t.userID, '15:00:00', '16:00:00'
+FROM Daily_Schedule ds
+JOIN Academic_Subject subj ON subj.subjectName = 'Algorithms & Data Structures'
+JOIN System_User t ON t.userEmail = 'tutorE@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12';
 
 -- =====================================================
--- 6) Sessions (pick the first matching timeslot via MIN)
+ -- =====================================================
+-- Safe Tutor_Session inserts (one row per student/session)
 -- =====================================================
+
+-- 11/12 — Introduction to Computers & Programming
 INSERT INTO Tutor_Session (
-  Timeslot_timeslotID,
-  Timeslot_Daily_Schedule_scheduleID,
-  Academic_Subject_subjectID,
-  Tutor_System_User_userID,
-  Student_System_User_userID,
-  sessionSignInTime,
-  sessionSignOutTime,
-  sessionFeedback,
-  sessionRating,
-  sessionStatus
+    Timeslot_timeslotID,
+    Timeslot_Daily_Schedule_scheduleID,
+    Academic_Subject_subjectID,
+    Tutor_System_User_userID,
+    Student_System_User_userID,
+    sessionSignInTime,
+    sessionSignOutTime,
+    sessionFeedback,
+    sessionRating,
+    sessionStatus
 )
-SELECT
-  tl.timeslotID,
-  tl.Daily_Schedule_scheduleID,
-  tl.Academic_Subject_subjectID,
-  tl.Tutor_System_User_userID,
-  stu.userID,
-  '2025-11-12 08:00:00','2025-11-12 09:00:00',
-  'Good focus today.', 5, 'Completed'
+SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+       stu.userID,
+       '2025-11-12 08:00:00', '2025-11-12 09:00:00',
+       'Good focus today.', 5, 'Completed'
 FROM Timeslot tl
-JOIN (
-  SELECT MIN(tl2.timeslotID) AS min_ts
-  FROM Timeslot tl2
-  JOIN Daily_Schedule ds2 ON ds2.scheduleID=tl2.Daily_Schedule_scheduleID
-  JOIN Academic_Subject subj2 ON subj2.subjectID=tl2.Academic_Subject_subjectID
-  WHERE ds2.scheduleDate='2025-11-12' AND subj2.subjectName='Calculus I'
-) pick ON pick.min_ts = tl.timeslotID
-JOIN System_User stu ON stu.userEmail='studentD@bughouse.edu'
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+JOIN System_User stu ON stu.userEmail = 'studentD@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12'
+  AND subj.subjectName = 'Introduction to Computers & Programming'
+LIMIT 1;
 
-UNION ALL
-
-SELECT
-  tl.timeslotID, tl.Daily_Schedule_scheduleID,
-  tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
-  stu.userID,
-  '2025-11-12 10:00:00','2025-11-12 11:00:00',
-  'Great explanations.', 4, 'Completed'
+-- 11/12 — Circuit Analysis
+INSERT INTO Tutor_Session (
+    Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID,
+    Tutor_System_User_userID, Student_System_User_userID,
+    sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating, sessionStatus
+)
+SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+       stu.userID,
+       '2025-11-12 10:00:00', '2025-11-12 11:00:00',
+       'Great explanations.', 4, 'Completed'
 FROM Timeslot tl
-JOIN (
-  SELECT MIN(tl2.timeslotID) AS min_ts
-  FROM Timeslot tl2
-  JOIN Daily_Schedule ds2 ON ds2.scheduleID=tl2.Daily_Schedule_scheduleID
-  JOIN Academic_Subject subj2 ON subj2.subjectID=tl2.Academic_Subject_subjectID
-  WHERE ds2.scheduleDate='2025-11-12' AND subj2.subjectName='Physics I'
-) pick ON pick.min_ts = tl.timeslotID
-JOIN System_User stu ON stu.userEmail='studentE@bughouse.edu'
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+JOIN System_User stu ON stu.userEmail = 'studentE@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12'
+  AND subj.subjectName = 'Circuit Analysis'
+LIMIT 1;
 
-UNION ALL
-
-SELECT
-  tl.timeslotID, tl.Daily_Schedule_scheduleID,
-  tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
-  stu.userID,
-  '2025-11-12 12:00:00','2025-11-12 13:00:00',
-  'Clear and helpful.', 5, 'Completed'
+-- 11/12 — Linear Algebra for CSE
+INSERT INTO Tutor_Session (
+    Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID,
+    Tutor_System_User_userID, Student_System_User_userID,
+    sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating, sessionStatus
+)
+SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+       stu.userID,
+       '2025-11-12 12:00:00', '2025-11-12 13:00:00',
+       'Clear and helpful.', 5, 'Completed'
 FROM Timeslot tl
-JOIN (
-  SELECT MIN(tl2.timeslotID) AS min_ts
-  FROM Timeslot tl2
-  JOIN Daily_Schedule ds2 ON ds2.scheduleID=tl2.Daily_Schedule_scheduleID
-  JOIN Academic_Subject subj2 ON subj2.subjectID=tl2.Academic_Subject_subjectID
-  WHERE ds2.scheduleDate='2025-11-12' AND subj2.subjectName='Statistics'
-) pick ON pick.min_ts = tl.timeslotID
-JOIN System_User stu ON stu.userEmail='studentF@bughouse.edu'
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+JOIN System_User stu ON stu.userEmail = 'studentF@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12'
+  AND subj.subjectName = 'Linear Algebra for CSE'
+LIMIT 1;
 
-UNION ALL
-
-SELECT
-  tl.timeslotID, tl.Daily_Schedule_scheduleID,
-  tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
-  stu.userID,
-  '2025-11-12 13:00:00','2025-11-12 14:00:00',
-  'Challenging but good.', 4, 'Completed'
+-- 11/12 — Electronics
+INSERT INTO Tutor_Session (
+    Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID,
+    Tutor_System_User_userID, Student_System_User_userID,
+    sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating, sessionStatus
+)
+SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+       stu.userID,
+       '2025-11-12 13:00:00', '2025-11-12 14:00:00',
+       'Challenging but good.', 4, 'Completed'
 FROM Timeslot tl
-JOIN (
-  SELECT MIN(tl2.timeslotID) AS min_ts
-  FROM Timeslot tl2
-  JOIN Daily_Schedule ds2 ON ds2.scheduleID=tl2.Daily_Schedule_scheduleID
-  JOIN Academic_Subject subj2 ON subj2.subjectID=tl2.Academic_Subject_subjectID
-  WHERE ds2.scheduleDate='2025-11-12' AND subj2.subjectName='Organic Chemistry'
-) pick ON pick.min_ts = tl.timeslotID
-JOIN System_User stu ON stu.userEmail='studentG@bughouse.edu'
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+JOIN System_User stu ON stu.userEmail = 'studentG@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12'
+  AND subj.subjectName = 'Electronics'
+LIMIT 1;
 
-UNION ALL
-
-SELECT
-  tl.timeslotID, tl.Daily_Schedule_scheduleID,
-  tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
-  stu.userID,
-  '2025-11-12 15:00:00','2025-11-12 16:00:00',
-  'Great writing improvements.', 5, 'Completed'
+-- 11/12 — Algorithms & Data Structures
+INSERT INTO Tutor_Session (
+    Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID,
+    Tutor_System_User_userID, Student_System_User_userID,
+    sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating, sessionStatus
+)
+SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+       stu.userID,
+       '2025-11-12 15:00:00', '2025-11-12 16:00:00',
+       'Great writing improvements.', 5, 'Completed'
 FROM Timeslot tl
-JOIN (
-  SELECT MIN(tl2.timeslotID) AS min_ts
-  FROM Timeslot tl2
-  JOIN Daily_Schedule ds2 ON ds2.scheduleID=tl2.Daily_Schedule_scheduleID
-  JOIN Academic_Subject subj2 ON subj2.subjectID=tl2.Academic_Subject_subjectID
-  WHERE ds2.scheduleDate='2025-11-12' AND subj2.subjectName='Algorithms & Datastructures'
-) pick ON pick.min_ts = tl.timeslotID
-JOIN System_User stu ON stu.userEmail='studentH@bughouse.edu'
-
-UNION ALL
-
-SELECT
-  tl.timeslotID, tl.Daily_Schedule_scheduleID,
-  tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
-  stu.userID,
-  '2025-11-12 16:00:00','2025-11-12 17:00:00',
-  'Solved many problems.', 4, 'Completed'
-FROM Timeslot tl
-JOIN (
-  SELECT MIN(tl2.timeslotID) AS min_ts
-  FROM Timeslot tl2
-  JOIN Daily_Schedule ds2 ON ds2.scheduleID=tl2.Daily_Schedule_scheduleID
-  JOIN Academic_Subject subj2 ON subj2.subjectID=tl2.Academic_Subject_subjectID
-  WHERE ds2.scheduleDate='2025-11-12' AND subj2.subjectName='Calculus II'
-) pick ON pick.min_ts = tl.timeslotID
-JOIN System_User stu ON stu.userEmail='studentI@bughouse.edu'
-
-UNION ALL
-
-SELECT
-  tl.timeslotID, tl.Daily_Schedule_scheduleID,
-  tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
-  stu.userID,
-  '2025-11-13 08:00:00','2025-11-13 09:00:00',
-  'Good session.', 5, 'Completed'
-FROM Timeslot tl
-JOIN (
-  SELECT MIN(tl2.timeslotID) AS min_ts
-  FROM Timeslot tl2
-  JOIN Daily_Schedule ds2 ON ds2.scheduleID=tl2.Daily_Schedule_scheduleID
-  JOIN Academic_Subject subj2 ON subj2.subjectID=tl2.Academic_Subject_subjectID
-  WHERE ds2.scheduleDate='2025-11-13' AND subj2.subjectName='Calculus I'
-) pick ON pick.min_ts = tl.timeslotID
-JOIN System_User stu ON stu.userEmail='studentA@bughouse.edu'
-
-UNION ALL
-
-SELECT
-  tl.timeslotID, tl.Daily_Schedule_scheduleID,
-  tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
-  stu.userID,
-  '2025-11-13 09:00:00','2025-11-13 10:00:00',
-  'Solid understanding.', 4, 'Completed'
-FROM Timeslot tl
-JOIN (
-  SELECT MIN(tl2.timeslotID) AS min_ts
-  FROM Timeslot tl2
-  JOIN Daily_Schedule ds2 ON ds2.scheduleID=tl2.Daily_Schedule_scheduleID
-  JOIN Academic_Subject subj2 ON subj2.subjectID=tl2.Academic_Subject_subjectID
-  WHERE ds2.scheduleDate='2025-11-13' AND subj2.subjectName='Physics I'
-) pick ON pick.min_ts = tl.timeslotID
-JOIN System_User stu ON stu.userEmail='studentB@bughouse.edu'
-
-UNION ALL
-
-SELECT
-  tl.timeslotID, tl.Daily_Schedule_scheduleID,
-  tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
-  stu.userID,
-  '2025-11-13 11:00:00','2025-11-13 12:00:00',
-  'Improved understanding.', 4, 'Completed'
-FROM Timeslot tl
-JOIN (
-  SELECT MIN(tl2.timeslotID) AS min_ts
-  FROM Timeslot tl2
-  JOIN Daily_Schedule ds2 ON ds2.scheduleID=tl2.Daily_Schedule_scheduleID
-  JOIN Academic_Subject subj2 ON subj2.subjectID=tl2.Academic_Subject_subjectID
-  WHERE ds2.scheduleDate='2025-11-13' AND subj2.subjectName='Calculus II'
-) pick ON pick.min_ts = tl.timeslotID
-JOIN System_User stu ON stu.userEmail='studentD@bughouse.edu'
-
-UNION ALL
-
-SELECT
-  tl.timeslotID, tl.Daily_Schedule_scheduleID,
-  tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
-  stu.userID,
-  '2025-11-13 12:00:00','2025-11-13 13:00:00',
-  'Writing improved a lot.', 5, 'Completed'
-FROM Timeslot tl
-JOIN (
-  SELECT MIN(tl2.timeslotID) AS min_ts
-  FROM Timeslot tl2
-  JOIN Daily_Schedule ds2 ON ds2.scheduleID=tl2.Daily_Schedule_scheduleID
-  JOIN Academic_Subject subj2 ON subj2.subjectID=tl2.Academic_Subject_subjectID
-  WHERE ds2.scheduleDate='2025-11-13' AND subj2.subjectName='Calculus III'
-) pick ON pick.min_ts = tl.timeslotID
-JOIN System_User stu ON stu.userEmail='studentE@bughouse.edu'
-
-UNION ALL
-
-SELECT
-  tl.timeslotID, tl.Daily_Schedule_scheduleID,
-  tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
-  stu.userID,
-  '2025-11-13 13:00:00','2025-11-13 14:00:00',
-  'Great effort today.', 4, 'Completed'
-FROM Timeslot tl
-JOIN (
-  SELECT MIN(tl2.timeslotID) AS min_ts
-  FROM Timeslot tl2
-  JOIN Daily_Schedule ds2 ON ds2.scheduleID=tl2.Daily_Schedule_scheduleID
-  JOIN Academic_Subject subj2 ON subj2.subjectID=tl2.Academic_Subject_subjectID
-  WHERE ds2.scheduleDate='2025-11-13' AND subj2.subjectName='Organic Chemistry'
-) pick ON pick.min_ts = tl.timeslotID
-JOIN System_User stu ON stu.userEmail='studentF@bughouse.edu';
-
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+JOIN System_User stu ON stu.userEmail = 'studentH@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12'
+  AND subj.subjectName = 'Algorithms & Data Structures'
+LIMIT 1;
 
 
 -- =====================================================

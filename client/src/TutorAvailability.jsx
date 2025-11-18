@@ -81,15 +81,15 @@ export default function TutorAvailability() {
     setSelectedSubjects(filteredSubjects.map(s => s.subjectID));
   };
 
-  // Filter subjects based on search term
+  // Filter subjects based on search term (search both code and name)
   const filteredSubjects = subjects.filter(subject =>
-    subject.subjectName.toLowerCase().includes(searchTerm.toLowerCase())
+    (subject.subjectName + ' ' + (subject.subjectCode || '')).toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Get selected subject names for display
+  // Get selected subject display strings (code + name)
   const selectedSubjectNames = subjects
     .filter(s => selectedSubjects.includes(s.subjectID))
-    .map(s => s.subjectName);
+    .map(s => (s.subjectCode ? `${s.subjectCode} - ${s.subjectName}` : s.subjectName));
 
   return (
     <div className="grid gap-3">
@@ -238,6 +238,7 @@ export default function TutorAvailability() {
             
             {filteredSubjects.map((subject, index) => {
               const isSelected = selectedSubjects.includes(subject.subjectID);
+              const displayName = subject.subjectCode ? `${subject.subjectCode} - ${subject.subjectName}` : subject.subjectName;
               return (
                 <label 
                   key={subject.subjectID} 
@@ -285,7 +286,7 @@ export default function TutorAvailability() {
                       fontWeight: isSelected ? 600 : 400,
                       color: isSelected ? '#1e40af' : '#374151'
                     }}>
-                      {subject.subjectName}
+                      {displayName}
                     </div>
                   </div>
                   

@@ -112,7 +112,7 @@ try {
 app.get('/api/subjects', authRequired, async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      'SELECT subjectID, subjectName FROM Academic_Subject ORDER BY subjectName'
+      'SELECT subjectID, subjectCode, subjectName FROM Academic_Subject ORDER BY subjectName'
     );
     res.json(rows);
   } catch (e) {
@@ -675,13 +675,12 @@ app.post('/api/availability', authRequired, requireRole('Tutor'), async (req, re
   const { dayOfWeek, startTime, endTime, subjects } = req.body;
   if (!dayOfWeek || !startTime || !endTime || !subjects?.length) {
     return res.status(400).json({ message: 'dayOfWeek, startTime, endTime, and subjects required' });
-  }
   try {
     const [subjectRows] = await pool.execute(
-      `SELECT subjectName FROM Academic_Subject WHERE subjectID IN (${subjects.map(() => '?').join(',')})`,
+      `SELECT subjectCode, subjectName FROM Academic_Subject WHERE subjectID IN (${subjects.map(() => '?').join(',')})`,
       subjects
     );
-    const subjectNames = subjectRows.map(row => row.subjectName).join(',');
+    const subjectNames = subjectRows.map(row => `${row.subjectCode} - ${row.subjectName}`).join(', ');
 
     await pool.execute(
       'INSERT INTO Tutor_Availability (Tutor_System_User_userID, dayOfWeek, startTime, endTime, subjects) VALUES (?, ?, ?, ?, ?)',
@@ -691,6 +690,7 @@ app.post('/api/availability', authRequired, requireRole('Tutor'), async (req, re
   } catch (e) {
     console.error('availability add error', e);
     res.status(500).json({ message: 'Failed to add availability' });
+  }
   }
 });
 
@@ -1696,8 +1696,8 @@ async function columnExists(table, column) {
 // ---- Admin: Courses CRUD ----
 app.get('/api/admin/courses', authRequired, requireRole('Admin'), async (req, res) => {
   try {
-    const [rows] = await pool.execute('SELECT subjectID, subjectName FROM Academic_Subject ORDER BY subjectName');
-    const data = rows.map(r => ({ subjectID: r.subjectID, subjectName: r.subjectName, subjectCode: null }));
+    const [rows] = await pool.execute('SELECT subjectID, subjectName, subjectCode FROM Academic_Subject ORDER BY subjectName');
+    const data = rows.map(r => ({ subjectID: r.subjectID, subjectName: r.subjectName, subjectCode: r.subjectCode }));
     res.json(data);
   } catch (e) {
     console.error('Get courses error:', e);
@@ -1715,7 +1715,7 @@ app.post('/api/admin/courses', authRequired, requireRole('Admin'), async (req, r
     if (hasCode) {
       [result] = await pool.execute(
         'INSERT INTO Academic_Subject (subjectName, subjectCode) VALUES (?, ?)',
-        [courseTitle.trim(), courseCode || null]
+        [courseTitle.trim(), courseCode]
       );
     } else {
       [result] = await pool.execute(

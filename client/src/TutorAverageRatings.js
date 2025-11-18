@@ -7,7 +7,7 @@ export default function TutorAverageRatings() {
   const fetchTutorAverages = async () => {
     try {
       const res = await api.get("/api/admin/tutor-average-ratings");
-      console.log("Received ratings:", res.data); 
+      // console.log("Received ratings:", res.data); // Removed for production
       setRatings(res.data);
     } catch (error) {
       console.error("Error fetching tutor averages:", error);
