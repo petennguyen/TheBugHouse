@@ -17,6 +17,7 @@ VALUES
   ('Tutor','H','tutorH@bughouse.edu','tutorpasswordH','Tutor'),
   ('Tutor','I','tutorI@bughouse.edu','tutorpasswordI','Tutor'),
   ('Tutor','J','tutorJ@bughouse.edu','tutorpasswordJ','Tutor'),
+  -- insert more tutors
 
   ('Student','A','studentA@bughouse.edu','studentpasswordA','Student'),
   ('Student','B','studentB@bughouse.edu','studentpasswordB','Student'),
@@ -29,6 +30,8 @@ VALUES
   ('Student','I','studentI@bughouse.edu','studentpasswordI','Student'),
   ('Student','J','studentJ@bughouse.edu','studentpasswordJ','Student'),
   ('Student','KK','studentKK@bughouse.edu','studentpasswordKK','Student')
+
+  -- insert more students
 AS new
 ON DUPLICATE KEY UPDATE
   userPassword = new.userPassword,
@@ -111,16 +114,20 @@ SELECT * FROM (
 ON DUPLICATE KEY UPDATE
   tutorBiography     = new.tutorBiography,
   tutorQualifications = new.tutorQualifications;
+-- not sure this data is going to
 
--- Restore Student table (required for student foreign key)
+
+
+-- =====================================================
 INSERT INTO Student (System_User_userID, studentIDCard, studentLearningGoals)
 SELECT userID, NULL, NULL FROM System_User WHERE userRole = 'Student';
 
--- Restore Administrator table (required for Daily_Schedule foreign key)
+-- =====================================================
 INSERT INTO Administrator (System_User_userID, accessLevel)
 SELECT userID, 1 FROM System_User WHERE userEmail IN ('adminA@bughouse.edu', 'adminB@bughouse.edu', 'adminC@bughouse.edu');
 
--- Restore Daily_Schedule for test sessions (using adminA)
+-- =====================================================
+-- 5) Daily Schedule and Timeslot
 INSERT INTO Daily_Schedule (Administrator_System_User_userID, scheduleDate)
 SELECT su.userID, '2025-11-12'
 FROM System_User su WHERE su.userEmail = 'adminA@bughouse.edu';

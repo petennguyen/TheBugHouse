@@ -303,7 +303,7 @@ export default function Sessions() {
                       </button>
                     )}
                     
-                    {/* Feedback button */}
+                    {/* Feedback button: only for completed sessions */}
                     {status.label === 'Completed' && (
                       <button 
                         className="btn primary" 

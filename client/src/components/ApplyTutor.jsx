@@ -1,18 +1,26 @@
 import React, { useRef, useState } from 'react';
 import api from '../api';
+import { useSyncTutorAppStatus } from '../hooks/useSyncTutorAppStatus';
 
 export default function ApplyToTutor() {
   const [cover, setCover] = useState('');
   const [file, setFile] = useState(null);
   const [err, setErr] = useState('');
-  const [ok, setOk] = useState('');
   const [msg, setMsg] = useState(''); // NEW: centralized message box
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [applicationID, setApplicationID] = useState(null);
-  const [submittedAt, setSubmittedAt] = useState(null); // NEW: date when submitted
-  const [appStatus, setAppStatus] = useState(null);     // NEW: application status (Pending/Approved/Rejected)
+  const [submittedAt, setSubmittedAt] = useState(() => {
+    const stored = localStorage.getItem('tutorAppSubmittedAt');
+    return stored ? new Date(stored) : null;
+  });
+  const [appStatus, setAppStatus] = useState(() => {
+    return localStorage.getItem('tutorAppStatus') || null;
+  });
   const fileInputRef = useRef(null);
+
+  // Sync status from backend on mount
+  useSyncTutorAppStatus(setAppStatus, setSubmittedAt);
 
   const MAX_BYTES = 10 * 1024 * 1024;
 
@@ -26,7 +34,6 @@ export default function ApplyToTutor() {
 
   const onFile = (f) => {
     setErr('');
-    setOk('');
     setMsg('');
     setApplicationID(null);
     if (!f) { setFile(null); return; }
@@ -51,7 +58,6 @@ export default function ApplyToTutor() {
   const onSubmit = async (e) => {
     e.preventDefault();
     setErr('');
-    setOk('');
     setMsg('');
     setApplicationID(null);
     if (!file) { setErr('Please attach a PDF resume'); setMsg('Please attach a PDF resume'); return; }
@@ -69,16 +75,27 @@ export default function ApplyToTutor() {
           if (ev.total) setProgress(Math.round((ev.loaded * 100) / ev.total));
         },
       });
-      setOk('Application submitted successfully');
       setMsg('Application submitted successfully');
 
       // Prefer server-provided values if present, otherwise default
       const data = res?.data || {};
       if (data.applicationID) setApplicationID(data.applicationID);
-      if (data.status) setAppStatus(typeof data.status === 'string' ? (data.status.charAt(0).toUpperCase() + data.status.slice(1)) : data.status);
-      else setAppStatus('Pending');
-      if (data.createdAt) setSubmittedAt(new Date(data.createdAt));
-      else setSubmittedAt(new Date());
+      if (data.status) {
+        const status = typeof data.status === 'string' ? (data.status.charAt(0).toUpperCase() + data.status.slice(1)) : data.status;
+        setAppStatus(status);
+        localStorage.setItem('tutorAppStatus', status);
+      } else {
+        setAppStatus('Pending');
+        localStorage.setItem('tutorAppStatus', 'Pending');
+      }
+      if (data.createdAt) {
+        setSubmittedAt(new Date(data.createdAt));
+        localStorage.setItem('tutorAppSubmittedAt', data.createdAt);
+      } else {
+        const now = new Date();
+        setSubmittedAt(now);
+        localStorage.setItem('tutorAppSubmittedAt', now.toISOString());
+      }
 
       setCover('');
       setFile(null);
@@ -95,12 +112,13 @@ export default function ApplyToTutor() {
     setCover('');
     setFile(null);
     setErr('');
-    setOk('');
     setMsg('');
     setApplicationID(null);
     setProgress(0);
     setSubmittedAt(null);
+    localStorage.removeItem('tutorAppSubmittedAt');
     setAppStatus(null);
+    localStorage.removeItem('tutorAppStatus');
   };
 
   return (
@@ -224,7 +242,20 @@ export default function ApplyToTutor() {
         <div className="mt-6 p-6 bg-gray-50 rounded border border-gray-100">
           <div className="text-sm text-gray-600 mb-2">Status: <span className="font-medium text-gray-800">{appStatus || 'Pending'}</span></div>
           <div className="text-sm text-gray-600 mb-2">Submitted: <span className="font-medium text-gray-800">{submittedAt ? submittedAt.toLocaleDateString() : ''}</span></div>
-          {applicationID && <div className="text-sm text-gray-600">Application ID: <span className="font-medium text-gray-800">{applicationID}</span></div>}
+          {appStatus === 'Rejected' ? (
+            <div>
+              <h1 className="text-red-700 font-semibold mb-2">We're sorry, your application was not approved this time.</h1>
+              <p className="text-gray-700">Thank you for your interest in becoming a tutor. Please feel free to apply again in 30 days. We encourage you to keep learning and growing!</p>
+            </div>
+          ) : appStatus === 'Approved' ? (
+            <div>
+              <h1 className="text-green-700 font-semibold mb-2">Congratulations! Your application has been approved.</h1>
+              <p className="text-gray-700">You now have access to the Tutor Dashboard. Please log out and log back in to see your new dashboard and start tutoring!</p>
+            </div>
+          ) : (
+            <h1>Your application is currently being reviewed, please check back later.</h1>
+          )}
+          {/* {applicationID && <div className="text-sm text-gray-600">Application ID: <span className="font-medium text-gray-800">{applicationID}</span></div>} */}
         </div>
       )}
 

@@ -1,3 +1,4 @@
+// ...existing code...
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
@@ -32,6 +33,26 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
+});
+
+// student: get own application status
+router.get('/tutor/my-application', async (req, res) => {
+  // Prefer authenticated user id (if auth middleware ran). Otherwise require x-user-id header.
+  const userId = (req.user && req.user.userID) ? Number(req.user.userID) : (req.header('x-user-id') ? Number(req.header('x-user-id')) : null);
+  if (!userId) return res.status(401).json({ message: 'Authentication required to fetch application status (provide token or x-user-id header)' });
+  try {
+    const [rows] = await pool.query(
+      `SELECT applicationID, status, createdAt, updatedAt, adminNote FROM Tutor_Applications WHERE userID = ? ORDER BY createdAt DESC LIMIT 1`,
+      [userId]
+    );
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ message: 'No tutor application found for this user' });
+    }
+    return res.json(rows[0]);
+  } catch (err) {
+    console.error('fetch my-application error', err);
+    return res.status(500).json({ message: 'Failed to fetch application status' });
+  }
 });
 
 
