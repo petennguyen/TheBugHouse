@@ -111,9 +111,14 @@ try {
 // ---- Subjects ----
 app.get('/api/subjects', authRequired, async (req, res) => {
   try {
-    const [rows] = await pool.execute(
-      'SELECT subjectID, subjectCode, subjectName FROM Academic_Subject ORDER BY subjectName'
-    );
+    let [rows] = await pool.execute('SHOW COLUMNS FROM Academic_Subject LIKE "subjectCode"');
+    let query;
+    if (rows.length > 0) {
+      query = 'SELECT subjectID, subjectName, subjectCode FROM Academic_Subject ORDER BY subjectName';
+    } else {
+      query = 'SELECT subjectID, subjectName FROM Academic_Subject ORDER BY subjectName';
+    }
+    [rows] = await pool.execute(query);
     res.json(rows);
   } catch (e) {
     console.error(e);
@@ -218,6 +223,58 @@ app.post('/api/sessions/:sessionID/check-in', authRequired, requireRole('Student
   } catch (e) {
     console.error('Check-in error:', e);
     res.status(500).json({ message: 'Failed to check in' });
+  }
+});
+
+
+
+// --- MIGRATION: Add 'subjects' column to Tutor_Availability if missing ---
+async function ensureSubjectsColumn() {
+  try {
+    const [cols] = await pool.execute("SHOW COLUMNS FROM Tutor_Availability LIKE 'subjects'");
+    if (cols.length === 0) {
+      await pool.execute("ALTER TABLE Tutor_Availability ADD COLUMN subjects VARCHAR(255) DEFAULT NULL");
+      console.log("Added 'subjects' column to Tutor_Availability");
+    }
+  } catch (e) {
+    console.error('Migration error (subjects column):', e);
+  }
+}
+ensureSubjectsColumn();
+
+app.get('/api/availability/mine', authRequired, requireRole('Tutor'), async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      `SELECT availabilityID, dayOfWeek, startTime, endTime, subjects
+       FROM Tutor_Availability WHERE Tutor_System_User_userID = ? ORDER BY FIELD(dayOfWeek,'Mon','Tue','Wed','Thu','Fri','Sat','Sun'), startTime`,
+      [req.user.userID]
+    );
+    res.json(rows);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: 'Failed to load availability' });
+  }
+});
+
+app.post('/api/availability', authRequired, requireRole('Tutor'), async (req, res) => {
+  const { dayOfWeek, startTime, endTime, subjects } = req.body || {};
+  if (!dayOfWeek || !startTime || !endTime) return res.status(400).json({ message: 'dayOfWeek, startTime, endTime required' });
+  let subjectsStr = null;
+  if (Array.isArray(subjects) && subjects.length > 0) {
+    const placeholders = subjects.map(() => '?').join(',');
+    const [subRows] = await pool.execute(`SELECT subjectName FROM Academic_Subject WHERE subjectID IN (${placeholders})`, subjects);
+    subjectsStr = subRows.map(r => r.subjectName).join(', ');
+  }
+  try {
+    await pool.execute(
+      `INSERT INTO Tutor_Availability (Tutor_System_User_userID, dayOfWeek, startTime, endTime, subjects)
+       VALUES (?, ?, ?, ?, ?)`,
+      [req.user.userID, dayOfWeek, startTime, endTime, subjectsStr]
+    );
+    res.json({ message: 'Availability added' });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: 'Failed to add availability' });
   }
 });
 
@@ -558,6 +615,70 @@ app.post('/api/sessions/:sessionID/feedback', authRequired, requireRole('Student
     res.status(500).json({ message: 'Failed to save feedback' });
   }
 });
+
+// --- Completed sessions ----
+
+app.get('/api/sessions/completed', authRequired, async (req, res) => {
+  try {
+    let query = '';
+    let params = [];
+    if (req.user.role === 'Student') {
+      query = `
+        SELECT sess.sessionID, ds.scheduleDate, subj.subjectName,
+          tsu.userFirstName AS tutorFirstName, tsu.userLastName AS tutorLastName,
+          sess.sessionSignInTime, sess.sessionSignOutTime, sess.sessionFeedback, sess.sessionRating
+        FROM Tutor_Session sess
+        JOIN Timeslot tl ON tl.timeslotID = sess.Timeslot_timeslotID AND tl.Daily_Schedule_scheduleID = sess.Timeslot_Daily_Schedule_scheduleID
+        JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+        JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+        JOIN System_User tsu ON tsu.userID = sess.Tutor_System_User_userID
+        WHERE sess.Student_System_User_userID = ?
+          AND sess.sessionSignInTime IS NOT NULL
+          AND sess.sessionSignOutTime IS NOT NULL
+        ORDER BY ds.scheduleDate DESC, sess.sessionID DESC
+      `;
+      params = [req.user.userID];
+    } else if (req.user.role === 'Tutor') {
+      query = `
+        SELECT sess.sessionID, ds.scheduleDate, subj.subjectName,
+          ssu.userFirstName AS studentFirstName, ssu.userLastName AS studentLastName,
+          sess.sessionSignInTime, sess.sessionSignOutTime, sess.sessionFeedback, sess.sessionRating
+        FROM Tutor_Session sess
+        JOIN Timeslot tl ON tl.timeslotID = sess.Timeslot_timeslotID AND tl.Daily_Schedule_scheduleID = sess.Timeslot_Daily_Schedule_scheduleID
+        JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+        JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+        JOIN System_User ssu ON ssu.userID = sess.Student_System_User_userID
+        WHERE sess.Tutor_System_User_userID = ?
+          AND sess.sessionSignInTime IS NOT NULL
+          AND sess.sessionSignOutTime IS NOT NULL
+        ORDER BY ds.scheduleDate DESC, sess.sessionID DESC
+      `;
+      params = [req.user.userID];
+    } else {
+      query = `
+        SELECT sess.sessionID, ds.scheduleDate, subj.subjectName,
+          tsu.userFirstName AS tutorFirstName, tsu.userLastName AS tutorLastName,
+          ssu.userFirstName AS studentFirstName, ssu.userLastName AS studentLastName,
+          sess.sessionSignInTime, sess.sessionSignOutTime, sess.sessionFeedback, sess.sessionRating
+        FROM Tutor_Session sess
+        JOIN Timeslot tl ON tl.timeslotID = sess.Timeslot_timeslotID AND tl.Daily_Schedule_scheduleID = sess.Timeslot_Daily_Schedule_scheduleID
+        JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+        JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+        JOIN System_User tsu ON tsu.userID = sess.Tutor_System_User_userID
+        JOIN System_User ssu ON ssu.userID = sess.Student_System_User_userID
+        WHERE sess.sessionSignInTime IS NOT NULL
+          AND sess.sessionSignOutTime IS NOT NULL
+        ORDER BY ds.scheduleDate DESC, sess.sessionID DESC
+      `;
+    }
+    const [rows] = await pool.execute(query, params);
+    res.json(rows);
+  } catch (e) {
+    console.error('completed sessions error', e);
+    res.status(500).json({ message: 'Failed to load completed sessions' });
+  }
+});
+
 
 // ---- Tutor attendance / status ----
 app.post('/api/sessions/:sessionID/attended', authRequired, requireRole('Tutor'), async (req, res) => {
