@@ -13,8 +13,6 @@ import Dashboard from './Dashboard.jsx';
 import TimeslotGenerator from './TimeslotGenerator';
 import ManageUsers from './manageusers.js';
 import CourseManagement from './CourseManagement';
-import TutorCalendar from './TutorCalendar';
-import StudentCalendar from './StudentCalendar';
 import Navbar from './Navbar.jsx';
 import TutorApplications from './components/Admins/TutorApplications.jsx';
 import ApplyToTutor from './components/ApplyTutor.jsx';
@@ -123,18 +121,7 @@ function App() {
 
               {/* App pages */}
               <Route path="/book" element={isLoggedIn ? <StudentBook /> : <Navigate to="/login" replace />} />
-              <Route path="/sessions" element={isLoggedIn ? <Sessions /> : <Navigate to="/login" replace />} />
-
-              {/* Shared calendar route */}
-              <Route
-                path="/calendar"
-                element={
-                  isLoggedIn
-                    ? (userRole === 'Tutor' ? <TutorCalendar /> : <StudentCalendar />)
-                    : <Navigate to="/login" replace />
-                }
-              />
-
+              <Route path="/sessions" element={isLoggedIn ? <Sessions /> : <Navigate to="/login" replace />} />            
               <Route path="/availability" element={isLoggedIn && userRole === 'Tutor' ? <TutorAvailability /> : <Navigate to="/" replace />} />
               <Route path="/admin" element={isLoggedIn && userRole === 'Admin' ? <AdminDashboard /> : <Navigate to="/" replace />} />
               <Route path="/admin/timeslot-generator" element={isLoggedIn && userRole === 'Admin' ? <TimeslotGenerator /> : <Navigate to="/" replace />} />

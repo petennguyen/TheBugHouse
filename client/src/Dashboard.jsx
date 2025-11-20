@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from './api';
-
+import { STATUS_COLORS, decorateStatus } from './statusUtils';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
-
+import './calendar.css';
 const btn = {
   padding: '10px 14px',
   background: '#111827',
@@ -324,6 +324,29 @@ export default function Dashboard() {
     </div>
   );
 }
+function StatusLegend() {
+  const items = [
+    ['cancelled', 'Cancelled'],
+    ['no_show', 'No show'],
+    ['completed', 'Completed'],
+    ['ongoing', 'Ongoing (now)'],
+    ['upcoming', 'Upcoming'],
+  ];
+
+  return (
+    <div className="bh-legend">
+      {items.map(([key, label]) => (
+        <span key={key} className="bh-legend-item">
+          <i
+            className="bh-dot"
+            style={{ backgroundColor: STATUS_COLORS[key] }}
+          />
+          {label}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 function StudentCalendarAndHours() {
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -343,6 +366,26 @@ function StudentCalendarAndHours() {
     m.addEventListener?.('change', pickView);
     return () => m.removeEventListener?.('change', pickView);
   }, []);
+    const eventContent = (arg) => {
+    const status = decorateStatus(arg.event);
+    const color = STATUS_COLORS[status] || STATUS_COLORS.upcoming;
+    const timeText = arg.timeText ? `${arg.timeText} ` : '';
+    const title = arg.event.title || '(Untitled)';
+    const chip = status.toUpperCase().replace('_', ' ');
+
+    return (
+      <div className="bh-event" title={`${title} — ${chip}`}>
+        <div className="bh-event-bar" style={{ backgroundColor: color }} />
+        <div className="bh-event-body">
+          <div className="bh-event-time">{timeText}</div>
+          <div className="bh-event-title">{title}</div>
+          <span className="bh-event-chip" style={{ borderColor: color, color }}>
+            {chip}
+          </span>
+        </div>
+      </div>
+    );
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -462,7 +505,7 @@ END:VCALENDAR`;
       )}
 
       <div className="dash-grid">
-        <div className="cal-wrap">
+        <div className="cal-wrap bh-calendar-wrap">
           <div className="cal-toolbar">
             <div style={{ fontWeight: 800 }}>My Calendar</div>
             <Link to="/book">
@@ -523,8 +566,9 @@ END:VCALENDAR`;
             slotMinTime="10:00:00"
             slotMaxTime="18:00:00"
             slotDuration="00:30:00"
+            eventContent={eventContent}
           />
-
+          <StatusLegend />
           {showActionModal && selectedEvent && (
             <div
               style={{

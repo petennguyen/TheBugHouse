@@ -10,7 +10,6 @@ api.interceptors.request.use((config) => {
 });
 
 export default api;
-// after your existing request interceptor
 api.interceptors.response.use(
   (res) => res,
   (error) => {

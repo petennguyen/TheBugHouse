@@ -66,7 +66,7 @@ export default function CourseManagement() {
       const status = error?.response?.status;
       const errMsg = serverMsg || (status ? `Request failed (${status})` : error?.message || 'Unknown error');
       setMsg(`Error loading courses: ${errMsg}`);
-      setCourses([]); // clear out potentially stale data
+      setCourses([]);
     } finally {
       setIsLoading(false);
     }

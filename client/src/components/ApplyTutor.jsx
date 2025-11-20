@@ -6,7 +6,7 @@ export default function ApplyToTutor() {
   const [cover, setCover] = useState('');
   const [file, setFile] = useState(null);
   const [err, setErr] = useState('');
-  const [msg, setMsg] = useState(''); // NEW: centralized message box
+  const [msg, setMsg] = useState('');
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [applicationID, setApplicationID] = useState(null);
@@ -19,7 +19,6 @@ export default function ApplyToTutor() {
   });
   const fileInputRef = useRef(null);
 
-  // Sync status from backend on mount
   useSyncTutorAppStatus(setAppStatus, setSubmittedAt);
 
   const MAX_BYTES = 10 * 1024 * 1024;
@@ -140,7 +139,7 @@ export default function ApplyToTutor() {
           color: msg.toLowerCase().includes('error') ? '#dc2626' : '#166534',
           border: `1px solid ${msg.toLowerCase().includes('error') ? '#fecaca' : '#bbf7d0'}`,
           fontSize: 14,
-          textAlign: 'center' // center message text
+          textAlign: 'center'
         }}>
           {msg}
         </div>

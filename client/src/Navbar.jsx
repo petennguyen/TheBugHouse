@@ -59,7 +59,7 @@ export default function Navbar({ isLoggedIn, userFirstName, userRole, onLogout }
               Dashboard
             </Link>
 
-            {/* Sessions & Calendar cho Student/Tutor */}
+            {/* Sessions Student/Tutor */}
             {(userRole === 'Student' || userRole === 'Tutor') && (
               <>
                 <Link
@@ -67,12 +67,6 @@ export default function Navbar({ isLoggedIn, userFirstName, userRole, onLogout }
                   className={location.pathname === '/sessions' ? 'active' : ''}
                 >
                   My Sessions
-                </Link>
-                <Link
-                  to="/calendar"
-                  className={location.pathname === '/calendar' ? 'active' : ''}
-                >
-                  Calendar
                 </Link>
               </>
             )}
