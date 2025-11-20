@@ -5,8 +5,8 @@ export default function TutorAvailability() {
   const [rows, setRows] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [day, setDay] = useState('Mon');
-  const [start, setStart] = useState('09:00');
-  const [end, setEnd] = useState('12:00');
+  const [start, setStart] = useState('10:00');
+  const [end, setEnd] = useState('18:00');
   const [selectedSubjects, setSelectedSubjects] = useState([]);
   const [msg, setMsg] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -39,7 +39,16 @@ export default function TutorAvailability() {
       setMsg('Please select at least one subject');
       return;
     }
-    
+
+    if (start < '10:00' || end > '18:00') {
+      setMsg('Availability must be within center hours: 10:00–18:00 (Mon–Fri).');
+      return;
+    }
+    if (start >= end) {
+      setMsg('Start time must be before end time.');
+      return;
+    }
+
     try {
       await api.post('/api/availability', { 
         dayOfWeek: day, 
@@ -81,12 +90,12 @@ export default function TutorAvailability() {
     setSelectedSubjects(filteredSubjects.map(s => s.subjectID));
   };
 
-  // Filter subjects based on search term (search both code and name)
+  // Filter subjects based on search term 
   const filteredSubjects = subjects.filter(subject =>
     (subject.subjectName + ' ' + (subject.subjectCode || '')).toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Get selected subject display strings (code + name)
+  // Get selected subject display strings
   const selectedSubjectNames = subjects
     .filter(s => selectedSubjects.includes(s.subjectID))
     .map(s => (s.subjectCode ? `${s.subjectCode} - ${s.subjectName}` : s.subjectName));
@@ -111,7 +120,7 @@ export default function TutorAvailability() {
 
         <div className="form-row three">
           <select value={day} onChange={(e) => setDay(e.target.value)}>
-            {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((d) => (
+            {['Mon','Tue','Wed','Thu','Fri'].map((d) => (
               <option key={d} value={d}>{d}</option>
             ))}
           </select>
@@ -128,12 +137,15 @@ export default function TutorAvailability() {
             placeholder="End time"
           />
         </div>
+        <div style={{ marginTop: 4, fontSize: 12, color: '#6b7280' }}>
+          Center hours: Mon–Fri 10:00–18:00 • Saturday & Sunday closed
+        </div>
 
         {/* Enhanced Subject Selection */}
         <div style={{ marginTop: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <label className="input-label" style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>
-               Select Subjects You Can Tutor
+              Select Subjects You Can Tutor
             </label>
             <div style={{ display: 'flex', gap: 8 }}>
               <button
@@ -250,10 +262,7 @@ export default function TutorAvailability() {
                     padding: '12px 16px',
                     borderBottom: index < filteredSubjects.length - 1 ? '1px solid #f3f4f6' : 'none',
                     background: isSelected ? '#f0f9ff' : 'transparent',
-                    transition: 'all 0.2s ease',
-                    ':hover': {
-                      background: '#f9fafb'
-                    }
+                    transition: 'all 0.2s ease'
                   }}
                   onMouseEnter={(e) => {
                     if (!isSelected) e.target.style.background = '#f9fafb';
@@ -347,7 +356,7 @@ export default function TutorAvailability() {
         </button>
       </div>
 
-  <div className="card" style={{ background: 'white', color: '#111' }}>
+      <div className="card" style={{ background: 'white', color: '#111' }}>
         <h2 className="h2">My Current Availability</h2>
         <ul className="list">
           {rows.map((r) => (
@@ -405,7 +414,7 @@ export default function TutorAvailability() {
                 onClick={() => removeRow(r.availabilityID)}
                 style={{ fontSize: 14 }}
               >
-                 Delete
+                Delete
               </button>
             </li>
           ))}

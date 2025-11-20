@@ -95,20 +95,15 @@ export default function SharedCalendar({ fetchUrl, roleLabel = '' }) {
         expandRows
         dayMaxEventRows={3}
         nowIndicator
-        slotMinTime="08:00:00"
+        slotMinTime="10:00:00"
         slotMaxTime="18:00:00"
         stickyHeaderDates
 
         businessHours={[
           {
             daysOfWeek: [1, 2, 3, 4, 5],
-            startTime: '08:00',
+            startTime: '10:00',
             endTime: '18:00',
-          },
-          {
-            daysOfWeek: [0, 6],
-            startTime: '09:00',
-            endTime: '16:00',
           },
         ]}
 
