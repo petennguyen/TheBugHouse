@@ -7,29 +7,53 @@ VALUES
   ('Admin','B','adminB@bughouse.edu','adminpasswordB','Admin'),
   ('Admin','C','adminC@bughouse.edu','adminpasswordC','Admin'),
 
-  ('Tutor','A','tutorA@bughouse.edu','tutorpasswordA','Tutor'),
-  ('Tutor','B','tutorB@bughouse.edu','tutorpasswordB','Tutor'),
-  ('Tutor','C','tutorC@bughouse.edu','tutorpasswordC','Tutor'),
-  ('Tutor','D','tutorD@bughouse.edu','tutorpasswordD','Tutor'),
-  ('Tutor','E','tutorE@bughouse.edu','tutorpasswordE','Tutor'),
-  ('Tutor','F','tutorF@bughouse.edu','tutorpasswordF','Tutor'),
-  ('Tutor','G','tutorG@bughouse.edu','tutorpasswordG','Tutor'),
-  ('Tutor','H','tutorH@bughouse.edu','tutorpasswordH','Tutor'),
-  ('Tutor','I','tutorI@bughouse.edu','tutorpasswordI','Tutor'),
-  ('Tutor','J','tutorJ@bughouse.edu','tutorpasswordJ','Tutor'),
-  -- insert more tutors
+  ('John','Doe','tutorA@bughouse.edu','tutorpasswordA','Tutor'),
+  ('Jane','Smith','tutorB@bughouse.edu','tutorpasswordB','Tutor'),
+  ('John','Wick','tutorC@bughouse.edu','tutorpasswordC','Tutor'),
+  ('Alice','Johnson','tutorD@bughouse.edu','tutorpasswordD','Tutor'),
+  ('Robert','Brown','tutorE@bughouse.edu','tutorpasswordE','Tutor'),
+  ('Emily','Davis','tutorF@bughouse.edu','tutorpasswordF','Tutor'),
+  ('Michael','Clark','tutorG@bughouse.edu','tutorpasswordG','Tutor'),
+  ('Sarah','Miller','tutorH@bughouse.edu','tutorpasswordH','Tutor'),
+  ('David','Wilson','tutorI@bughouse.edu','tutorpasswordI','Tutor'),
+  ('Sophia','Moore','tutorJ@bughouse.edu','tutorpasswordJ','Tutor'),
+  ('James','Taylor','tutorK@bughouse.edu','tutorpasswordK','Tutor'),
+  ('Olivia','Anderson','tutorL@bughouse.edu','tutorpasswordL','Tutor'),
+  ('William','Thomas','tutorM@bughouse.edu','tutorpasswordM','Tutor'),
+  ('Emma','Jackson','tutorN@bughouse.edu','tutorpasswordN','Tutor'),
+  ('Benjamin','White','tutorO@bughouse.edu','tutorpasswordO','Tutor'),
+  ('Lucas','Harris','tutorP@bughouse.edu','tutorpasswordP','Tutor'),
 
-  ('Student','A','studentA@bughouse.edu','studentpasswordA','Student'),
-  ('Student','B','studentB@bughouse.edu','studentpasswordB','Student'),
-  ('Student','C','studentC@bughouse.edu','studentpasswordC','Student'),
-  ('Student','D','studentD@bughouse.edu','studentpasswordD','Student'),
-  ('Student','E','studentE@bughouse.edu','studentpasswordE','Student'),
-  ('Student','F','studentF@bughouse.edu','studentpasswordF','Student'),
-  ('Student','G','studentG@bughouse.edu','studentpasswordG','Student'),
-  ('Student','H','studentH@bughouse.edu','studentpasswordH','Student'),
-  ('Student','I','studentI@bughouse.edu','studentpasswordI','Student'),
-  ('Student','J','studentJ@bughouse.edu','studentpasswordJ','Student'),
-  ('Student','KK','studentKK@bughouse.edu','studentpasswordKK','Student')
+  ('Liam','Walker','studentA@bughouse.edu','studentpasswordA','Student'),
+  ('Noah','Young','studentB@bughouse.edu','studentpasswordB','Student'),
+  ('Emma','King','studentC@bughouse.edu','studentpasswordC','Student'),
+  ('Olivia','Scott','studentD@bughouse.edu','studentpasswordD','Student'),
+  ('Ava','Green','studentE@bughouse.edu','studentpasswordE','Student'),
+  ('Sophia','Baker','studentF@bughouse.edu','studentpasswordF','Student'),
+  ('Isabella','Adams','studentG@bughouse.edu','studentpasswordG','Student'),
+  ('Mason','Nelson','studentH@bughouse.edu','studentpasswordH','Student'),
+  ('Lucas','Carter','studentI@bughouse.edu','studentpasswordI','Student'),
+  ('Mia','Mitchell','studentJ@bughouse.edu','studentpasswordJ','Student'),
+  ('Ella','Reed','studentK@bughouse.edu','studentpasswordK','Student'),
+  ('Jack','Parker','studentL@bughouse.edu','studentpasswordL','Student'),
+  ('Amelia','Evans','studentM@bughouse.edu','studentpasswordM','Student'),
+  ('Ethan','Turner','studentN@bughouse.edu','studentpasswordN','Student'),
+  ('Charlotte','Collins','studentO@bughouse.edu','studentpasswordO','Student'),
+  ('Logan','Stewart','studentP@bughouse.edu','studentpasswordP','Student'),
+  ('Harper','Sanchez','studentQ@bughouse.edu','studentpasswordQ','Student'),
+  ('Alexander','Morris','studentR@bughouse.edu','studentpasswordR','Student'),
+  ('Avery','Rogers','studentS@bughouse.edu','studentpasswordS','Student'),
+  ('Evelyn','Cook','studentT@bughouse.edu','studentpasswordT','Student'),
+  ('Daniel','Morgan','studentU@bughouse.edu','studentpasswordU','Student'),
+  ('Abigail','Peterson','studentV@bughouse.edu','studentpasswordV','Student'),
+  ('Matthew','Bailey','studentW@bughouse.edu','studentpasswordW','Student'),
+  ('Scarlett','Rivera','studentX@bughouse.edu','studentpasswordX','Student'),
+  ('Jackson','Cooper','studentY@bughouse.edu','studentpasswordY','Student'),
+  ('Grace','Richardson','studentZ@bughouse.edu','studentpasswordZ','Student'),
+  ('Carter','Wood','studentAA@bughouse.edu','studentpasswordAA','Student'),
+  ('Chloe','Ward','studentBB@bughouse.edu','studentpasswordBB','Student'),
+  ('Sebastian','Brooks','studentCC@bughouse.edu','studentpasswordCC','Student'),
+  ('Penelope','Bennett','studentDD@bughouse.edu','studentpasswordDD','Student')
 
   -- insert more students
 AS new
@@ -188,8 +212,8 @@ INSERT INTO Tutor_Session (
 )
 SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
        stu.userID,
-       '2025-11-12 08:00:00', '2025-11-12 09:00:00',
-       'Good focus today.', 5, 'Completed'
+      '2025-11-12 08:02:00', '2025-11-12 09:00:00',
+      'Arrived a bit late, but focused.', 5, 'Late'
 FROM Timeslot tl
 JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
 JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
@@ -206,8 +230,8 @@ INSERT INTO Tutor_Session (
 )
 SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
        stu.userID,
-       '2025-11-12 10:00:00', '2025-11-12 11:00:00',
-       'Great explanations.', 4, 'Completed'
+      '2025-11-12 10:05:00', '2025-11-12 11:00:00',
+      'Started late, but good explanations.', 4, 'Late'
 FROM Timeslot tl
 JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
 JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
@@ -224,8 +248,8 @@ INSERT INTO Tutor_Session (
 )
 SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
        stu.userID,
-       '2025-11-12 12:00:00', '2025-11-12 13:00:00',
-       'Clear and helpful.', 5, 'Completed'
+      '2025-11-12 12:00:00', '2025-11-12 12:55:00',
+      'Left a bit early, but clear and helpful.', 5, 'Early'
 FROM Timeslot tl
 JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
 JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
@@ -242,8 +266,8 @@ INSERT INTO Tutor_Session (
 )
 SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
        stu.userID,
-       '2025-11-12 13:00:00', '2025-11-12 14:00:00',
-       'Challenging but good.', 4, 'Completed'
+      '2025-11-12 13:00:00', '2025-11-12 14:10:00',
+      'Stayed late for extra help. Challenging but good.', 4, 'Late'
 FROM Timeslot tl
 JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
 JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
@@ -260,8 +284,8 @@ INSERT INTO Tutor_Session (
 )
 SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
        stu.userID,
-       '2025-11-12 15:00:00', '2025-11-12 16:00:00',
-       'Great writing improvements.', 5, 'Completed'
+      '2025-11-12 15:00:00', '2025-11-12 15:50:00',
+      'Session ended early, but productive.', 5, 'Early'
 FROM Timeslot tl
 JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
 JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
@@ -270,6 +294,366 @@ WHERE ds.scheduleDate = '2025-11-12'
   AND subj.subjectName = 'Algorithms & Data Structures'
 LIMIT 1;
 
+-- Additional sessions for demo/test coverage (20 more for total of 25)
+-- 6
+INSERT INTO Tutor_Session (
+    Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID,
+    Tutor_System_User_userID, Student_System_User_userID,
+    sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating, sessionStatus
+)
+SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+       stu.userID,
+      '2025-11-12 08:10:00', '2025-11-12 09:00:00',
+      'Late start, but very helpful.', 5, 'Late'
+FROM Timeslot tl
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+JOIN System_User stu ON stu.userEmail = 'studentI@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12'
+  AND subj.subjectName = 'Introduction to Computers & Programming'
+LIMIT 1;
+
+-- 7
+INSERT INTO Tutor_Session (
+    Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID,
+    Tutor_System_User_userID, Student_System_User_userID,
+    sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating, sessionStatus
+)
+SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+       stu.userID,
+      '2025-11-12 10:00:00', '2025-11-12 10:55:00',
+      'Session ended early, learned a lot.', 4, 'Early'
+FROM Timeslot tl
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+JOIN System_User stu ON stu.userEmail = 'studentJ@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12'
+  AND subj.subjectName = 'Circuit Analysis'
+LIMIT 1;
+
+-- 8
+INSERT INTO Tutor_Session (
+    Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID,
+    Tutor_System_User_userID, Student_System_User_userID,
+    sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating, sessionStatus
+)
+SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+       stu.userID,
+      '2025-11-12 12:03:00', '2025-11-12 13:00:00',
+      'Started a few minutes late, but great session.', 5, 'Late'
+FROM Timeslot tl
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+JOIN System_User stu ON stu.userEmail = 'studentK@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12'
+  AND subj.subjectName = 'Linear Algebra for CSE'
+LIMIT 1;
+
+-- 9
+INSERT INTO Tutor_Session (
+    Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID,
+    Tutor_System_User_userID, Student_System_User_userID,
+    sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating, sessionStatus
+)
+SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+       stu.userID,
+      '2025-11-12 13:00:00', '2025-11-12 14:00:00',
+      'Tough material, but tutor explained well.', 4, 'Completed'
+FROM Timeslot tl
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+JOIN System_User stu ON stu.userEmail = 'studentL@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12'
+  AND subj.subjectName = 'Electronics'
+LIMIT 1;
+
+-- 10
+INSERT INTO Tutor_Session (
+    Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID,
+    Tutor_System_User_userID, Student_System_User_userID,
+    sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating, sessionStatus
+)
+SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+       stu.userID,
+      '2025-11-12 15:00:00', '2025-11-12 16:00:00',
+      'Session was engaging.', 5, 'Completed'
+FROM Timeslot tl
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+JOIN System_User stu ON stu.userEmail = 'studentM@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12'
+  AND subj.subjectName = 'Algorithms & Data Structures'
+LIMIT 1;
+
+-- 11
+INSERT INTO Tutor_Session (
+    Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID,
+    Tutor_System_User_userID, Student_System_User_userID,
+    sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating, sessionStatus
+)
+SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+       stu.userID,
+      '2025-11-12 08:00:00', '2025-11-12 09:00:00',
+      'Tutor was patient.', 4, 'Completed'
+FROM Timeslot tl
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+JOIN System_User stu ON stu.userEmail = 'studentN@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12'
+  AND subj.subjectName = 'Introduction to Computers & Programming'
+LIMIT 1;
+
+-- 12
+INSERT INTO Tutor_Session (
+    Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID,
+    Tutor_System_User_userID, Student_System_User_userID,
+    sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating, sessionStatus
+)
+SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+       stu.userID,
+      '2025-11-12 10:00:00', '2025-11-12 11:00:00',
+      'Good review session.', 5, 'Completed'
+FROM Timeslot tl
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+JOIN System_User stu ON stu.userEmail = 'studentO@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12'
+  AND subj.subjectName = 'Circuit Analysis'
+LIMIT 1;
+
+-- 13
+INSERT INTO Tutor_Session (
+    Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID,
+    Tutor_System_User_userID, Student_System_User_userID,
+    sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating, sessionStatus
+)
+SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+       stu.userID,
+      '2025-11-12 12:00:00', '2025-11-12 13:00:00',
+      'Very clear explanations.', 5, 'Completed'
+FROM Timeslot tl
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+JOIN System_User stu ON stu.userEmail = 'studentP@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12'
+  AND subj.subjectName = 'Linear Algebra for CSE'
+LIMIT 1;
+
+-- 14
+INSERT INTO Tutor_Session (
+    Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID,
+    Tutor_System_User_userID, Student_System_User_userID,
+    sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating, sessionStatus
+)
+SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+       stu.userID,
+      '2025-11-12 13:00:00', '2025-11-12 14:00:00',
+      'Enjoyed the session.', 4, 'Completed'
+FROM Timeslot tl
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+JOIN System_User stu ON stu.userEmail = 'studentQ@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12'
+  AND subj.subjectName = 'Electronics'
+LIMIT 1;
+
+-- 15
+INSERT INTO Tutor_Session (
+    Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID,
+    Tutor_System_User_userID, Student_System_User_userID,
+    sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating, sessionStatus
+)
+SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+       stu.userID,
+      '2025-11-12 15:00:00', '2025-11-12 16:00:00',
+      'Tutor was knowledgeable.', 5, 'Completed'
+FROM Timeslot tl
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+JOIN System_User stu ON stu.userEmail = 'studentR@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12'
+  AND subj.subjectName = 'Algorithms & Data Structures'
+LIMIT 1;
+
+-- 16
+INSERT INTO Tutor_Session (
+    Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID,
+    Tutor_System_User_userID, Student_System_User_userID,
+    sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating, sessionStatus
+)
+SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+       stu.userID,
+      '2025-11-12 08:00:00', '2025-11-12 09:00:00',
+      'Session was fun.', 4, 'Completed'
+FROM Timeslot tl
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+JOIN System_User stu ON stu.userEmail = 'studentS@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12'
+  AND subj.subjectName = 'Introduction to Computers & Programming'
+LIMIT 1;
+
+-- 17
+INSERT INTO Tutor_Session (
+    Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID,
+    Tutor_System_User_userID, Student_System_User_userID,
+    sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating, sessionStatus
+)
+SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+       stu.userID,
+      '2025-11-12 10:00:00', '2025-11-12 11:00:00',
+      'Good session.', 5, 'Completed'
+FROM Timeslot tl
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+JOIN System_User stu ON stu.userEmail = 'studentT@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12'
+  AND subj.subjectName = 'Circuit Analysis'
+LIMIT 1;
+
+-- 18
+INSERT INTO Tutor_Session (
+    Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID,
+    Tutor_System_User_userID, Student_System_User_userID,
+    sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating, sessionStatus
+)
+SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+       stu.userID,
+      '2025-11-12 12:00:00', '2025-11-12 13:00:00',
+      'Very informative.', 5, 'Completed'
+FROM Timeslot tl
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+JOIN System_User stu ON stu.userEmail = 'studentU@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12'
+  AND subj.subjectName = 'Linear Algebra for CSE'
+LIMIT 1;
+
+-- 19
+INSERT INTO Tutor_Session (
+    Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID,
+    Tutor_System_User_userID, Student_System_User_userID,
+    sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating, sessionStatus
+)
+SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+       stu.userID,
+      '2025-11-12 13:00:00', '2025-11-12 14:00:00',
+      'Session was okay.', 4, 'Completed'
+FROM Timeslot tl
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+JOIN System_User stu ON stu.userEmail = 'studentV@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12'
+  AND subj.subjectName = 'Electronics'
+LIMIT 1;
+
+-- 20
+INSERT INTO Tutor_Session (
+    Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID,
+    Tutor_System_User_userID, Student_System_User_userID,
+    sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating, sessionStatus
+)
+SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+       stu.userID,
+      '2025-11-12 15:00:00', '2025-11-12 16:00:00',
+      'Great session.', 5, 'Completed'
+FROM Timeslot tl
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+JOIN System_User stu ON stu.userEmail = 'studentW@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12'
+  AND subj.subjectName = 'Algorithms & Data Structures'
+LIMIT 1;
+
+-- 21
+INSERT INTO Tutor_Session (
+    Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID,
+    Tutor_System_User_userID, Student_System_User_userID,
+    sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating, sessionStatus
+)
+SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+       stu.userID,
+      '2025-11-12 08:00:00', '2025-11-12 09:00:00',
+      'Session was helpful.', 4, 'Completed'
+FROM Timeslot tl
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+JOIN System_User stu ON stu.userEmail = 'studentX@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12'
+  AND subj.subjectName = 'Introduction to Computers & Programming'
+LIMIT 1;
+
+-- 22
+INSERT INTO Tutor_Session (
+    Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID,
+    Tutor_System_User_userID, Student_System_User_userID,
+    sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating, sessionStatus
+)
+SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+       stu.userID,
+      '2025-11-12 10:00:00', '2025-11-12 11:00:00',
+      'Good explanations.', 5, 'Completed'
+FROM Timeslot tl
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+JOIN System_User stu ON stu.userEmail = 'studentY@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12'
+  AND subj.subjectName = 'Circuit Analysis'
+LIMIT 1;
+
+-- 23
+INSERT INTO Tutor_Session (
+    Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID,
+    Tutor_System_User_userID, Student_System_User_userID,
+    sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating, sessionStatus
+)
+SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+       stu.userID,
+      '2025-11-12 12:00:00', '2025-11-12 13:00:00',
+      'Very good session.', 5, 'Completed'
+FROM Timeslot tl
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+JOIN System_User stu ON stu.userEmail = 'studentZ@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12'
+  AND subj.subjectName = 'Linear Algebra for CSE'
+LIMIT 1;
+
+-- 24
+INSERT INTO Tutor_Session (
+    Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID,
+    Tutor_System_User_userID, Student_System_User_userID,
+    sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating, sessionStatus
+)
+SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+       stu.userID,
+      '2025-11-12 13:00:00', '2025-11-12 14:00:00',
+      'Session was interesting.', 4, 'Completed'
+FROM Timeslot tl
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+JOIN System_User stu ON stu.userEmail = 'studentAA@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12'
+  AND subj.subjectName = 'Electronics'
+LIMIT 1;
+
+-- 25
+INSERT INTO Tutor_Session (
+    Timeslot_timeslotID, Timeslot_Daily_Schedule_scheduleID, Academic_Subject_subjectID,
+    Tutor_System_User_userID, Student_System_User_userID,
+    sessionSignInTime, sessionSignOutTime, sessionFeedback, sessionRating, sessionStatus
+)
+SELECT tl.timeslotID, tl.Daily_Schedule_scheduleID, tl.Academic_Subject_subjectID, tl.Tutor_System_User_userID,
+       stu.userID,
+      '2025-11-12 15:00:00', '2025-11-12 16:00:00',
+      'Excellent session.', 5, 'Completed'
+FROM Timeslot tl
+JOIN Daily_Schedule ds ON ds.scheduleID = tl.Daily_Schedule_scheduleID
+JOIN Academic_Subject subj ON subj.subjectID = tl.Academic_Subject_subjectID
+JOIN System_User stu ON stu.userEmail = 'studentBB@bughouse.edu'
+WHERE ds.scheduleDate = '2025-11-12'
+  AND subj.subjectName = 'Algorithms & Data Structures'
+LIMIT 1;
 
 -- =====================================================
 -- 7) Tutor Availability (unique per tutor+day; no deprecated VALUES())

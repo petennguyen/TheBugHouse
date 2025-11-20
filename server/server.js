@@ -1607,7 +1607,6 @@ app.get('/api/admin/tutor-average-ratings', authRequired, requireRole('Admin'), 
       ORDER BY avgRating DESC;
     `);
 
-    console.log("Tutor averages:", rows);
     res.json(rows);
   } catch (err) {
     console.error('Error fetching tutor average ratings:', err);

@@ -73,10 +73,8 @@ export default function AttendanceReport() {
           <tr>
             <th>Date</th>
             <th>Subject</th>
-            <th>Timeslot ID</th>
             <th>Start</th>
             <th>End</th>
-            <th>Session ID</th>
             <th>Tutor Name</th>
             <th>Student Name</th>
             <th>Sign-In Time</th>
@@ -86,19 +84,22 @@ export default function AttendanceReport() {
         </thead>
         <tbody>
           {data.map((row, i) => (
-            <tr key={i}>
-              <td>{row.scheduleDate?.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
-              <td>{row.subjectName}</td>
-              <td>{row.timeslotID}</td>
-              <td>{row.timeslotStartTime}</td>
-              <td>{row.timeslotEndTime}</td>
-              <td>{row.sessionID}</td>
-              <td>{row.tutorName}</td>
-              <td>{row.studentName}</td>
-              <td>{row.sessionSignInTime ? row.sessionSignInTime.toLocaleTimeString("en-US", {hour: "2-digit",minute: "2-digit",}): ""}</td>
-              <td>{row.sessionSignOutTime ? row.sessionSignOutTime.toLocaleTimeString("en-US", {hour: "2-digit",minute: "2-digit",}): ""}</td>
-              <td>{row.sessionStatus}</td>
-            </tr>
+            <>
+              <tr key={i}>
+                <td>{row.scheduleDate?.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
+                <td>{row.subjectName}</td>
+
+                <td>{row.timeslotStartTime}</td>
+                <td>{row.timeslotEndTime}</td>
+
+                <td>{row.tutorName}</td>
+                <td>{row.studentName}</td>
+                <td>{row.sessionSignInTime ? row.sessionSignInTime.toLocaleTimeString("en-US", {hour: "2-digit",minute: "2-digit",}): ""}</td>
+                <td>{row.sessionSignOutTime ? row.sessionSignOutTime.toLocaleTimeString("en-US", {hour: "2-digit",minute: "2-digit",}): ""}</td>
+                <td>{row.sessionStatus}</td>
+              </tr>
+              <tr key={"line-"+i}><td colSpan={11}><hr style={{margin:0, border:0, borderTop:'1px solid #ccc'}}/></td></tr>
+            </>
           ))}
         </tbody>
       </table>
