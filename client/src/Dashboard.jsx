@@ -39,21 +39,12 @@ export default function Dashboard() {
   const role = (localStorage.getItem('role') || '').trim();
   const [kpis, setKpis] = useState(null);
   const [err, setErr] = useState('');
-  const [completedSessions, setCompletedSessions] = useState([]);
-
   useEffect(() => {
     if (role === 'Admin') {
       api
         .get('/api/analytics/overview')
         .then((res) => setKpis(res.data))
         .catch(() => setErr('Failed to load analytics'));
-    }
-
-    if (role === 'Tutor') {
-      api
-        .get('/api/sessions/completed')
-        .then((res) => setCompletedSessions(res.data))
-        .catch(() => {});
     }
   }, [role]);
 
@@ -198,8 +189,9 @@ export default function Dashboard() {
 
       <h2 style={{ fontSize: 26, fontWeight: 800, margin: '8px 0 14px' }}>Dashboard</h2>
 
-      {role === 'Student' && <StudentCalendarAndHours />}
-
+      {(role === 'Student' || role === 'Tutor') && (
+        <StudentCalendarAndHours role={role} />
+      )}
       {role === 'Tutor' && (
         <>
           <Card title="Quick actions">
@@ -218,65 +210,6 @@ export default function Dashboard() {
                 Mark <em>Sign-in</em> / <em>Sign-out</em> from the Sessions page.
               </li>
               <li>Keep your qualifications up to date for better matches.</li>
-            </ul>
-          </Card>
-          <Card title="Completed Sessions">
-            <ul className="list">
-              {completedSessions.map((sess) => (
-                <li key={sess.sessionID} className="item">
-                  <div>
-                    <strong>{sess.subjectName}</strong> <br />
-                    Student: {sess.studentFirstName} {sess.studentLastName} <br />
-                    {sess.sessionSignInTime && (
-                      <>
-                        In:{' '}
-                        {new Date(sess.sessionSignInTime).toLocaleString('en-US', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric',
-                          hour: 'numeric',
-                          minute: '2-digit',
-                          hour12: true,
-                        })}
-                        <br />
-                      </>
-                    )}
-                    {sess.sessionSignOutTime && (
-                      <>
-                        Out:{' '}
-                        {new Date(sess.sessionSignOutTime).toLocaleString('en-US', {
-                          hour: 'numeric',
-                          minute: '2-digit',
-                          hour12: true,
-                        })}
-                        <br />
-                      </>
-                    )}
-                    Rating: {sess.sessionRating ?? '-'}
-                  </div>
-                  <button
-                    className="btn danger"
-                    onClick={async () => {
-                      if (window.confirm('Delete this completed session?')) {
-                        try {
-                          await api.delete(`/api/sessions/${sess.sessionID}`);
-                          setCompletedSessions(
-                            completedSessions.filter((s) => s.sessionID !== sess.sessionID),
-                          );
-                        } catch (e) {
-                          alert('Failed to delete session.');
-                        }
-                      }
-                    }}
-                  >
-                    Delete
-                  </button>
-                </li>
-              ))}
-              {!completedSessions.length && (
-                <li className="muted">No completed sessions.</li>
-              )}
             </ul>
           </Card>
         </>
@@ -348,7 +281,40 @@ function StatusLegend() {
   );
 }
 
-function StudentCalendarAndHours() {
+function StudentCalendarAndHours({ role }) {
+    const isTutor = role === 'Tutor';
+
+    const eventDidMount = (info) => {
+      const ext = info.event.extendedProps || {};
+      const status = decorateStatus(info.event);
+      const counterpart = isTutor ? ext.studentName : ext.tutorName;
+      const subject = ext.subject || '';
+      const start = info.event.start;
+      const end = info.event.end;
+
+      let timeLine = '';
+      if (start && end) {
+        const pad = (n) => String(n).padStart(2, '0');
+        const sh = pad(start.getHours());
+        const sm = pad(start.getMinutes());
+        const eh = pad(end.getHours());
+        const em = pad(end.getMinutes());
+        timeLine = `${sh}:${sm}–${eh}:${em}`;
+      }
+
+      const lines = [
+        subject || (info.event.title || 'Tutoring session'),
+        counterpart
+          ? (isTutor ? `Student: ${counterpart}` : `Tutor: ${counterpart}`)
+          : '',
+        timeLine ? `Time: ${timeLine}` : '',
+        status ? `Status: ${status}` : '',
+      ].filter(Boolean);
+
+      // Tooltip khi hover (title mặc định của browser)
+      info.el.setAttribute('title', lines.join('\n'));
+    };
+
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showActionModal, setShowActionModal] = useState(false);
   const [events, setEvents] = useState([]);
@@ -367,31 +333,59 @@ function StudentCalendarAndHours() {
     return () => m.removeEventListener?.('change', pickView);
   }, []);
     const eventContent = (arg) => {
-    const status = decorateStatus(arg.event);
-    const color = STATUS_COLORS[status] || STATUS_COLORS.upcoming;
-    const timeText = arg.timeText ? `${arg.timeText} ` : '';
-    const title = arg.event.title || '(Untitled)';
-    const chip = status.toUpperCase().replace('_', ' ');
+      const status = decorateStatus(arg.event);
+      const color = STATUS_COLORS[status] || STATUS_COLORS.upcoming;
+      const ext = arg.event.extendedProps || {};
+      const subject = ext.subject || arg.event.title || 'Tutoring session';
 
-    return (
-      <div className="bh-event" title={`${title} — ${chip}`}>
-        <div className="bh-event-bar" style={{ backgroundColor: color }} />
-        <div className="bh-event-body">
-          <div className="bh-event-time">{timeText}</div>
-          <div className="bh-event-title">{title}</div>
-          <span className="bh-event-chip" style={{ borderColor: color, color }}>
-            {chip}
-          </span>
+      // 🔹 Rút gọn tên môn: lấy 1–2 từ đầu, thêm "..."
+      const words = subject.split(' ');
+      let subjectShort = subject;
+      if (words.length > 2) {
+        subjectShort = `${words[0]} ${words[1]}...`;   // ví dụ: "Introduction to..."
+      } else if (subject.length > 15) {
+        subjectShort = subject.slice(0, 12) + '...';
+      }
+
+      // 8:00–8:30
+      const start = arg.event.start;
+      const end = arg.event.end;
+      let timeLine = '';
+      if (start && end) {
+        const pad = (n) => String(n).padStart(2, '0');
+        const sh = pad(start.getHours());
+        const sm = pad(start.getMinutes());
+        const eh = pad(end.getHours());
+        const em = pad(end.getMinutes());
+        timeLine = `${sh}:${sm}–${eh}:${em}`;
+      } else if (arg.timeText) {
+        timeLine = arg.timeText;
+      }
+
+      const statusLabel = status.toUpperCase().replace('_', ' ');
+
+      return (
+        <div className="bh-event bh-event-3line">
+          <div className="bh-event-bar" style={{ backgroundColor: color }} />
+          <div className="bh-event-body">
+            <div className="bh-event-time">{timeLine}</div>
+            <div className="bh-event-title">{subjectShort}</div>
+            <div className="bh-event-status">{statusLabel}</div>
+          </div>
         </div>
-      </div>
-    );
-  };
+      );
+    };
 
-  useEffect(() => {
+
+
+    useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        const calRes = await api.get('/api/student/calendar');
+        const endpoint =
+          role === 'Tutor' ? '/api/tutor/calendar' : '/api/student/calendar';
+
+        const calRes = await api.get(endpoint);
         if (!mounted) return;
         setEvents(calRes.data || []);
       } catch (e) {
@@ -405,7 +399,8 @@ function StudentCalendarAndHours() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [role]);
+
 
   const hasEvents = (events || []).length > 0;
 
@@ -519,13 +514,26 @@ END:VCALENDAR`;
 
           {!loading && !hasEvents && (
             <div className="empty-state">
-              No sessions booked yet.{' '}
-              <Link to="/book">
-                <strong>Book one now</strong>
-              </Link>
-              .
+              {isTutor ? (
+                <>
+                  No upcoming sessions yet. Check your{' '}
+                  <Link to="/sessions">
+                    <strong>sessions list</strong>
+                  </Link>{' '}
+                  or update your availability.
+                </>
+              ) : (
+                <>
+                  No sessions booked yet.{' '}
+                  <Link to="/book">
+                    <strong>Book one now</strong>
+                  </Link>
+                  .
+                </>
+              )}
             </div>
           )}
+
 
           <FullCalendar
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -567,6 +575,7 @@ END:VCALENDAR`;
             slotMaxTime="18:00:00"
             slotDuration="00:30:00"
             eventContent={eventContent}
+            eventDidMount={eventDidMount}
           />
           <StatusLegend />
           {showActionModal && selectedEvent && (
@@ -722,27 +731,57 @@ function OfficeHoursBox() {
         <span>On-campus tutoring center (ERB 570)</span>
       </div>
 
-      <ul className="hours-list">
-        <li
-          className="hours-item"
-          style={{
-            background: '#ecfdf5',
-            borderColor: '#bbf7d0',
-          }}
-        >
-          <span style={{ fontWeight: 800, width: 80 }}>Mon–Fri</span>
-          <span>10:00 AM – 6:00 PM</span>
-        </li>
-        <li
-          className="hours-item"
-          style={{
-            background: '#f9fafb',
-          }}
-        >
-          <span style={{ fontWeight: 800, width: 80 }}>Sat–Sun</span>
-          <span>Closed</span>
-        </li>
-      </ul>
+            <ul className="hours-list">
+              <li
+                className="hours-item"
+                style={{ background: '#ecfdf5', borderColor: '#bbf7d0' }}
+              >
+                <span style={{ fontWeight: 800, width: 100 }}>Monday</span>
+                <span>10:00 AM – 6:00 PM</span>
+              </li>
+              <li
+                className="hours-item"
+                style={{ background: '#ecfdf5', borderColor: '#bbf7d0' }}
+              >
+                <span style={{ fontWeight: 800, width: 100 }}>Tuesday</span>
+                <span>10:00 AM – 6:00 PM</span>
+              </li>
+              <li
+                className="hours-item"
+                style={{ background: '#ecfdf5', borderColor: '#bbf7d0' }}
+              >
+                <span style={{ fontWeight: 800, width: 100 }}>Wednesday</span>
+                <span>10:00 AM – 6:00 PM</span>
+              </li>
+              <li
+                className="hours-item"
+                style={{ background: '#ecfdf5', borderColor: '#bbf7d0' }}
+              >
+                <span style={{ fontWeight: 800, width: 100 }}>Thursday</span>
+                <span>10:00 AM – 6:00 PM</span>
+              </li>
+              <li
+                className="hours-item"
+                style={{ background: '#ecfdf5', borderColor: '#bbf7d0' }}
+              >
+                <span style={{ fontWeight: 800, width: 100 }}>Friday</span>
+                <span>10:00 AM – 6:00 PM</span>
+              </li>
+              <li
+                className="hours-item"
+                style={{ background: '#f9fafb' }}
+              >
+                <span style={{ fontWeight: 800, width: 100 }}>Saturday</span>
+                <span>Closed</span>
+              </li>
+              <li
+                className="hours-item"
+                style={{ background: '#f9fafb' }}
+              >
+                <span style={{ fontWeight: 800, width: 100 }}>Sunday</span>
+                <span>Closed</span>
+              </li>
+            </ul>
 
       <div className="hours-foot">
         * Center hours. Booked sessions may vary if approved.
