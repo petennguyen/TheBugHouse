@@ -118,8 +118,9 @@ export default function ManageUsers() {
 
         {/* Filters */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
+          <div className="space-y-4">
+            {/* Search bar - full width on its own row */}
+            <div>
               <input
                 aria-label="Search users by name, email or ID"
                 value={search}
@@ -131,28 +132,32 @@ export default function ManageUsers() {
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
-            <select
-              value={roleFilter}
-              onChange={(e) => {
-                setRoleFilter(e.target.value);
-                setCurrentPage(1);
-              }}
-              aria-label="Filter by role"
-              className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-            >
-              <option value="all">All roles</option>
-              <option value="Student">Students</option>
-              <option value="Tutor">Tutors</option>
-              <option value="Admin">Administrators</option>
-            </select>
-            <button 
-              onClick={loadUsers} 
-              disabled={loading}
-              className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-              aria-label="Refresh user list"
-            >
-              {loading ? '⟳ Loading...' : '⟳ Refresh'}
-            </button>
+            
+            {/* Filter and Refresh button on second row */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <select
+                value={roleFilter}
+                onChange={(e) => {
+                  setRoleFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                aria-label="Filter by role"
+                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+              >
+                <option value="all">All roles</option>
+                <option value="Student">Students</option>
+                <option value="Tutor">Tutors</option>
+                <option value="Admin">Administrators</option>
+              </select>
+              <button 
+                onClick={loadUsers} 
+                disabled={loading}
+                className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium whitespace-nowrap"
+                aria-label="Refresh user list"
+              >
+                {loading ? '⟳ Loading...' : '⟳ Refresh'}
+              </button>
+            </div>
           </div>
         </div>
 
