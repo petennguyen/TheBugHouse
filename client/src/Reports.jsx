@@ -54,7 +54,7 @@ export default function Reports() {
         
         <button
           className="rounded-xl shadow p-2 w-full text-center text-blue-700 font-semibold hover:bg-blue-50 transition"
-          onClick={() => navigate("/admin/tutor-average-rating")}
+          onClick={() => navigate("/admin/tutor-performance")}
         >
           View Average Ratings
         </button>

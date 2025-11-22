@@ -111,11 +111,28 @@ export default function Navbar({ isLoggedIn, userFirstName, userRole, onLogout }
             {/* Admin-only */}
             {userRole === 'Admin' && (
               <>
-                <Link
-                  to="/admin"
-                  className={location.pathname === '/admin' ? 'active' : ''}
+               <Link
+                  to="/admin/sessions"
+                  className={
+                    location.pathname === '/admin/sessions' ||
+                    location.pathname.startsWith('/admin/sessions')
+                      ? 'active'
+                      : ''
+                  }
                 >
-                  Admin
+                  All Sessions
+                </Link>
+
+              <Link
+                  to="/admin/courses"
+                  className={
+                    location.pathname === '/admin/courses' ||
+                    location.pathname.startsWith('/admin/courses')
+                      ? 'active'
+                      : ''
+                  }
+                >
+                  Manage Courses
                 </Link>
                 <Link
                   to="/admin/users"
@@ -128,17 +145,7 @@ export default function Navbar({ isLoggedIn, userFirstName, userRole, onLogout }
                 >
                   Manage Users
                 </Link>
-                <Link
-                  to="/admin/courses"
-                  className={
-                    location.pathname === '/admin/courses' ||
-                    location.pathname.startsWith('/admin/courses')
-                      ? 'active'
-                      : ''
-                  }
-                >
-                  Manage Courses
-                </Link>
+                
                 
                 <Link
                   to="/admin/tutor-applications"
@@ -152,7 +159,7 @@ export default function Navbar({ isLoggedIn, userFirstName, userRole, onLogout }
                   Manage Tutor Applications
                 </Link>
 
-                <Link
+                {/* <Link
                   to="/admin/tutor-performance"
                   className={
                     location.pathname === '/admin/tutor-performance' ||
@@ -162,6 +169,13 @@ export default function Navbar({ isLoggedIn, userFirstName, userRole, onLogout }
                   }
                 >
                   Tutor Performance Report
+                </Link> */}
+
+                <Link
+                  to="/admin/reports  "
+                  className={location.pathname === '/admin/reports' ? 'active' : ''}
+                >
+                  Reports
                 </Link>
               </>
             )}

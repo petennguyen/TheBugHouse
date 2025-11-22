@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import api from './api';
 
 function MessageBox({ msg, onClose }) {
@@ -47,6 +47,8 @@ export default function CourseManagement() {
   const [msg, setMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     if (!msg) return;
@@ -76,10 +78,19 @@ export default function CourseManagement() {
     loadCourses();
   }, []);
 
-  const filteredCourses = courses.filter(course =>
-    course.subjectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (course.subjectCode && course.subjectCode.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredCourses = useMemo(() => {
+    return courses.filter(course =>
+      course.subjectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (course.subjectCode && course.subjectCode.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [courses, searchTerm]);
+
+  const paginatedCourses = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredCourses.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredCourses, currentPage]);
+
+  const totalPages = Math.ceil(filteredCourses.length / itemsPerPage);
 
   const addCourse = async (e) => {
     e.preventDefault();
@@ -157,22 +168,25 @@ export default function CourseManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-8">
-      <div className="w-full max-w-7xl space-y-10">
+    <div className="min-h-screen p-4 sm:p-8 bg-gradient-to-br from-blue-50 via-white to-orange-50">
+      <div className="w-full max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-800">Course Management</h1>
-          <p className="text-gray-500 mt-2">Add, update, and manage your academic courses</p>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-gray-900">Course Management</h1>
+            <p className="text-gray-600 mt-1">Add, update, and manage your academic courses</p>
+          </div>
         </div>
 
         {/* Message */}
-        <MessageBox msg={msg} onClose={() => setMsg('')} />
-        {/* Retry button for load errors (kept separate to ensure layout) */}
+        {msg && <MessageBox msg={msg} onClose={() => setMsg('')} />}
+
+        {/* Retry button for load errors */}
         {msg?.toLowerCase().includes('error loading courses') && (
-          <div className="flex justify-center mt-2">
+          <div className="flex justify-center">
             <button
               onClick={loadCourses}
-              className="bg-white/80 hover:bg-white text-sm text-blue-600 px-3 py-1 rounded-md border border-blue-100"
+              className="bg-white hover:bg-gray-50 text-sm text-blue-600 px-4 py-2 rounded-lg border border-blue-200 transition-colors"
             >
               Retry
             </button>
@@ -180,35 +194,39 @@ export default function CourseManagement() {
         )}
 
         {/* Add Course */}
-        <div className="bg-white shadow-md rounded-xl p-8 border border-gray-100">
-          <h2 className="text-xl font-semibold text-gray-800 mb-6">Add New Course</h2>
-          <form onSubmit={addCourse} className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Course Code</label>
-              <input
-                type="text"
-                value={newCourse.courseCode}
-                onChange={(e) => setNewCourse({ ...newCourse, courseCode: e.target.value })}
-                placeholder="e.g., CSE1325"
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none text-center"
-              />
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h2 className="text-xl font-semibold text-gray-800 mb-4">Add New Course</h2>
+          <form onSubmit={addCourse} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Course Code</label>
+                <input
+                  type="text"
+                  value={newCourse.courseCode}
+                  onChange={(e) => setNewCourse({ ...newCourse, courseCode: e.target.value })}
+                  placeholder="e.g., CSE1325"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Course Title<span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newCourse.courseTitle}
+                  onChange={(e) => setNewCourse({ ...newCourse, courseTitle: e.target.value })}
+                  placeholder="e.g., Data Structures"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  required
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Course Title<span className="text-red-500">*</span></label>
-              <input
-                type="text"
-                value={newCourse.courseTitle}
-                onChange={(e) => setNewCourse({ ...newCourse, courseTitle: e.target.value })}
-                placeholder="e.g., Data Structures"
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none text-center"
-                required
-              />
-            </div>
-            <div className="md:col-span-2 flex justify-center">
+            <div className="flex justify-end">
               <button
                 type="submit"
                 disabled={isLoading}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-4 rounded-lg transition-all shadow-sm hover:shadow-md disabled:opacity-50"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2.5 rounded-lg transition-colors shadow-sm disabled:opacity-50"
               >
                 {isLoading ? 'Adding...' : 'Add Course'}
               </button>
@@ -216,122 +234,162 @@ export default function CourseManagement() {
           </form>
         </div>
 
+        {/* Search Bar */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+              placeholder="🔍 Search by course code or title..."
+              className="flex-1 border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            />
+            <button 
+              onClick={loadCourses} 
+              disabled={isLoading}
+              className="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium whitespace-nowrap"
+            >
+              {isLoading ? '⟳ Loading...' : '⟳ Refresh'}
+            </button>
+          </div>
+        </div>
+
         {/* Course Table */}
-        <div className="bg-white/95 shadow-md rounded-xl border border-gray-100 overflow-hidden">
-          <div className="flex flex-col md:flex-row md:items-center justify-between px-8 py-6 border-b border-gray-200 gap-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="px-6 py-4 border-b bg-gray-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <h2 className="text-xl font-semibold text-gray-800">Course Directory</h2>
-            <div className="flex items-center justify-center gap-4">
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search..."
-                className="border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none text-center"
-              />
-              <span className="text-gray-500 text-sm">
-                {filteredCourses.length} course{filteredCourses.length !== 1 ? 's' : ''}
-              </span>
+            <div className="text-sm font-medium text-gray-700">
+              Showing {paginatedCourses.length} of {filteredCourses.length} course{filteredCourses.length !== 1 ? 's' : ''}
             </div>
           </div>
 
           {isLoading ? (
-            <div className="p-16 text-center text-gray-500 text-lg">Loading courses...</div>
-          ) : filteredCourses.length === 0 ? (
-            <div className="p-8">
-              <MessageBox msg="No courses found." onClose={() => setMsg('')} />
+            <div className="p-12 text-center">
+              <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-blue-200 border-t-blue-600"></div>
+              <p className="mt-3 text-gray-600 font-medium">Loading courses...</p>
+            </div>
+          ) : paginatedCourses.length === 0 ? (
+            <div className="p-12 text-center">
+              <div className="text-gray-400 text-4xl mb-2">📚</div>
+              <p className="text-gray-600 font-medium">
+                {searchTerm ? 'No courses match your search' : 'No courses found'}
+              </p>
             </div>
           ) : (
-            <div className="overflow-x-auto flex justify-center">
-              <table
-                className="min-w-full text-gray-700 table-auto mx-auto w-full max-w-6xl"
-                style={{
-                  borderCollapse: 'separate',
-                  borderSpacing: '6rem 2.5rem'
-                }}
-              >
-                <colgroup>
-                  <col style={{ width: '22%' }} />
-                  <col style={{ width: '62%' }} />
-                  <col style={{ width: '16%' }} />
-                </colgroup>
-
-                <thead className="bg-gray-100 border-b border-gray-200">
-                  <tr>
-                    <th className="px-10 sm:px-14 md:px-20 py-8 text-sm font-medium text-gray-700 text-center">Code</th>
-                    <th className="px-10 sm:px-14 md:px-20 py-8 text-sm font-medium text-gray-700 text-center">Title</th>
-                    <th className="px-10 sm:px-14 md:px-20 py-8 text-sm font-medium text-gray-700 text-center">Actions</th>
-                  </tr>
-                </thead>
-
-                <tbody className="divide-y divide-gray-200">
-                  {filteredCourses.map((course) => (
-                    <tr key={course.subjectID} className="hover:bg-gray-50 transition-colors">
-                      {editingCourse?.subjectID === course.subjectID ? (
-                        <>
-                          <td className="py-10 text-center">
-                            <input
-                              type="text"
-                              value={editingCourse.courseCode}
-                              onChange={(e) => setEditingCourse({ ...editingCourse, courseCode: e.target.value })}
-                              className="w-full border border-gray-300 rounded-md px-6 py-4 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 text-center text-lg"
-                            />
-                          </td>
-                          <td className="py-10 text-center">
-                            <input
-                              type="text"
-                              value={editingCourse.courseTitle}
-                              onChange={(e) => setEditingCourse({ ...editingCourse, courseTitle: e.target.value })}
-                              className="w-full border border-gray-300 rounded-md px-6 py-4 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 text-center text-lg"
-                            />
-                          </td>
-                          <td className="py-10 text-center">
-                            <div className="flex justify-center gap-6">
-                              <button
-                                onClick={updateCourse}
-                                className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-md text-sm font-medium"
-                              >
-                                Save
-                              </button>
-                              <button
-                                onClick={cancelEdit}
-                                className="bg-gray-400 hover:bg-gray-500 text-white px-6 py-3 rounded-md text-sm font-medium"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </td>
-                        </>
-                      ) : (
-                        <>
-                          <td className="py-10 text-center text-lg font-medium">
-                            {course.subjectCode || '—'}
-                          </td>
-                          <td className="py-10 text-center text-lg font-medium">
-                            {course.subjectName}
-                          </td>
-                          <td className="py-10 text-center">
-                            <div className="flex items-center justify-center gap-6">
-                              <button
-                                onClick={() => startEdit(course)}
-                                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md text-sm font-medium"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => deleteCourse(course.subjectID, course.subjectName)}
-                                className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-md text-sm font-medium"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </td>
-                        </>
-                      )}
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Code
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Title
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 bg-white">
+                    {paginatedCourses.map((course) => (
+                      <tr key={course.subjectID} className="hover:bg-gray-50 transition-colors">
+                        {editingCourse?.subjectID === course.subjectID ? (
+                          <>
+                            <td className="px-6 py-4">
+                              <input
+                                type="text"
+                                value={editingCourse.courseCode}
+                                onChange={(e) => setEditingCourse({ ...editingCourse, courseCode: e.target.value })}
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+                                placeholder="Course code"
+                              />
+                            </td>
+                            <td className="px-6 py-4">
+                              <input
+                                type="text"
+                                value={editingCourse.courseTitle}
+                                onChange={(e) => setEditingCourse({ ...editingCourse, courseTitle: e.target.value })}
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+                                placeholder="Course title"
+                              />
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex justify-end gap-2">
+                                <button
+                                  onClick={updateCourse}
+                                  className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-md text-xs font-medium transition-colors"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  onClick={cancelEdit}
+                                  className="px-3 py-1.5 bg-gray-400 hover:bg-gray-500 text-white rounded-md text-xs font-medium transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {course.subjectCode || '—'}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-700">
+                              {course.subjectName}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                              <div className="flex justify-end gap-2">
+                                <button
+                                  onClick={() => startEdit(course)}
+                                  className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md text-xs font-medium transition-colors"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => deleteCourse(course.subjectID, course.subjectName)}
+                                  className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-md text-xs font-medium transition-colors"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="px-6 py-4 border-t bg-gray-50 flex items-center justify-between">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-sm text-gray-700">
+                    Page <span className="font-semibold">{currentPage}</span> of <span className="font-semibold">{totalPages}</span>
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

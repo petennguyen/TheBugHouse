@@ -174,6 +174,51 @@ export default function Dashboard() {
         .ev-physics  .fc-event-main { background:#16a34a; color:#fff; }
         .ev-stats    .fc-event-main { background:#f59e0b; color:#1f2937; }
         .ev-chem     .fc-event-main { background:#ef4444; color:#fff; }
+
+        /* Tooltip */
+        .calendar-tooltip {
+          position: fixed;
+          background: white;
+          border: 1px solid #e5e7eb;
+          border-radius: 12px;
+          padding: 16px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+          z-index: 10000;
+          min-width: 280px;
+          max-width: 320px;
+          pointer-events: none;
+        }
+        .tooltip-header {
+          font-weight: 700;
+          font-size: 15px;
+          color: #111827;
+          margin-bottom: 12px;
+          padding-bottom: 8px;
+          border-bottom: 2px solid #e5e7eb;
+        }
+        .tooltip-row {
+          display: flex;
+          gap: 8px;
+          margin-bottom: 8px;
+          font-size: 13px;
+        }
+        .tooltip-label {
+          font-weight: 600;
+          color: #6b7280;
+          min-width: 80px;
+        }
+        .tooltip-value {
+          color: #111827;
+          flex: 1;
+        }
+        .tooltip-status {
+          display: inline-block;
+          padding: 4px 10px;
+          border-radius: 6px;
+          font-size: 12px;
+          font-weight: 600;
+          text-transform: uppercase;
+        }
       `}</style>
 
       <div
@@ -203,7 +248,7 @@ export default function Dashboard() {
           <Card title="Quick actions">
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <Link to="/sessions">
-                <button style={btn}>Today’s sessions</button>
+                <button style={btn}>Today&apos;s sessions</button>
               </Link>
               <Link to="/availability">
                 <button style={btnSecondary}>Manage availability</button>
@@ -290,38 +335,7 @@ function StatusLegend() {
 
 function StudentCalendarAndHours({ role }) {
   const isTutor = role === 'Tutor';
-
-  const eventDidMount = (info) => {
-    const ext = info.event.extendedProps || {};
-    const status = decorateStatus(info.event);
-    const counterpart = isTutor ? ext.studentName : ext.tutorName;
-    const subject = ext.subject || '';
-    const start = info.event.start;
-    const end = info.event.end;
-
-    let timeLine = '';
-    if (start && end) {
-      const pad = (n) => String(n).padStart(2, '0');
-      const sh = pad(start.getHours());
-      const sm = pad(start.getMinutes());
-      const eh = pad(end.getHours());
-      const em = pad(end.getMinutes());
-      timeLine = `${sh}:${sm}–${eh}:${em}`;
-    }
-
-    const lines = [
-      subject || info.event.title || 'Tutoring session',
-      counterpart
-        ? isTutor
-          ? `Student: ${counterpart}`
-          : `Tutor: ${counterpart}`
-        : '',
-      timeLine ? `Time: ${timeLine}` : '',
-      status ? `Status: ${status}` : '',
-    ].filter(Boolean);
-
-    info.el.setAttribute('title', lines.join('\n'));
-  };
+  const [tooltip, setTooltip] = useState(null);
 
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showActionModal, setShowActionModal] = useState(false);
@@ -332,6 +346,7 @@ function StudentCalendarAndHours({ role }) {
   const navigate = useNavigate();
 
   const [initialView, setInitialView] = useState('timeGridWeek');
+
   useEffect(() => {
     const m = window.matchMedia('(max-width: 980px)');
     const pickView = () =>
@@ -340,6 +355,51 @@ function StudentCalendarAndHours({ role }) {
     m.addEventListener?.('change', pickView);
     return () => m.removeEventListener?.('change', pickView);
   }, []);
+
+  const eventDidMount = (info) => {
+    const ext = info.event.extendedProps || {};
+    const status = decorateStatus(info.event);
+    const statusColor = STATUS_COLORS[status] || STATUS_COLORS.upcoming;
+    const counterpart = isTutor ? ext.studentName : ext.tutorName;
+    const subject = ext.subject || info.event.title || 'Tutoring session';
+    const start = info.event.start;
+    const end = info.event.end;
+
+    let timeLine = '';
+    if (start && end) {
+      const pad = (n) => String(n).padStart(2, '0');
+      const sh = pad(start.getHours());
+      const sm = pad(start.getMinutes());
+      const eh = pad(end.getHours());
+      const em = pad(end.getMinutes());
+      timeLine = `${sh}:${sm} – ${eh}:${em}`;
+    }
+
+    const statusLabel = status.toUpperCase().replace('_', ' ');
+
+    const enter = () => {
+      const rect = info.el.getBoundingClientRect();
+      setTooltip({
+        x: rect.right + 10,
+        y: rect.top,
+        subject,
+        counterpart,
+        counterpartLabel: isTutor ? 'Student' : 'Tutor',
+        timeLine,
+        status: statusLabel,
+        statusColor,
+      });
+    };
+    const leave = () => setTooltip(null);
+
+    info.el.addEventListener('mouseenter', enter);
+    info.el.addEventListener('mouseleave', leave);
+
+    info.el._tooltipCleanup = () => {
+      info.el.removeEventListener('mouseenter', enter);
+      info.el.removeEventListener('mouseleave', leave);
+    };
+  };
 
   const eventContent = (arg) => {
     const status = decorateStatus(arg.event);
@@ -465,6 +525,45 @@ END:VCALENDAR`;
 
   return (
     <>
+      {/* Tooltip */}
+      {tooltip && (
+        <div
+          className="calendar-tooltip"
+          style={{ left: tooltip.x, top: tooltip.y }}
+        >
+          <div className="tooltip-header">{tooltip.subject}</div>
+
+          {tooltip.counterpart && (
+            <div className="tooltip-row">
+              <div className="tooltip-label">
+                {tooltip.counterpartLabel}:
+              </div>
+              <div className="tooltip-value">{tooltip.counterpart}</div>
+            </div>
+          )}
+
+          <div className="tooltip-row">
+            <div className="tooltip-label">Time:</div>
+            <div className="tooltip-value">{tooltip.timeLine}</div>
+          </div>
+
+          <div className="tooltip-row">
+            <div className="tooltip-label">Status:</div>
+            <div className="tooltip-value">
+              <span
+                className="tooltip-status"
+                style={{
+                  backgroundColor: tooltip.statusColor,
+                  color: '#fff',
+                }}
+              >
+                {tooltip.status}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {nextEvent && (
         <div
           style={{
@@ -589,6 +688,7 @@ END:VCALENDAR`;
         <OfficeHoursBox />
       </div>
 
+      {/* Popup: actions */}
       {showActionModal && selectedEvent && (
         <>
           <div
@@ -597,6 +697,7 @@ END:VCALENDAR`;
               inset: 0,
               background: 'rgba(0,0,0,0.3)',
               zIndex: 9998,
+              pointerEvents: 'none',
             }}
           />
           <div
@@ -612,6 +713,7 @@ END:VCALENDAR`;
               minWidth: 320,
               maxWidth: 480,
               boxShadow: '0 8px 22px rgba(0,0,0,0.15)',
+              pointerEvents: 'auto',
             }}
           >
             <div style={{ marginBottom: 16, fontWeight: 700 }}>
@@ -650,6 +752,7 @@ END:VCALENDAR`;
         </>
       )}
 
+      {/* Popup: confirm cancel */}
       {showCancelConfirm && (
         <>
           <div
@@ -658,6 +761,7 @@ END:VCALENDAR`;
               inset: 0,
               background: 'rgba(0,0,0,0.3)',
               zIndex: 10000,
+              pointerEvents: 'none',
             }}
           />
           <div
@@ -673,6 +777,7 @@ END:VCALENDAR`;
               minWidth: 320,
               maxWidth: 480,
               boxShadow: '0 8px 22px rgba(0,0,0,0.15)',
+              pointerEvents: 'auto',
             }}
           >
             <div style={{ marginBottom: 16, fontWeight: 700 }}>

@@ -6,27 +6,19 @@ export default function TutorApplications() {
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
   const [error, setError] = useState('');
-
-
   const [filter, setFilter] = useState('all');
-
-  // NEW: search term
   const [search, setSearch] = useState('');
-
-
   const [selectedApp, setSelectedApp] = useState(null);
   const [adminNote, setAdminNote] = useState('');
-  const [msg, setMsg] = useState(''); 
+  const [msg, setMsg] = useState('');
 
-  // helper to capitalize status text
   const capitalize = (s) => (typeof s === 'string' && s.length ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
-  // new: centralized status color/background mapping (approve => green, reject => red)
   const statusStyles = (status) => {
     const s = String(status || 'pending').toLowerCase();
-    if (s === 'approved') return { color: '#059669', bg: '#ecfdf5' };
-    if (s === 'rejected') return { color: '#dc2626', bg: '#fff1f2' };
-    return { color: '#b45309', bg: '#fffbeb' }; // pending/other
+    if (s === 'approved') return { color: '#059669', bg: '#ecfdf5', badge: 'bg-green-100 text-green-800' };
+    if (s === 'rejected') return { color: '#dc2626', bg: '#fff1f2', badge: 'bg-red-100 text-red-800' };
+    return { color: '#b45309', bg: '#fffbeb', badge: 'bg-yellow-100 text-yellow-800' };
   };
 
   const load = async () => {
@@ -34,7 +26,7 @@ export default function TutorApplications() {
     setError('');
     try {
       const res = await api.get('/api/admin/tutor-applications', {
-        headers: { 'X-User-ID': 1 } // use a real admin userID from System_User
+        headers: { 'X-User-ID': 1 }
       });
       setApps(Array.isArray(res.data) ? res.data : (res.data.rows || []));
     } catch (e) {
@@ -46,7 +38,6 @@ export default function TutorApplications() {
 
   useEffect(() => { load(); }, []);
 
-  // counts for header chips
   const counts = apps.reduce(
     (acc, a) => {
       const s = String(a.status || 'pending').toLowerCase();
@@ -58,7 +49,6 @@ export default function TutorApplications() {
     { total: 0, pending: 0, approved: 0, rejected: 0 }
   );
 
-  // compute filtered + searched apps
   const filteredApps = apps.filter((a) => {
     if (filter !== 'all' && String(a.status).toLowerCase() !== filter) return false;
     if (!search) return true;
@@ -73,7 +63,7 @@ export default function TutorApplications() {
     try {
       const res = await api.get(`/api/admin/tutor-applications/${app.applicationID}/resume`, {
         responseType: 'blob',
-        headers: { 'X-User-ID': 1 } // match dev/admin header used elsewhere
+        headers: { 'X-User-ID': 1 }
       });
       const url = URL.createObjectURL(new Blob([res.data], { type: res.headers['content-type'] || 'application/pdf' }));
       window.open(url, '_blank');
@@ -82,7 +72,6 @@ export default function TutorApplications() {
     }
   };
 
-  // updated to accept optional note and set message on success/error
   const doAction = async (id, action, note = null) => {
     setActionLoading(`${action}-${id}`);
     setMsg('');
@@ -91,7 +80,6 @@ export default function TutorApplications() {
       await api.post(url, { note }, { headers: { 'X-User-ID': 1 } });
       const nice = action === 'approve' ? 'Approved ✅' : 'Rejected';
       setMsg(`Application ${nice}`);
-      // refresh and keep selection cleared or update selection
       await load();
       setSelectedApp(null);
       setAdminNote('');
@@ -100,37 +88,42 @@ export default function TutorApplications() {
       setMsg(`Error: ${em}`);
     } finally {
       setActionLoading(null);
-      // auto-clear message after a short delay
       setTimeout(() => setMsg(''), 5000);
     }
   };
 
   return (
-    /* center the whole panel and limit width */
-    <div className="grid gap-3 md:grid-cols-3 max-w-6xl mx-auto items-start">
-      {/* LEFT: main list (2/3 width) */}
-      <div className="card md:col-span-2 bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <h3 className="text-lg font-semibold">Tutor Applications</h3>
-          <div className="flex items-center gap-3">
+    <div className="min-h-screen p-4 sm:p-8 bg-gradient-to-br from-blue-50 via-white to-orange-50">
+      <div className="w-full max-w-7xl mx-auto space-y-6">
+        
+        {/* Header */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h1 className="text-3xl font-bold text-gray-900">Tutor Applications</h1>
+          <p className="text-gray-600 mt-1">Review and manage student tutor applications</p>
+        </div>
+
+        {/* Message */}
+        {msg && (
+          <div className={`p-4 rounded-lg border ${
+            msg.toLowerCase().includes('error') 
+              ? 'bg-red-50 text-red-800 border-red-200' 
+              : 'bg-green-50 text-green-800 border-green-200'
+          }`}>
+            {msg}
+          </div>
+        )}
+
+        {/* Search and Filters */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="space-y-4">
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search name or email..."
-              className="px-3 py-2 rounded border border-gray-200 text-sm w-64 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              placeholder="🔍 Search by name or email..."
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
             />
-          </div>
-        </div>
-
-        {error && <div className="text-red-600 mb-3">{error}</div>}
-
-        {loading ? (
-          <div className="text-center py-8 text-gray-600">Loading...</div>
-        ) : apps.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">No applications</div>
-        ) : (
-          <div>
-            <div className="flex gap-2 mb-4 items-center flex-wrap">
+            
+            <div className="flex gap-2 flex-wrap">
               {[
                 { key: 'all', label: `All (${counts.total})` },
                 { key: 'pending', label: `Pending (${counts.pending})` },
@@ -140,206 +133,240 @@ export default function TutorApplications() {
                 <button
                   key={f.key}
                   onClick={() => setFilter(f.key)}
-                  className={`px-3 py-1 rounded text-sm border ${
-                    filter === f.key ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    filter === f.key 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
                   {f.label}
                 </button>
               ))}
             </div>
+          </div>
+        </div>
 
-            <div className="overflow-x-auto">
-              {/* increased horizontal spacing via borderSpacing and added vertical gap (12px).
-                  removed divide-y to let borderSpacing show clear gaps between rows. */}
-              <table
-                className="min-w-full text-left table-auto border-separate shadow-sm"
-                style={{ borderSpacing: '72px 12px' }} // horizontal gap 72px, vertical gap 12px
-              >
-                <thead className="bg-gray-100">
-                  <tr>
-                    <th scope="col" className="px-20 sm:px-24 md:px-32 py-6 text-sm font-medium text-gray-700 text-center">Student</th>
-                    <th scope="col" className="px-20 sm:px-24 md:px-32 py-6 text-sm font-medium text-gray-700 text-center">Submitted</th>
-                    <th scope="col" className="px-20 sm:px-24 md:px-32 py-6 text-sm font-medium text-gray-700 text-center">Status</th>
-                    <th scope="col" className="px-20 sm:px-24 md:px-32 py-6 text-sm font-medium text-gray-700 text-center">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="">
-                  {filteredApps.length === 0 ? (
+        {error && (
+          <div className="p-4 bg-red-50 text-red-800 rounded-lg border border-red-200">
+            {error}
+          </div>
+        )}
+
+        {/* Main Content Grid */}
+        <div className="grid gap-6 lg:grid-cols-3">
+          
+          {/* Applications List */}
+          <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="px-6 py-4 border-b bg-gray-50">
+              <h2 className="text-xl font-semibold text-gray-800">Applications</h2>
+            </div>
+
+            {loading ? (
+              <div className="p-12 text-center">
+                <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-blue-200 border-t-blue-600"></div>
+                <p className="mt-3 text-gray-600 font-medium">Loading applications...</p>
+              </div>
+            ) : apps.length === 0 ? (
+              <div className="p-12 text-center">
+                <div className="text-gray-400 text-4xl mb-2">📋</div>
+                <p className="text-gray-600 font-medium">No applications yet</p>
+              </div>
+            ) : filteredApps.length === 0 ? (
+              <div className="p-12 text-center">
+                <div className="text-gray-400 text-4xl mb-2">🔍</div>
+                <p className="text-gray-600 font-medium">No applications match your filters</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
-                        No applications match the current filters.
-                      </td>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Student
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Submitted
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
-                  ) : (
-                    filteredApps.map((a) => {
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 bg-white">
+                    {filteredApps.map((a) => {
                       const selected = selectedApp && selectedApp.applicationID === a.applicationID;
                       return (
                         <tr
                           key={a.applicationID}
                           onClick={() => setSelectedApp(a)}
-                          // per-row card look: white bg, rounded corners and subtle shadow
-                          className={`cursor-pointer transition-all ${selected ? 'ring-1 ring-blue-100' : ''}`}
-                          style={{ background: 'white', borderRadius: 12, boxShadow: '0 1px 2px rgba(0,0,0,0.04)' }}
+                          className={`cursor-pointer hover:bg-gray-50 transition-colors ${
+                            selected ? 'bg-blue-50' : ''
+                          }`}
                         >
-                          <td className="px-20 sm:px-24 md:px-32 py-6 text-center align-middle">
-                            <div className="font-medium">{a.userFirstName} {a.userLastName}</div>
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-semibold text-gray-900">
+                              {a.userFirstName} {a.userLastName}
+                            </div>
                             <div className="text-xs text-gray-500">{a.userEmail}</div>
                           </td>
-                          <td className="px-20 sm:px-24 md:px-32 py-6 text-sm text-gray-600 border-l border-gray-100 text-center align-middle">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                             {new Date(a.createdAt).toLocaleDateString()}
                           </td>
-                          <td className="px-20 sm:px-24 md:px-32 py-6 border-l border-gray-100 text-center align-middle">
-                            <span
-                              className="font-medium"
-                              style={{ color: statusStyles(a.status).color }}
-                            >
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${statusStyles(a.status).badge}`}>
                               {capitalize(a.status)}
                             </span>
                           </td>
-                          <td className="px-20 sm:px-24 md:px-32 py-6 border-l border-gray-100 text-center align-middle">
-                            <div className="flex items-center gap-2 justify-center">
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                            <div className="flex justify-end gap-2">
                               <button
                                 onClick={(e) => { e.stopPropagation(); viewResume(a); }}
-                                className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded text-sm"
+                                className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md text-xs font-medium transition-colors"
                               >
                                 View
                               </button>
-                              <button
-                                onClick={async (e) => { e.stopPropagation(); await doAction(a.applicationID, 'approve'); }}
-                                disabled={actionLoading !== null || a.status !== 'pending'}
-                                className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm disabled:opacity-50"
-                              >
-                                {actionLoading === `approve-${a.applicationID}` ? '...' : 'Approve'}
-                              </button>
-                              <button
-                                onClick={async (e) => { e.stopPropagation(); await doAction(a.applicationID, 'reject'); }}
-                                disabled={actionLoading !== null || a.status !== 'pending'}
-                                className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm disabled:opacity-50"
-                              >
-                                {actionLoading === `reject-${a.applicationID}` ? '...' : 'Reject'}
-                              </button>
+                              {a.status === 'pending' && (
+                                <>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); doAction(a.applicationID, 'approve'); }}
+                                    disabled={actionLoading !== null}
+                                    className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-md text-xs font-medium transition-colors disabled:opacity-50"
+                                  >
+                                    {actionLoading === `approve-${a.applicationID}` ? '...' : 'Approve'}
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); doAction(a.applicationID, 'reject'); }}
+                                    disabled={actionLoading !== null}
+                                    className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md text-xs font-medium transition-colors disabled:opacity-50"
+                                  >
+                                    {actionLoading === `reject-${a.applicationID}` ? '...' : 'Reject'}
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </td>
                         </tr>
                       );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* RIGHT: detail card */}
-      <div className="card bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-        <h2 className="h2 text-lg font-semibold mb-3 text-center">Application Details</h2>
-
-        {/* Message box */}
-        {msg && (
-          <div style={{
-            padding: '12px 16px',
-            borderRadius: 8,
-            marginBottom: 16,
-            background: msg.toLowerCase().includes('error') ? '#fee2e2' : '#dcfce7',
-            color: msg.toLowerCase().includes('error') ? '#dc2626' : '#166534',
-            border: `1px solid ${msg.toLowerCase().includes('error') ? '#fecaca' : '#bbf7d0'}`,
-            fontSize: 14,
-            textAlign: 'center' // center message text
-          }}>
-            {msg}
-          </div>
-        )}
-
-        {!selectedApp ? (
-          <div style={{ padding: 20, color: '#6b7280', fontStyle: 'italic', textAlign: 'center' }}>
-            Select an application from the list to see details and actions.
-          </div>
-        ) : (
-          <div>
-            <div style={{ marginBottom: 12, textAlign: 'center' }}>
-              <div className="font-medium text-base">{selectedApp.userFirstName} {selectedApp.userLastName}</div>
-              <div className="text-sm text-gray-500">{selectedApp.userEmail}</div>
-            </div>
-
-            <div style={{ marginBottom: 12 }}>
-              <div className="text-sm text-gray-600 mb-2">Submitted</div>
-                {new Date(selectedApp.createdAt).toLocaleDateString()}
-            </div>
-
-            <div style={{ marginBottom: 12 }}>
-              <div className="text-sm text-gray-600 mb-2">Status</div>
-              <div
-                className="inline-block px-2 py-1 rounded-md text-sm font-medium"
-                style={{
-                  background: statusStyles(selectedApp.status).bg,
-                  color: statusStyles(selectedApp.status).color
-                }}
-              >
-                {capitalize(selectedApp.status)}
+                    })}
+                  </tbody>
+                </table>
               </div>
-            </div>
-
-            <div style={{ marginBottom: 12 }}>
-              <div className="text-sm text-gray-600 mb-2">Cover Text</div>
-              <div className="text-sm text-gray-700 whitespace-pre-wrap">{selectedApp.coverText || '—'}</div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-              <button
-                onClick={() => viewResume(selectedApp)}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm"
-              >
-                View Resume
-              </button>
-              <button
-                onClick={() => { setSelectedApp(null); setAdminNote(''); }}
-                className="px-4 py-2 bg-gray-50 hover:bg-gray-100 rounded text-sm"
-              >
-                Deselect
-              </button>
-            </div>
-
-            {/* Admin note input */}
-            <div style={{ marginTop: 6 }}>
-              <label style={{ display: 'block', marginBottom: 8, fontSize: 14, fontWeight: 600 }}>Admin Note (optional)</label>
-              <textarea
-                value={adminNote}
-                onChange={(e) => setAdminNote(e.target.value)}
-                rows={3}
-                placeholder="Add a short note for the applicant or internal record..."
-                style={{
-                  width: '100%',
-                  padding: 12,
-                  borderRadius: 8,
-                  border: '1px solid #e5e7eb',
-                  fontSize: 14,
-                  resize: 'vertical'
-                }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'center' }}>
-              <button
-                onClick={() => doAction(selectedApp.applicationID, 'approve', adminNote || null)}
-                disabled={actionLoading !== null || selectedApp.status !== 'pending'}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-sm disabled:opacity-50"
-              >
-                {actionLoading === `approve-${selectedApp.applicationID}` ? '...' : 'Approve'}
-              </button>
-
-              <button
-                onClick={() => doAction(selectedApp.applicationID, 'reject', adminNote || null)}
-                disabled={actionLoading !== null || selectedApp.status !== 'pending'}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded text-sm disabled:opacity-50"
-              >
-                {actionLoading === `reject-${selectedApp.applicationID}` ? '...' : 'Reject'}
-              </button>
-            </div>
-
+            )}
           </div>
-        )}
+
+          {/* Application Details */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+              <h2 className="text-xl font-bold">Application Details</h2>
+            </div>
+
+            {!selectedApp ? (
+              <div className="p-8 text-center text-gray-500">
+                <p className="text-sm">Select an application to view details</p>
+              </div>
+            ) : (
+              <div className="p-6 space-y-4">
+                {/* Applicant Info */}
+                <div className="text-center pb-4 border-b">
+                  <div className="flex justify-center mb-3">
+                    <div className="h-16 w-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl">
+                      {selectedApp.userFirstName?.[0]}{selectedApp.userLastName?.[0]}
+                    </div>
+                  </div>
+                  <div className="font-semibold text-lg text-gray-900">
+                    {selectedApp.userFirstName} {selectedApp.userLastName}
+                  </div>
+                  <div className="text-sm text-gray-500">{selectedApp.userEmail}</div>
+                </div>
+
+                {/* Details */}
+                <div className="space-y-3">
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                      Submitted
+                    </div>
+                    <div className="text-sm text-gray-900">
+                      {new Date(selectedApp.createdAt).toLocaleDateString()}
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                      Status
+                    </div>
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${statusStyles(selectedApp.status).badge}`}>
+                      {capitalize(selectedApp.status)}
+                    </span>
+                  </div>
+
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                      Cover Text
+                    </div>
+                    <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                      {selectedApp.coverText || '—'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="pt-4 space-y-3">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => viewResume(selectedApp)}
+                      className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      📄 View Resume
+                    </button>
+                    <button
+                      onClick={() => { setSelectedApp(null); setAdminNote(''); }}
+                      className="px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {selectedApp.status === 'pending' && (
+                    <>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                          Admin Note (optional)
+                        </label>
+                        <textarea
+                          value={adminNote}
+                          onChange={(e) => setAdminNote(e.target.value)}
+                          rows={3}
+                          placeholder="Add a note for the applicant..."
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
+                        />
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => doAction(selectedApp.applicationID, 'approve', adminNote || null)}
+                          disabled={actionLoading !== null}
+                          className="flex-1 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                        >
+                          {actionLoading === `approve-${selectedApp.applicationID}` ? 'Processing...' : '✓ Approve'}
+                        </button>
+                        <button
+                          onClick={() => doAction(selectedApp.applicationID, 'reject', adminNote || null)}
+                          disabled={actionLoading !== null}
+                          className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                        >
+                          {actionLoading === `reject-${selectedApp.applicationID}` ? 'Processing...' : '✕ Reject'}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

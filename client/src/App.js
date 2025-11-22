@@ -133,7 +133,8 @@ function App() {
               <Route path="/admin/reports" element={isLoggedIn && userRole === 'Admin' ?<Reports /> : <Navigate to="/" replace />} />
               <Route path="/admin/attendance-report" element={isLoggedIn && userRole === 'Admin' ?<AttendanceReport /> : <Navigate to="/" replace />} />
               <Route path="/admin/subject-session-count" element={isLoggedIn && userRole === 'Admin' ?<SubjectSessionCount /> : <Navigate to="/" replace />} />
-              <Route path="/admin/tutor-average-rating" element={isLoggedIn && userRole === 'Admin' ?<TutorAverageRating /> : <Navigate to="/" replace />} />
+              <Route path="/admin/tutor-performance" element={isLoggedIn && userRole === 'Admin' ?<TutorPerformance /> : <Navigate to="/" replace />} />
+              <Route path="/admin/sessions" element={isLoggedIn && userRole === 'Admin' ?<Sessions /> : <Navigate to="/" replace />} />
 
               {/* 404 */}
               <Route path="*" element={<Navigate to={isLoggedIn ? '/' : '/login'} replace />} />

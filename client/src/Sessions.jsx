@@ -9,6 +9,11 @@ export default function Sessions() {
   const [rating, setRating] = useState('');
   const [feedback, setFeedback] = useState('');
   const [filter, setFilter] = useState('all');
+  const [tutorFilter, setTutorFilter] = useState('');
+  const [studentFilter, setStudentFilter] = useState('');
+  const [subjectFilter, setSubjectFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [sessionToCancel, setSessionToCancel] = useState(null); 
   const [showStatusModal, setShowStatusModal] = useState(false);
@@ -113,33 +118,57 @@ export default function Sessions() {
     return { label: 'Upcoming', color: '#6b7280', bg: '#f3f4f6' };
   };
 
-  // Filter sessions based on selected filter
+  // Filter sessions based on selected filter and admin filters
   const getFilteredSessions = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
+    let filtered = rows;
     switch (filter) {
       case 'upcoming':
-        return rows.filter(session => {
+        filtered = filtered.filter(session => {
           const sessionDate = new Date(session.scheduleDate);
           sessionDate.setHours(0, 0, 0, 0);
           return sessionDate >= today && !session.sessionSignInTime && !session.sessionSignOutTime;
         });
-
+        break;
       case 'ongoing':
-        return rows.filter(session => 
+        filtered = filtered.filter(session => 
           session.sessionSignInTime && !session.sessionSignOutTime
         );
-      
+        break;
       case 'completed':
-        return rows.filter(session => session.sessionSignOutTime);
-      
+        filtered = filtered.filter(session => session.sessionSignOutTime);
+        break;
       default:
-        return rows;
+        break;
     }
+    // Admin extra filters
+    if (role === 'Admin') {
+      if (tutorFilter) filtered = filtered.filter(s => `${s.tutorFirstName} ${s.tutorLastName}`.toLowerCase().includes(tutorFilter.toLowerCase()));
+      if (studentFilter) filtered = filtered.filter(s => `${s.studentFirstName} ${s.studentLastName}`.toLowerCase().includes(studentFilter.toLowerCase()));
+      if (subjectFilter) filtered = filtered.filter(s => s.subjectName && s.subjectName.toLowerCase().includes(subjectFilter.toLowerCase()));
+      if (dateFrom) filtered = filtered.filter(s => new Date(s.scheduleDate) >= new Date(dateFrom));
+      if (dateTo) filtered = filtered.filter(s => new Date(s.scheduleDate) <= new Date(dateTo));
+    }
+    return filtered;
   };
 
   const filteredRows = getFilteredSessions();
+  const [expandedSession, setExpandedSession] = useState(null);
+
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const pageSize = 5;
+  const totalPages = Math.ceil(filteredRows.length / pageSize);
+  const paginatedRows = filteredRows.slice((page - 1) * pageSize, page * pageSize);
+
+
+  useEffect(() => {
+    // Reset to first page if filters change and page is out of range
+    if (page > totalPages) setPage(1);
+    // eslint-disable-next-line
+  }, [filteredRows.length]);
+
   const upcomingCount = rows.filter(session => {
     const sessionDate = new Date(session.scheduleDate);
     sessionDate.setHours(0, 0, 0, 0);
@@ -147,7 +176,7 @@ export default function Sessions() {
     today.setHours(0, 0, 0, 0);
     return sessionDate >= today && !session.sessionSignInTime && !session.sessionSignOutTime;
   }).length;
-  
+
   const ongoingCount = rows.filter(session => 
     session.sessionSignInTime && !session.sessionSignOutTime
   ).length;
@@ -157,9 +186,47 @@ export default function Sessions() {
 
   return (
     <div className="card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h2 className="h2">My Sessions</h2>
-        <div style={{ display: 'flex', gap: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
+        <h2 className="h2">{role === 'Admin' ? 'All Sessions' : 'My Sessions'}</h2>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {role === 'Admin' && (
+                    <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', width: '100%' }}>
+                      <input
+                        type="text"
+                        placeholder="Filter by Tutor"
+                        value={tutorFilter}
+                        onChange={e => setTutorFilter(e.target.value)}
+                        style={{ padding: 6, borderRadius: 6, border: '1px solid #d1d5db', fontSize: 14, minWidth: 140 }}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Filter by Student"
+                        value={studentFilter}
+                        onChange={e => setStudentFilter(e.target.value)}
+                        style={{ padding: 6, borderRadius: 6, border: '1px solid #d1d5db', fontSize: 14, minWidth: 140 }}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Filter by Subject"
+                        value={subjectFilter}
+                        onChange={e => setSubjectFilter(e.target.value)}
+                        style={{ padding: 6, borderRadius: 6, border: '1px solid #d1d5db', fontSize: 14, minWidth: 140 }}
+                      />
+                      <input
+                        type="date"
+                        value={dateFrom}
+                        onChange={e => setDateFrom(e.target.value)}
+                        style={{ padding: 6, borderRadius: 6, border: '1px solid #d1d5db', fontSize: 14 }}
+                      />
+                      <span style={{ alignSelf: 'center' }}>to</span>
+                      <input
+                        type="date"
+                        value={dateTo}
+                        onChange={e => setDateTo(e.target.value)}
+                        style={{ padding: 6, borderRadius: 6, border: '1px solid #d1d5db', fontSize: 14 }}
+                      />
+                    </div>
+                  )}
           <button
             className={`btn ${filter === 'all' ? 'primary' : ''}`}
             onClick={() => setFilter('all')}
@@ -222,20 +289,31 @@ export default function Sessions() {
       {msg && <p className="muted">{msg}</p>}
 
       <ul className="list">
-        {filteredRows.map((r) => {
+        {paginatedRows.map((r) => {
           const sessionDate = new Date(r.scheduleDate);
           const today = new Date();
           today.setHours(0, 0, 0, 0);
           sessionDate.setHours(0, 0, 0, 0);
           const isUpcoming = sessionDate >= today;
           const status = getSessionStatus(r);
-          
           return (
-            <li key={r.sessionID} className="item">
+            <li
+              key={r.sessionID}
+              className="item"
+              style={{
+                cursor: 'pointer',
+                background: '#f6f7fa',
+                borderRadius: 4,
+                padding: '10px 10px',
+                marginBottom: 8,
+                boxShadow: 'none',
+                transition: 'none',
+              }}
+              onClick={() => setExpandedSession(expandedSession === r.sessionID ? null : r.sessionID)}
+            >
               <div>
                 <div className="font-medium">
                   {r.subjectName}
-                  {/* Add visual indicator for upcoming/past */}
                   <span style={{
                     marginLeft: 8,
                     padding: '2px 6px',
@@ -254,31 +332,38 @@ export default function Sessions() {
                     day: 'numeric',
                   })}
                 </div>
-                {role === 'Student' && (
-                  <div className="muted">Tutor: {r.tutorFirstName} {r.tutorLastName}</div>
-                )}
-                {role === 'Tutor' && (
-                  <div className="muted">Student: {r.studentFirstName} {r.studentLastName}</div>
-                )}
+                <div className="muted">Tutor: {r.tutorFirstName} {r.tutorLastName}</div>
+                <div className="muted">Student: {r.studentFirstName} {r.studentLastName}</div>
                 <div className="muted" style={{ fontSize: 12 }}>
-                  In: {r.sessionSignInTime
+                  {/* In: {r.sessionSignInTime
                     ? new Date(r.sessionSignInTime).toLocaleString('en-US', {
                         hour: 'numeric',
                         minute: '2-digit',
                         hour12: true,
                       })
-                    : '-'}
-                  <span> · </span>
-                  Check-Out: {r.sessionSignOutTime
+                    : '-'} */}
+                  {/* <span> · </span> */}
+                  {/* Check-Out: {r.sessionSignOutTime
                     ? new Date(r.sessionSignOutTime).toLocaleString('en-US', {
                         hour: 'numeric',
                         minute: '2-digit',
                         hour12: true,
                       })
-                    : '-'}
-                  <span> · </span>
-                  Rating: {'⭐'.repeat(r.sessionRating)}
+                    : '-'} */}
+                  {/* <span> · </span> */}
+                  {/* Rating: {'⭐'.repeat(r.sessionRating)} */}
                 </div>
+                {expandedSession === r.sessionID && (
+                  <div style={{ marginTop: 8, background: 'transparent', borderRadius: 4, padding: 0 }}>
+                    <div><strong>Status:</strong> {status.label}</div>
+                    <div><strong>Feedback:</strong> {r.sessionFeedback || 'No feedback'}</div>
+                    <div><strong>Rating:</strong> {r.sessionRating ? `${r.sessionRating} / 5` : 'N/A'}</div>
+                    <div><strong>Sign-In Time:</strong> {r.sessionSignInTime ? new Date(r.sessionSignInTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '-'}</div>
+                    <div><strong>Sign-Out Time:</strong> {r.sessionSignOutTime ? new Date(r.sessionSignOutTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '-'}</div>
+                    <div><strong>Tutor:</strong> {r.tutorFirstName} {r.tutorLastName}</div>
+                    <div><strong>Student:</strong> {r.studentFirstName} {r.studentLastName}</div>
+                  </div>
+                )}
               </div>
 
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -387,6 +472,32 @@ export default function Sessions() {
             {filter === 'all' && 'No sessions.'}
           </li>
         )}
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 20 }}>
+          <button
+            className="btn"
+            onClick={() => setPage(page - 1)}
+            disabled={page === 1}
+            style={{ padding: '6px 12px', borderRadius: 6, background: page === 1 ? '#e5e7eb' : '#2563eb', color: page === 1 ? '#9ca3af' : '#fff', border: 'none', fontSize: 14, cursor: page === 1 ? 'not-allowed' : 'pointer' }}
+          >
+            Previous
+          </button>
+          <span style={{ fontSize: 14 }}>
+            Page {page} of {totalPages}
+          </span>
+          <button
+            className="btn"
+            onClick={() => setPage(page + 1)}
+            disabled={page === totalPages}
+            style={{ padding: '6px 12px', borderRadius: 6, background: page === totalPages ? '#e5e7eb' : '#2563eb', color: page === totalPages ? '#9ca3af' : '#fff', border: 'none', fontSize: 14, cursor: page === totalPages ? 'not-allowed' : 'pointer' }}
+          >
+            Next
+          </button>
+        </div>
+      )}
+      
       </ul>
 
       {showFeedbackModal && (
