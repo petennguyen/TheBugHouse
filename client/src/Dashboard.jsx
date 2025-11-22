@@ -7,6 +7,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import './calendar.css';
+
 const btn = {
   padding: '10px 14px',
   background: '#111827',
@@ -39,6 +40,7 @@ export default function Dashboard() {
   const role = (localStorage.getItem('role') || '').trim();
   const [kpis, setKpis] = useState(null);
   const [err, setErr] = useState('');
+
   useEffect(() => {
     if (role === 'Admin') {
       api
@@ -184,14 +186,18 @@ export default function Dashboard() {
           marginBottom: 12,
         }}
       >
-        <strong>Dashboard</strong> • role: <code>{role || '(none)'}</code>
+        <strong>Dashboard</strong> • role:{' '}
+        <code>{role || '(none)'}</code>
       </div>
 
-      <h2 style={{ fontSize: 26, fontWeight: 800, margin: '8px 0 14px' }}>Dashboard</h2>
+      <h2 style={{ fontSize: 26, fontWeight: 800, margin: '8px 0 14px' }}>
+        Dashboard
+      </h2>
 
       {(role === 'Student' || role === 'Tutor') && (
         <StudentCalendarAndHours role={role} />
       )}
+
       {role === 'Tutor' && (
         <>
           <Card title="Quick actions">
@@ -257,6 +263,7 @@ export default function Dashboard() {
     </div>
   );
 }
+
 function StatusLegend() {
   const items = [
     ['cancelled', 'Cancelled'],
@@ -282,38 +289,39 @@ function StatusLegend() {
 }
 
 function StudentCalendarAndHours({ role }) {
-    const isTutor = role === 'Tutor';
+  const isTutor = role === 'Tutor';
 
-    const eventDidMount = (info) => {
-      const ext = info.event.extendedProps || {};
-      const status = decorateStatus(info.event);
-      const counterpart = isTutor ? ext.studentName : ext.tutorName;
-      const subject = ext.subject || '';
-      const start = info.event.start;
-      const end = info.event.end;
+  const eventDidMount = (info) => {
+    const ext = info.event.extendedProps || {};
+    const status = decorateStatus(info.event);
+    const counterpart = isTutor ? ext.studentName : ext.tutorName;
+    const subject = ext.subject || '';
+    const start = info.event.start;
+    const end = info.event.end;
 
-      let timeLine = '';
-      if (start && end) {
-        const pad = (n) => String(n).padStart(2, '0');
-        const sh = pad(start.getHours());
-        const sm = pad(start.getMinutes());
-        const eh = pad(end.getHours());
-        const em = pad(end.getMinutes());
-        timeLine = `${sh}:${sm}–${eh}:${em}`;
-      }
+    let timeLine = '';
+    if (start && end) {
+      const pad = (n) => String(n).padStart(2, '0');
+      const sh = pad(start.getHours());
+      const sm = pad(start.getMinutes());
+      const eh = pad(end.getHours());
+      const em = pad(end.getMinutes());
+      timeLine = `${sh}:${sm}–${eh}:${em}`;
+    }
 
-      const lines = [
-        subject || (info.event.title || 'Tutoring session'),
-        counterpart
-          ? (isTutor ? `Student: ${counterpart}` : `Tutor: ${counterpart}`)
-          : '',
-        timeLine ? `Time: ${timeLine}` : '',
-        status ? `Status: ${status}` : '',
-      ].filter(Boolean);
+    const lines = [
+      subject || info.event.title || 'Tutoring session',
+      counterpart
+        ? isTutor
+          ? `Student: ${counterpart}`
+          : `Tutor: ${counterpart}`
+        : '',
+      timeLine ? `Time: ${timeLine}` : '',
+      status ? `Status: ${status}` : '',
+    ].filter(Boolean);
 
-      // Tooltip khi hover (title mặc định của browser)
-      info.el.setAttribute('title', lines.join('\n'));
-    };
+    info.el.setAttribute('title', lines.join('\n'));
+  };
 
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showActionModal, setShowActionModal] = useState(false);
@@ -332,53 +340,50 @@ function StudentCalendarAndHours({ role }) {
     m.addEventListener?.('change', pickView);
     return () => m.removeEventListener?.('change', pickView);
   }, []);
-    const eventContent = (arg) => {
-      const status = decorateStatus(arg.event);
-      const color = STATUS_COLORS[status] || STATUS_COLORS.upcoming;
-      const ext = arg.event.extendedProps || {};
-      const subject = ext.subject || arg.event.title || 'Tutoring session';
 
-      // 🔹 Rút gọn tên môn: lấy 1–2 từ đầu, thêm "..."
-      const words = subject.split(' ');
-      let subjectShort = subject;
-      if (words.length > 2) {
-        subjectShort = `${words[0]} ${words[1]}...`;   // ví dụ: "Introduction to..."
-      } else if (subject.length > 15) {
-        subjectShort = subject.slice(0, 12) + '...';
-      }
+  const eventContent = (arg) => {
+    const status = decorateStatus(arg.event);
+    const color = STATUS_COLORS[status] || STATUS_COLORS.upcoming;
+    const ext = arg.event.extendedProps || {};
+    const subject = ext.subject || arg.event.title || 'Tutoring session';
 
-      // 8:00–8:30
-      const start = arg.event.start;
-      const end = arg.event.end;
-      let timeLine = '';
-      if (start && end) {
-        const pad = (n) => String(n).padStart(2, '0');
-        const sh = pad(start.getHours());
-        const sm = pad(start.getMinutes());
-        const eh = pad(end.getHours());
-        const em = pad(end.getMinutes());
-        timeLine = `${sh}:${sm}–${eh}:${em}`;
-      } else if (arg.timeText) {
-        timeLine = arg.timeText;
-      }
+    const words = subject.split(' ');
+    let subjectShort = subject;
+    if (words.length > 2) {
+      subjectShort = `${words[0]} ${words[1]}...`;
+    } else if (subject.length > 15) {
+      subjectShort = subject.slice(0, 12) + '...';
+    }
 
-      const statusLabel = status.toUpperCase().replace('_', ' ');
+    const start = arg.event.start;
+    const end = arg.event.end;
+    let timeLine = '';
+    if (start && end) {
+      const pad = (n) => String(n).padStart(2, '0');
+      const sh = pad(start.getHours());
+      const sm = pad(start.getMinutes());
+      const eh = pad(end.getHours());
+      const em = pad(end.getMinutes());
+      timeLine = `${sh}:${sm}–${eh}:${em}`;
+    } else if (arg.timeText) {
+      timeLine = arg.timeText;
+    }
 
-      return (
-        <div className="bh-event bh-event-3line">
-          <div className="bh-event-bar" style={{ backgroundColor: color }} />
-          <div className="bh-event-body">
-            <div className="bh-event-time">{timeLine}</div>
-            <div className="bh-event-title">{subjectShort}</div>
-            <div className="bh-event-status">{statusLabel}</div>
-          </div>
+    const statusLabel = status.toUpperCase().replace('_', ' ');
+
+    return (
+      <div className="bh-event bh-event-3line">
+        <div className="bh-event-bar" style={{ backgroundColor: color }} />
+        <div className="bh-event-body">
+          <div className="bh-event-time">{timeLine}</div>
+          <div className="bh-event-title">{subjectShort}</div>
+          <div className="bh-event-status">{statusLabel}</div>
         </div>
-      );
-    };
+      </div>
+    );
+  };
 
-
-
-    useEffect(() => {
+  useEffect(() => {
     let mounted = true;
     (async () => {
       try {
@@ -400,7 +405,6 @@ function StudentCalendarAndHours({ role }) {
       mounted = false;
     };
   }, [role]);
-
 
   const hasEvents = (events || []).length > 0;
 
@@ -476,7 +480,9 @@ END:VCALENDAR`;
           }}
         >
           <div style={{ fontSize: 14 }}>
-            <div style={{ fontWeight: 800, marginBottom: 2 }}>Next session</div>
+            <div style={{ fontWeight: 800, marginBottom: 2 }}>
+              Next session
+            </div>
             <div>
               {new Date(nextEvent.start).toLocaleString([], {
                 dateStyle: 'medium',
@@ -534,7 +540,6 @@ END:VCALENDAR`;
             </div>
           )}
 
-
           <FullCalendar
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
             initialView={initialView}
@@ -577,125 +582,132 @@ END:VCALENDAR`;
             eventContent={eventContent}
             eventDidMount={eventDidMount}
           />
-          <StatusLegend />
-          {showActionModal && selectedEvent && (
-            <div
-              style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                width: '100vw',
-                height: '100vh',
-                background: 'rgba(0,0,0,0.3)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 9999,
-              }}
-            >
-              <div
-                style={{
-                  background: '#fff',
-                  padding: 24,
-                  borderRadius: 12,
-                  minWidth: 320,
-                  boxShadow: '0 8px 22px rgba(0,0,0,0.15)',
-                }}
-              >
-                <div style={{ marginBottom: 16, fontWeight: 700 }}>
-                  What would you like to do with this session?
-                </div>
-                <div style={{ display: 'flex', gap: 12 }}>
-                  <button
-                    className="btn danger"
-                    style={btn}
-                    onClick={() => {
-                      setShowActionModal(false);
-                      navigate('/book');
-                    }}
-                  >
-                    Reschedule
-                  </button>
-                  <button
-                    className="btn danger"
-                    style={btn}
-                    onClick={() => setShowCancelConfirm(true)}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="btn"
-                    style={{ ...btn, background: '#e5e7eb', color: '#111827' }}
-                    onClick={() => setShowActionModal(false)}
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
 
-          {showCancelConfirm && (
-            <div
-              style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                width: '100vw',
-                height: '100vh',
-                background: 'rgba(0,0,0,0.3)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 10000,
-              }}
-            >
-              <div
-                style={{
-                  background: '#fff',
-                  padding: 24,
-                  borderRadius: 12,
-                  minWidth: 320,
-                  boxShadow: '0 8px 22px rgba(0,0,0,0.15)',
-                }}
-              >
-                <div style={{ marginBottom: 16, fontWeight: 700 }}>
-                  Are you sure you want to cancel this session?
-                </div>
-                <div style={{ display: 'flex', gap: 12 }}>
-                  <button
-                    className="btn danger"
-                    style={btn}
-                    onClick={async () => {
-                      try {
-                        await api.delete(`/api/sessions/${selectedEvent.id}`);
-                        selectedEvent.remove();
-                        setShowCancelConfirm(false);
-                        setShowActionModal(false);
-                      } catch (e) {
-                        alert(
-                          'Could not cancel. Do you have permission, and is the session ID valid?',
-                        );
-                      }
-                    }}
-                  >
-                    Yes, Cancel
-                  </button>
-                  <button
-                    className="btn"
-                    style={{ ...btn, background: '#e5e7eb', color: '#111827' }}
-                    onClick={() => setShowCancelConfirm(false)}
-                  >
-                    No, Go Back
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+          <StatusLegend />
         </div>
 
         <OfficeHoursBox />
       </div>
+
+      {showActionModal && selectedEvent && (
+        <>
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.3)',
+              zIndex: 9998,
+            }}
+          />
+          <div
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 9999,
+              background: '#fff',
+              padding: 24,
+              borderRadius: 12,
+              minWidth: 320,
+              maxWidth: 480,
+              boxShadow: '0 8px 22px rgba(0,0,0,0.15)',
+            }}
+          >
+            <div style={{ marginBottom: 16, fontWeight: 700 }}>
+              What would you like to do with this session?
+            </div>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <button
+                className="btn danger"
+                style={btn}
+                onClick={() => {
+                  setShowActionModal(false);
+                  navigate('/book');
+                }}
+              >
+                Reschedule
+              </button>
+              <button
+                className="btn danger"
+                style={btnSecondary}
+                onClick={() => {
+                  setShowActionModal(false);
+                  setShowCancelConfirm(true);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn"
+                style={{ ...btn, background: '#e5e7eb', color: '#111827' }}
+                onClick={() => setShowActionModal(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {showCancelConfirm && (
+        <>
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.3)',
+              zIndex: 10000,
+            }}
+          />
+          <div
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 10001,
+              background: '#fff',
+              padding: 24,
+              borderRadius: 12,
+              minWidth: 320,
+              maxWidth: 480,
+              boxShadow: '0 8px 22px rgba(0,0,0,0.15)',
+            }}
+          >
+            <div style={{ marginBottom: 16, fontWeight: 700 }}>
+              Are you sure you want to cancel this session?
+            </div>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <button
+                className="btn danger"
+                style={btn}
+                onClick={async () => {
+                  try {
+                    await api.delete(`/api/sessions/${selectedEvent.id}`);
+                    selectedEvent.remove();
+                    setShowCancelConfirm(false);
+                    setShowActionModal(false);
+                  } catch (e) {
+                    alert(
+                      'Could not cancel. Do you have permission, and is the session ID valid?',
+                    );
+                  }
+                }}
+              >
+                Yes, Cancel
+              </button>
+              <button
+                className="btn"
+                style={{ ...btn, background: '#e5e7eb', color: '#111827' }}
+                onClick={() => setShowCancelConfirm(false)}
+              >
+                No, Go Back
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }
@@ -716,7 +728,6 @@ function OfficeHoursBox() {
         </div>
       </div>
 
-      {/* location pill */}
       <div
         style={{
           padding: '6px 10px 0',
@@ -731,57 +742,51 @@ function OfficeHoursBox() {
         <span>On-campus tutoring center (ERB 570)</span>
       </div>
 
-            <ul className="hours-list">
-              <li
-                className="hours-item"
-                style={{ background: '#ecfdf5', borderColor: '#bbf7d0' }}
-              >
-                <span style={{ fontWeight: 800, width: 100 }}>Monday</span>
-                <span>10:00 AM – 6:00 PM</span>
-              </li>
-              <li
-                className="hours-item"
-                style={{ background: '#ecfdf5', borderColor: '#bbf7d0' }}
-              >
-                <span style={{ fontWeight: 800, width: 100 }}>Tuesday</span>
-                <span>10:00 AM – 6:00 PM</span>
-              </li>
-              <li
-                className="hours-item"
-                style={{ background: '#ecfdf5', borderColor: '#bbf7d0' }}
-              >
-                <span style={{ fontWeight: 800, width: 100 }}>Wednesday</span>
-                <span>10:00 AM – 6:00 PM</span>
-              </li>
-              <li
-                className="hours-item"
-                style={{ background: '#ecfdf5', borderColor: '#bbf7d0' }}
-              >
-                <span style={{ fontWeight: 800, width: 100 }}>Thursday</span>
-                <span>10:00 AM – 6:00 PM</span>
-              </li>
-              <li
-                className="hours-item"
-                style={{ background: '#ecfdf5', borderColor: '#bbf7d0' }}
-              >
-                <span style={{ fontWeight: 800, width: 100 }}>Friday</span>
-                <span>10:00 AM – 6:00 PM</span>
-              </li>
-              <li
-                className="hours-item"
-                style={{ background: '#f9fafb' }}
-              >
-                <span style={{ fontWeight: 800, width: 100 }}>Saturday</span>
-                <span>Closed</span>
-              </li>
-              <li
-                className="hours-item"
-                style={{ background: '#f9fafb' }}
-              >
-                <span style={{ fontWeight: 800, width: 100 }}>Sunday</span>
-                <span>Closed</span>
-              </li>
-            </ul>
+      <ul className="hours-list">
+        <li
+          className="hours-item"
+          style={{ background: '#ecfdf5', borderColor: '#bbf7d0' }}
+        >
+          <span style={{ fontWeight: 800, width: 100 }}>Monday</span>
+          <span>10:00 AM – 6:00 PM</span>
+        </li>
+        <li
+          className="hours-item"
+          style={{ background: '#ecfdf5', borderColor: '#bbf7d0' }}
+        >
+          <span style={{ fontWeight: 800, width: 100 }}>Tuesday</span>
+          <span>10:00 AM – 6:00 PM</span>
+        </li>
+        <li
+          className="hours-item"
+          style={{ background: '#ecfdf5', borderColor: '#bbf7d0' }}
+        >
+          <span style={{ fontWeight: 800, width: 100 }}>Wednesday</span>
+          <span>10:00 AM – 6:00 PM</span>
+        </li>
+        <li
+          className="hours-item"
+          style={{ background: '#ecfdf5', borderColor: '#bbf7d0' }}
+        >
+          <span style={{ fontWeight: 800, width: 100 }}>Thursday</span>
+          <span>10:00 AM – 6:00 PM</span>
+        </li>
+        <li
+          className="hours-item"
+          style={{ background: '#ecfdf5', borderColor: '#bbf7d0' }}
+        >
+          <span style={{ fontWeight: 800, width: 100 }}>Friday</span>
+          <span>10:00 AM – 6:00 PM</span>
+        </li>
+        <li className="hours-item" style={{ background: '#f9fafb' }}>
+          <span style={{ fontWeight: 800, width: 100 }}>Saturday</span>
+          <span>Closed</span>
+        </li>
+        <li className="hours-item" style={{ background: '#f9fafb' }}>
+          <span style={{ fontWeight: 800, width: 100 }}>Sunday</span>
+          <span>Closed</span>
+        </li>
+      </ul>
 
       <div className="hours-foot">
         * Center hours. Booked sessions may vary if approved.
@@ -789,4 +794,3 @@ function OfficeHoursBox() {
     </aside>
   );
 }
-

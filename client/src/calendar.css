@@ -45,20 +45,17 @@
 .fc .fc-day-today {
   background: #fef9c3 !important;
 }
-/* Event dạng 3 dòng trong ô ngày */
 .bh-event-3line .bh-event-body {
   display: flex;
   flex-direction: column;
   gap: 1px;
 }
 
-/* Dòng 1: thời gian */
 .bh-event-3line .bh-event-time {
   font-size: 0.75rem;
   font-weight: 500;
 }
 
-/* Dòng 2: tên môn, rút gọn với "..." nếu dài */
 .bh-event-3line .bh-event-title {
   font-size: 0.8rem;
   white-space: nowrap;
@@ -66,13 +63,11 @@
   text-overflow: ellipsis;
 }
 
-/* Dòng 3: trạng thái */
 .bh-event-3line .bh-event-status {
   font-size: 0.7rem;
   text-transform: capitalize;
 }
 
-/* Đảm bảo trong MONTH view không tràn ngang sang ngày bên cạnh */
 .fc-daygrid .bh-event-3line {
   align-items: stretch;
 }

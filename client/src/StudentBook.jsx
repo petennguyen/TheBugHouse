@@ -14,7 +14,7 @@ export default function StudentBook() {
   const [date, setDate] = useState(() => todayLocalYYYYMMDD());
   const [slots, setSlots] = useState([]);
   const [msg, setMsg] = useState('');
-  const [selectedSlot, setSelectedSlot] = useState({}); // key: idx, value: slot.start
+  const [selectedSlot, setSelectedSlot] = useState({});
 
   useEffect(() => {
     api.get('/api/subjects').then(res => setSubjects(res.data)).catch(() => setSubjects([]));
@@ -62,7 +62,7 @@ export default function StudentBook() {
         startTime: slotStartTime,
         date,
         subjectID: subjectId,
-        sessionLength: 60 // always 1 hour
+        sessionLength: 60
       };
       await api.post('/api/sessions/book-from-availability', bookingData);
       setMsg('✅ Booked!');
@@ -109,7 +109,7 @@ export default function StudentBook() {
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}>
           <button
             className="btn"
-            style={{ minWidth: 180 }} // adjust as needed for desired length
+            style={{ minWidth: 180 }}
             onClick={searchAvailability}
           >
             Show Tutor Availability
