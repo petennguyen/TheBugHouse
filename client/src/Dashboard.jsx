@@ -7,6 +7,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import './calendar.css';
+
 const btn = {
   padding: '10px 14px',
   background: '#111827',
@@ -39,6 +40,7 @@ export default function Dashboard() {
   const role = (localStorage.getItem('role') || '').trim();
   const [kpis, setKpis] = useState(null);
   const [err, setErr] = useState('');
+  
   useEffect(() => {
     if (role === 'Admin') {
       api
@@ -172,6 +174,56 @@ export default function Dashboard() {
         .ev-physics  .fc-event-main { background:#16a34a; color:#fff; }
         .ev-stats    .fc-event-main { background:#f59e0b; color:#1f2937; }
         .ev-chem     .fc-event-main { background:#ef4444; color:#fff; }
+        
+        /* Custom Tooltip Styles */
+        .calendar-tooltip {
+          position: fixed;
+          background: white;
+          border: 1px solid #e5e7eb;
+          border-radius: 12px;
+          padding: 16px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+          z-index: 10000;
+          min-width: 280px;
+          max-width: 320px;
+          pointer-events: none;
+        }
+        
+        .tooltip-header {
+          font-weight: 700;
+          font-size: 15px;
+          color: #111827;
+          margin-bottom: 12px;
+          padding-bottom: 8px;
+          border-bottom: 2px solid #e5e7eb;
+        }
+        
+        .tooltip-row {
+          display: flex;
+          gap: 8px;
+          margin-bottom: 8px;
+          font-size: 13px;
+        }
+        
+        .tooltip-label {
+          font-weight: 600;
+          color: #6b7280;
+          min-width: 80px;
+        }
+        
+        .tooltip-value {
+          color: #111827;
+          flex: 1;
+        }
+        
+        .tooltip-status {
+          display: inline-block;
+          padding: 4px 10px;
+          border-radius: 6px;
+          font-size: 12px;
+          font-weight: 600;
+          text-transform: uppercase;
+        }
       `}</style>
 
       <div
@@ -197,7 +249,7 @@ export default function Dashboard() {
           <Card title="Quick actions">
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <Link to="/sessions">
-                <button style={btn}>Today’s sessions</button>
+                <button style={btn}>Today's sessions</button>
               </Link>
               <Link to="/availability">
                 <button style={btnSecondary}>Manage availability</button>
@@ -257,6 +309,7 @@ export default function Dashboard() {
     </div>
   );
 }
+
 function StatusLegend() {
   const items = [
     ['cancelled', 'Cancelled'],
@@ -282,38 +335,49 @@ function StatusLegend() {
 }
 
 function StudentCalendarAndHours({ role }) {
-    const isTutor = role === 'Tutor';
+  const isTutor = role === 'Tutor';
+  const [tooltip, setTooltip] = useState(null);
 
-    const eventDidMount = (info) => {
-      const ext = info.event.extendedProps || {};
-      const status = decorateStatus(info.event);
-      const counterpart = isTutor ? ext.studentName : ext.tutorName;
-      const subject = ext.subject || '';
-      const start = info.event.start;
-      const end = info.event.end;
+  const eventDidMount = (info) => {
+    const ext = info.event.extendedProps || {};
+    const status = decorateStatus(info.event);
+    const statusColor = STATUS_COLORS[status] || STATUS_COLORS.upcoming;
+    const counterpart = isTutor ? ext.studentName : ext.tutorName;
+    const subject = ext.subject || info.event.title || 'Tutoring session';
+    const start = info.event.start;
+    const end = info.event.end;
 
-      let timeLine = '';
-      if (start && end) {
-        const pad = (n) => String(n).padStart(2, '0');
-        const sh = pad(start.getHours());
-        const sm = pad(start.getMinutes());
-        const eh = pad(end.getHours());
-        const em = pad(end.getMinutes());
-        timeLine = `${sh}:${sm}–${eh}:${em}`;
-      }
+    let timeLine = '';
+    if (start && end) {
+      const pad = (n) => String(n).padStart(2, '0');
+      const sh = pad(start.getHours());
+      const sm = pad(start.getMinutes());
+      const eh = pad(end.getHours());
+      const em = pad(end.getMinutes());
+      timeLine = `${sh}:${sm} – ${eh}:${em}`;
+    }
 
-      const lines = [
-        subject || (info.event.title || 'Tutoring session'),
-        counterpart
-          ? (isTutor ? `Student: ${counterpart}` : `Tutor: ${counterpart}`)
-          : '',
-        timeLine ? `Time: ${timeLine}` : '',
-        status ? `Status: ${status}` : '',
-      ].filter(Boolean);
+    const statusLabel = status.toUpperCase().replace('_', ' ');
 
-      // Tooltip khi hover (title mặc định của browser)
-      info.el.setAttribute('title', lines.join('\n'));
-    };
+    // Show tooltip on hover
+    info.el.addEventListener('mouseenter', (e) => {
+      const rect = info.el.getBoundingClientRect();
+      setTooltip({
+        x: rect.right + 10,
+        y: rect.top,
+        subject,
+        counterpart,
+        counterpartLabel: isTutor ? 'Student' : 'Tutor',
+        timeLine,
+        status: statusLabel,
+        statusColor,
+      });
+    });
+
+    info.el.addEventListener('mouseleave', () => {
+      setTooltip(null);
+    });
+  };
 
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showActionModal, setShowActionModal] = useState(false);
@@ -324,6 +388,7 @@ function StudentCalendarAndHours({ role }) {
   const navigate = useNavigate();
 
   const [initialView, setInitialView] = useState('timeGridWeek');
+  
   useEffect(() => {
     const m = window.matchMedia('(max-width: 980px)');
     const pickView = () =>
@@ -332,53 +397,50 @@ function StudentCalendarAndHours({ role }) {
     m.addEventListener?.('change', pickView);
     return () => m.removeEventListener?.('change', pickView);
   }, []);
-    const eventContent = (arg) => {
-      const status = decorateStatus(arg.event);
-      const color = STATUS_COLORS[status] || STATUS_COLORS.upcoming;
-      const ext = arg.event.extendedProps || {};
-      const subject = ext.subject || arg.event.title || 'Tutoring session';
 
-      // 🔹 Rút gọn tên môn: lấy 1–2 từ đầu, thêm "..."
-      const words = subject.split(' ');
-      let subjectShort = subject;
-      if (words.length > 2) {
-        subjectShort = `${words[0]} ${words[1]}...`;   // ví dụ: "Introduction to..."
-      } else if (subject.length > 15) {
-        subjectShort = subject.slice(0, 12) + '...';
-      }
+  const eventContent = (arg) => {
+    const status = decorateStatus(arg.event);
+    const color = STATUS_COLORS[status] || STATUS_COLORS.upcoming;
+    const ext = arg.event.extendedProps || {};
+    const subject = ext.subject || arg.event.title || 'Tutoring session';
 
-      // 8:00–8:30
-      const start = arg.event.start;
-      const end = arg.event.end;
-      let timeLine = '';
-      if (start && end) {
-        const pad = (n) => String(n).padStart(2, '0');
-        const sh = pad(start.getHours());
-        const sm = pad(start.getMinutes());
-        const eh = pad(end.getHours());
-        const em = pad(end.getMinutes());
-        timeLine = `${sh}:${sm}–${eh}:${em}`;
-      } else if (arg.timeText) {
-        timeLine = arg.timeText;
-      }
+    const words = subject.split(' ');
+    let subjectShort = subject;
+    if (words.length > 2) {
+      subjectShort = `${words[0]} ${words[1]}...`;
+    } else if (subject.length > 15) {
+      subjectShort = subject.slice(0, 12) + '...';
+    }
 
-      const statusLabel = status.toUpperCase().replace('_', ' ');
+    const start = arg.event.start;
+    const end = arg.event.end;
+    let timeLine = '';
+    if (start && end) {
+      const pad = (n) => String(n).padStart(2, '0');
+      const sh = pad(start.getHours());
+      const sm = pad(start.getMinutes());
+      const eh = pad(end.getHours());
+      const em = pad(end.getMinutes());
+      timeLine = `${sh}:${sm}–${eh}:${em}`;
+    } else if (arg.timeText) {
+      timeLine = arg.timeText;
+    }
 
-      return (
-        <div className="bh-event bh-event-3line">
-          <div className="bh-event-bar" style={{ backgroundColor: color }} />
-          <div className="bh-event-body">
-            <div className="bh-event-time">{timeLine}</div>
-            <div className="bh-event-title">{subjectShort}</div>
-            <div className="bh-event-status">{statusLabel}</div>
-          </div>
+    const statusLabel = status.toUpperCase().replace('_', ' ');
+
+    return (
+      <div className="bh-event bh-event-3line">
+        <div className="bh-event-bar" style={{ backgroundColor: color }} />
+        <div className="bh-event-body">
+          <div className="bh-event-time">{timeLine}</div>
+          <div className="bh-event-title">{subjectShort}</div>
+          <div className="bh-event-status">{statusLabel}</div>
         </div>
-      );
-    };
+      </div>
+    );
+  };
 
-
-
-    useEffect(() => {
+  useEffect(() => {
     let mounted = true;
     (async () => {
       try {
@@ -400,7 +462,6 @@ function StudentCalendarAndHours({ role }) {
       mounted = false;
     };
   }, [role]);
-
 
   const hasEvents = (events || []).length > 0;
 
@@ -461,6 +522,46 @@ END:VCALENDAR`;
 
   return (
     <>
+      {/* Custom Tooltip */}
+      {tooltip && (
+        <div
+          className="calendar-tooltip"
+          style={{
+            left: tooltip.x,
+            top: tooltip.y,
+          }}
+        >
+          <div className="tooltip-header">{tooltip.subject}</div>
+          
+          {tooltip.counterpart && (
+            <div className="tooltip-row">
+              <div className="tooltip-label">{tooltip.counterpartLabel}:</div>
+              <div className="tooltip-value">{tooltip.counterpart}</div>
+            </div>
+          )}
+          
+          <div className="tooltip-row">
+            <div className="tooltip-label">Time:</div>
+            <div className="tooltip-value">{tooltip.timeLine}</div>
+          </div>
+          
+          <div className="tooltip-row">
+            <div className="tooltip-label">Status:</div>
+            <div className="tooltip-value">
+              <span
+                className="tooltip-status"
+                style={{
+                  backgroundColor: tooltip.statusColor,
+                  color: '#fff',
+                }}
+              >
+                {tooltip.status}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {nextEvent && (
         <div
           style={{
@@ -534,7 +635,6 @@ END:VCALENDAR`;
             </div>
           )}
 
-
           <FullCalendar
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
             initialView={initialView}
@@ -578,6 +678,7 @@ END:VCALENDAR`;
             eventDidMount={eventDidMount}
           />
           <StatusLegend />
+          
           {showActionModal && selectedEvent && (
             <div
               style={{
@@ -716,7 +817,6 @@ function OfficeHoursBox() {
         </div>
       </div>
 
-      {/* location pill */}
       <div
         style={{
           padding: '6px 10px 0',
@@ -731,57 +831,57 @@ function OfficeHoursBox() {
         <span>On-campus tutoring center (ERB 570)</span>
       </div>
 
-            <ul className="hours-list">
-              <li
-                className="hours-item"
-                style={{ background: '#ecfdf5', borderColor: '#bbf7d0' }}
-              >
-                <span style={{ fontWeight: 800, width: 100 }}>Monday</span>
-                <span>10:00 AM – 6:00 PM</span>
-              </li>
-              <li
-                className="hours-item"
-                style={{ background: '#ecfdf5', borderColor: '#bbf7d0' }}
-              >
-                <span style={{ fontWeight: 800, width: 100 }}>Tuesday</span>
-                <span>10:00 AM – 6:00 PM</span>
-              </li>
-              <li
-                className="hours-item"
-                style={{ background: '#ecfdf5', borderColor: '#bbf7d0' }}
-              >
-                <span style={{ fontWeight: 800, width: 100 }}>Wednesday</span>
-                <span>10:00 AM – 6:00 PM</span>
-              </li>
-              <li
-                className="hours-item"
-                style={{ background: '#ecfdf5', borderColor: '#bbf7d0' }}
-              >
-                <span style={{ fontWeight: 800, width: 100 }}>Thursday</span>
-                <span>10:00 AM – 6:00 PM</span>
-              </li>
-              <li
-                className="hours-item"
-                style={{ background: '#ecfdf5', borderColor: '#bbf7d0' }}
-              >
-                <span style={{ fontWeight: 800, width: 100 }}>Friday</span>
-                <span>10:00 AM – 6:00 PM</span>
-              </li>
-              <li
-                className="hours-item"
-                style={{ background: '#f9fafb' }}
-              >
-                <span style={{ fontWeight: 800, width: 100 }}>Saturday</span>
-                <span>Closed</span>
-              </li>
-              <li
-                className="hours-item"
-                style={{ background: '#f9fafb' }}
-              >
-                <span style={{ fontWeight: 800, width: 100 }}>Sunday</span>
-                <span>Closed</span>
-              </li>
-            </ul>
+      <ul className="hours-list">
+        <li
+          className="hours-item"
+          style={{ background: '#ecfdf5', borderColor: '#bbf7d0' }}
+        >
+          <span style={{ fontWeight: 800, width: 100 }}>Monday</span>
+          <span>10:00 AM – 6:00 PM</span>
+        </li>
+        <li
+          className="hours-item"
+          style={{ background: '#ecfdf5', borderColor: '#bbf7d0' }}
+        >
+          <span style={{ fontWeight: 800, width: 100 }}>Tuesday</span>
+          <span>10:00 AM – 6:00 PM</span>
+        </li>
+        <li
+          className="hours-item"
+          style={{ background: '#ecfdf5', borderColor: '#bbf7d0' }}
+        >
+          <span style={{ fontWeight: 800, width: 100 }}>Wednesday</span>
+          <span>10:00 AM – 6:00 PM</span>
+        </li>
+        <li
+          className="hours-item"
+          style={{ background: '#ecfdf5', borderColor: '#bbf7d0' }}
+        >
+          <span style={{ fontWeight: 800, width: 100 }}>Thursday</span>
+          <span>10:00 AM – 6:00 PM</span>
+        </li>
+        <li
+          className="hours-item"
+          style={{ background: '#ecfdf5', borderColor: '#bbf7d0' }}
+        >
+          <span style={{ fontWeight: 800, width: 100 }}>Friday</span>
+          <span>10:00 AM – 6:00 PM</span>
+        </li>
+        <li
+          className="hours-item"
+          style={{ background: '#f9fafb' }}
+        >
+          <span style={{ fontWeight: 800, width: 100 }}>Saturday</span>
+          <span>Closed</span>
+        </li>
+        <li
+          className="hours-item"
+          style={{ background: '#f9fafb' }}
+        >
+          <span style={{ fontWeight: 800, width: 100 }}>Sunday</span>
+          <span>Closed</span>
+        </li>
+      </ul>
 
       <div className="hours-foot">
         * Center hours. Booked sessions may vary if approved.
@@ -789,4 +889,3 @@ function OfficeHoursBox() {
     </aside>
   );
 }
-
