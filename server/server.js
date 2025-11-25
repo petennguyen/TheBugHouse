@@ -1566,13 +1566,14 @@ app.get('/api/admin/subject-session-count', authRequired, requireRole('Admin'), 
 
     const [rows] = await pool.execute(
       `SELECT 
+          a.subjectCode,
           a.subjectName,
           COUNT(*) AS sessionCount
       FROM Tutor_Session ts
       JOIN Academic_Subject a
         ON ts.Academic_Subject_subjectID = a.subjectID
       WHERE ts.sessionSignInTime BETWEEN ? AND ?
-      GROUP BY a.subjectID, a.subjectName
+      GROUP BY a.subjectID, a.subjectCode, a.subjectName
       ORDER BY sessionCount DESC;`,
       [
         startDate || defaultStart,
