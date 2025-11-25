@@ -80,7 +80,9 @@ export default function SessionTotalsList() {
                   borderBottom: "1px solid #e0e0e0",
                 }}
               >
-                <td style={{ padding: "8px" }}>{item.subjectName}</td>
+                <td style={{ padding: "8px" }}>
+                  {item.subjectCode ? item.subjectCode + " - " : ""}{item.subjectName}
+                </td>
                 <td style={{ padding: "8px", textAlign: "right" }}>{item.sessionCount}</td>
               </tr>
             ))}

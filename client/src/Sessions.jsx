@@ -332,7 +332,9 @@ export default function Sessions() {
                     day: 'numeric',
                   })}
                 </div>
+                {role !== 'Tutor' && (
                 <div className="muted">Tutor: {r.tutorFirstName} {r.tutorLastName}</div>
+                )}
                 <div className="muted">Student: {r.studentFirstName} {r.studentLastName}</div>
                 <div className="muted" style={{ fontSize: 12 }}>
                   {/* In: {r.sessionSignInTime
@@ -356,11 +358,16 @@ export default function Sessions() {
                 {expandedSession === r.sessionID && (
                   <div style={{ marginTop: 8, background: 'transparent', borderRadius: 4, padding: 0 }}>
                     <div><strong>Status:</strong> {status.label}</div>
-                    <div><strong>Feedback:</strong> {r.sessionFeedback || 'No feedback'}</div>
-                    <div><strong>Rating:</strong> {r.sessionRating ? `${r.sessionRating} / 5` : 'N/A'}</div>
+                    {role !== 'Tutor' && (
+                      <div><strong>Feedback:</strong> {r.sessionFeedback || 'No feedback'}</div>,
+                      <div><strong>Rating:</strong> {r.sessionRating ? `${r.sessionRating} / 5` : 'N/A'}</div>
+                    )}
+                    
                     <div><strong>Sign-In Time:</strong> {r.sessionSignInTime ? new Date(r.sessionSignInTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '-'}</div>
                     <div><strong>Sign-Out Time:</strong> {r.sessionSignOutTime ? new Date(r.sessionSignOutTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '-'}</div>
-                    <div><strong>Tutor:</strong> {r.tutorFirstName} {r.tutorLastName}</div>
+                    {role !== 'Tutor' && (
+                      <div><strong>Tutor:</strong> {r.tutorFirstName} {r.tutorLastName}</div>
+                    )}
                     <div><strong>Student:</strong> {r.studentFirstName} {r.studentLastName}</div>
                   </div>
                 )}
@@ -442,20 +449,6 @@ export default function Sessions() {
                         }}
                       >
                         Update Status
-                      </button>
-                    )}
-                    
-                    {/* View Feedback */}
-                    {r.sessionFeedback && (
-                      <button 
-                        className="btn" 
-                        onClick={() => alert(`Feedback: ${r.sessionFeedback}\nRating: ${r.sessionRating || 'N/A'}`)}
-                        style={{
-                          padding: '6px 12px', 
-                          fontSize: 12
-                        }}
-                      >
-                        View Feedback
                       </button>
                     )}
                   </>
