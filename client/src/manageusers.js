@@ -218,9 +218,9 @@ export default function ManageUsers() {
                               <div className="text-sm font-semibold text-gray-900">
                                 {user.userFirstName} {user.userLastName}
                               </div>
-                              <div className="text-xs text-gray-500 font-mono">
+                              {/* <div className="text-xs text-gray-500 font-mono">
                                 ID: {user.userID}
-                              </div>
+                              </div> */}
                             </div>
                           </div>
                         </td>

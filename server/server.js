@@ -1552,8 +1552,7 @@ app.get('/api/admin/session-percentages', authRequired, requireRole('Admin'), as
   } catch (err) {
     console.error('Error fetching session percentages:', err);
     res.status(500).json({ error: 'Database query failed' });
-  }
-});
+  }});
 app.get('/api/admin/subject-session-count', authRequired, requireRole('Admin'), async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
@@ -1564,8 +1563,10 @@ app.get('/api/admin/subject-session-count', authRequired, requireRole('Admin'), 
     const defaultStart = past30.toISOString().slice(0, 10);
     const defaultEnd = today.toISOString().slice(0, 10);
 
-    const [rows] = await pool.execute(
+    // Get session counts per subject
+    const [subjects] = await pool.execute(
       `SELECT 
+          a.subjectID,
           a.subjectCode,
           a.subjectName,
           COUNT(*) AS sessionCount
@@ -1581,7 +1582,61 @@ app.get('/api/admin/subject-session-count', authRequired, requireRole('Admin'), 
       ]
     );
 
-    res.json(rows);
+    // Get most active tutors per subject
+    const [tutorRows] = await pool.execute(
+      `SELECT 
+        a.subjectID,
+        CONCAT(su.userFirstName, ' ', su.userLastName) AS tutorName,
+        COUNT(*) AS tutorSessionCount
+      FROM Tutor_Session ts
+      JOIN Academic_Subject a ON ts.Academic_Subject_subjectID = a.subjectID
+      JOIN System_User su ON su.userID = ts.Tutor_System_User_userID
+      WHERE ts.sessionSignInTime BETWEEN ? AND ?
+      GROUP BY a.subjectID, ts.Tutor_System_User_userID
+      ORDER BY a.subjectID, tutorSessionCount DESC`
+      , [startDate || defaultStart, endDate || defaultEnd]
+    );
+
+    // Get most active students per subject
+    const [studentRows] = await pool.execute(
+      `SELECT 
+        a.subjectID,
+        CONCAT(su.userFirstName, ' ', su.userLastName) AS studentName,
+        COUNT(*) AS studentSessionCount
+      FROM Tutor_Session ts
+      JOIN Academic_Subject a ON ts.Academic_Subject_subjectID = a.subjectID
+      JOIN System_User su ON su.userID = ts.Student_System_User_userID
+      WHERE ts.sessionSignInTime BETWEEN ? AND ?
+      GROUP BY a.subjectID, ts.Student_System_User_userID
+      ORDER BY a.subjectID, studentSessionCount DESC`
+      , [startDate || defaultStart, endDate || defaultEnd]
+    );
+
+    // Helper to get most active names per subject
+    function getMostActive(rows, idField, nameField, countField) {
+      const map = {};
+      for (const row of rows) {
+        if (!map[row[idField]]) map[row[idField]] = { max: row[countField], names: [row[nameField]] };
+        else if (row[countField] === map[row[idField]].max) map[row[idField]].names.push(row[nameField]);
+        else if (row[countField] > map[row[idField]].max) map[row[idField]] = { max: row[countField], names: [row[nameField]] };
+      }
+      // Convert to subjectID: [names]
+      const result = {};
+      for (const k in map) result[k] = map[k].names;
+      return result;
+    }
+
+    const mostActiveTutors = getMostActive(tutorRows, 'subjectID', 'tutorName', 'tutorSessionCount');
+    const mostActiveStudents = getMostActive(studentRows, 'subjectID', 'studentName', 'studentSessionCount');
+
+    // Merge into subjects
+    const result = subjects.map(subj => ({
+      ...subj,
+      mostActiveTutors: mostActiveTutors[subj.subjectID] || [],
+      mostActiveStudents: mostActiveStudents[subj.subjectID] || []
+    }));
+
+    res.json(result);
   } catch (err) {
     console.error('Error fetching session totals:', err);
     res.status(500).json({ error: 'Database query failed' });
@@ -1589,24 +1644,25 @@ app.get('/api/admin/subject-session-count', authRequired, requireRole('Admin'), 
 });
 app.get('/api/admin/tutor-average-ratings', authRequired, requireRole('Admin'), async (req, res) => {
   try {
-    const [rows] = await pool.execute(`
-      SELECT 
-          CONCAT(su.userFirstName, ' ', su.userLastName) AS tutorName,
-          ROUND(AVG(ts.sessionRating), 2) AS avgRating,
-          COUNT(ts.sessionRating) AS ratingCount
-      FROM Tutor t
-      JOIN System_User su 
-          ON t.System_User_userID = su.userID
-      LEFT JOIN Tutor_Session ts
-          ON ts.Tutor_System_User_userID = t.System_User_userID
-      WHERE ts.sessionRating IS NOT NULL
-      GROUP BY 
-          t.System_User_userID, 
-          su.userFirstName, 
-          su.userLastName
-      HAVING COUNT(ts.sessionRating) > 0
-      ORDER BY avgRating DESC;
-    `);
+  const [rows] = await pool.execute(`
+    SELECT 
+      CONCAT(su.userFirstName, ' ', su.userLastName) AS tutorName,
+      ROUND(AVG(ts.sessionRating), 2) AS avgRating,
+      COUNT(ts.sessionRating) AS ratingCount,
+      COUNT(ts.sessionFeedback) AS reviewCount
+    FROM Tutor t
+    JOIN System_User su 
+      ON t.System_User_userID = su.userID
+    LEFT JOIN Tutor_Session ts
+      ON ts.Tutor_System_User_userID = t.System_User_userID
+    WHERE ts.sessionRating IS NOT NULL
+    GROUP BY 
+      t.System_User_userID, 
+      su.userFirstName, 
+      su.userLastName
+    HAVING COUNT(ts.sessionRating) > 0
+    ORDER BY reviewCount DESC, avgRating DESC;
+  `);
 
     res.json(rows);
   } catch (err) {
@@ -1817,14 +1873,13 @@ async function columnExists(table, column) {
 // ---- Admin: Courses CRUD ----
 app.get('/api/admin/courses', authRequired, requireRole('Admin'), async (req, res) => {
   try {
-    const [rows] = await pool.execute('SELECT subjectID, subjectName, subjectCode FROM Academic_Subject ORDER BY subjectName');
+    const [rows] = await pool.execute('SELECT subjectID, subjectName, subjectCode FROM Academic_Subject ORDER BY subjectcode ASC');
     const data = rows.map(r => ({ subjectID: r.subjectID, subjectName: r.subjectName, subjectCode: r.subjectCode }));
     res.json(data);
   } catch (e) {
     console.error('Get courses error:', e);
     res.status(500).json({ message: 'Failed to load courses' });
-  }
-});
+  }});
 
 app.post('/api/admin/courses', authRequired, requireRole('Admin'), async (req, res) => {
   const { courseCode, courseTitle } = req.body || {};
@@ -2046,233 +2101,6 @@ cron.schedule('0 * * * *', async () => {
     console.log(`✅ Sent ${sent} reminders`);
   } catch (err) {
     console.error('Reminder cron error:', err);
-  }
-});
-
-
-
-// Get tutor profile - Fixed version
-app.get('/api/tutor/profile', authRequired, requireRole('Tutor'), async (req, res) => {
-  try {
-    // Get user information
-    const [userRows] = await pool.execute(`
-      SELECT 
-        su.userID, su.userFirstName, su.userLastName, su.userEmail
-      FROM System_User su
-      WHERE su.userID = ?
-    `, [req.user.userID]);
-    
-    if (userRows.length === 0) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    
-    // Get tutor-specific information
-    const [tutorRows] = await pool.execute(`
-      SELECT 
-        t.tutorBiography, t.tutorQualifications, t.tutorMajor, t.tutorYear
-      FROM Tutor t
-      WHERE t.System_User_userID = ?
-    `, [req.user.userID]);
-    
-    // Combine user and tutor information
-    const profileData = {
-      ...userRows[0],
-      ...(tutorRows.length > 0 ? tutorRows[0] : {})
-    };
-    
-    // Get tutor subjects
-    try {
-      const [subjectsRows] = await pool.execute(`
-        SELECT 
-          ts.Academic_Subject_subjectID as subjectID
-        FROM Tutor_Subjects ts
-        WHERE ts.Tutor_System_User_userID = ?
-      `, [req.user.userID]);
-      
-      profileData.tutorSubjects = subjectsRows.map(row => row.subjectID);
-    } catch (subjectErr) {
-      console.error('Error fetching tutor subjects:', subjectErr);
-      profileData.tutorSubjects = [];
-    }
-    
-    res.json(profileData);
-  } catch (e) {
-    console.error('Get tutor profile error:', e);
-    res.status(500).json({ message: 'Failed to load tutor profile' });
-  }
-});   
-
-
-
-// ---- Tutor Profile Endpoints ----
-// Get tutor profile
-// Update tutor profile
-app.put('/api/tutor/profile', authRequired, requireRole('Tutor'), async (req, res) => {
-  const { firstName, lastName, biography, qualifications, major, year, subjects } = req.body;
-  
-  if (!firstName || !lastName || !biography || !qualifications || !major || !year || !subjects || !subjects.length) {
-    return res.status(400).json({ message: 'All fields are required' });
-  }
-  
-  const conn = await pool.getConnection();
-  
-  try {
-    await conn.beginTransaction();
-    
-    // Update name in System_User table
-    await conn.execute(`
-      UPDATE System_User
-      SET userFirstName = ?, userLastName = ?
-      WHERE userID = ?
-    `, [firstName, lastName, req.user.userID]);
-    
-    // Update tutor info
-    await conn.execute(`
-      UPDATE Tutor
-      SET tutorBiography = ?, tutorQualifications = ?, tutorMajor = ?, tutorYear = ?
-      WHERE System_User_userID = ?
-    `, [biography, qualifications, major, year, req.user.userID]);
-    
-    // Remove old subjects
-    await conn.execute(`
-      DELETE FROM Tutor_Subjects
-      WHERE Tutor_System_User_userID = ?
-    `, [req.user.userID]);
-    
-    // Add new subjects
-    if (subjects && subjects.length > 0) {
-      const values = subjects.map(subjectID => [req.user.userID, subjectID]);
-      await conn.query(`
-        INSERT INTO Tutor_Subjects (Tutor_System_User_userID, Academic_Subject_subjectID)
-        VALUES ?
-      `, [values]);
-    }
-    
-    await conn.commit();
-    res.json({ message: 'Profile updated successfully' });
-  } catch (e) {
-    await conn.rollback();
-    console.error('Update tutor profile error:', e);
-    res.status(500).json({ message: 'Failed to update tutor profile' });
-  } finally {
-    conn.release();
-  }
-});
-
-// ---- Student-facing tutor search endpoints ----
-// Get all tutors (with optional subject filter)
-app.get('/api/tutors', authRequired, async (req, res) => {
-  const { subject } = req.query;
-  
-  try {
-    let query = `
-      SELECT 
-        su.userID as tutorUserID,
-        su.userFirstName,
-        su.userLastName,
-        t.tutorBiography,
-        t.tutorMajor,
-        t.tutorYear,
-        AVG(ts.sessionRating) as averageRating,
-        COUNT(ts.sessionRating) as ratingsCount
-      FROM System_User su
-      JOIN Tutor t ON t.System_User_userID = su.userID
-      LEFT JOIN Tutor_Session ts ON ts.Tutor_System_User_userID = su.userID
-    `;
-    
-    const params = [];
-    
-    if (subject) {
-      query += `
-        JOIN Tutor_Subjects tsub ON tsub.Tutor_System_User_userID = su.userID
-        WHERE tsub.Academic_Subject_subjectID = ?
-      `;
-      params.push(subject);
-    }
-    
-    query += ` GROUP BY su.userID, su.userFirstName, su.userLastName, t.tutorBiography, t.tutorMajor, t.tutorYear`;
-    
-    const [tutors] = await pool.execute(query, params);
-    
-    // Get subjects for each tutor
-    for (let tutor of tutors) {
-      const [subjectsRows] = await pool.execute(`
-        SELECT 
-          ts.Academic_Subject_subjectID as subjectID,
-          sub.subjectName
-        FROM Tutor_Subjects ts
-        JOIN Academic_Subject sub ON sub.subjectID = ts.Academic_Subject_subjectID
-        WHERE ts.Tutor_System_User_userID = ?
-      `, [tutor.tutorUserID]);
-      
-      tutor.subjects = subjectsRows;
-    }
-    
-    res.json(tutors);
-  } catch (e) {
-    console.error('Get tutors error:', e);
-    res.status(500).json({ message: 'Failed to load tutors' });
-  }
-});
-
-// Get individual tutor profile
-app.get('/api/tutors/:id', authRequired, async (req, res) => {
-  const { id } = req.params;
-  
-  try {
-    const [rows] = await pool.execute(`
-      SELECT 
-        su.userID as tutorUserID,
-        su.userFirstName,
-        su.userLastName,
-        t.tutorBiography,
-        t.tutorQualifications,
-        t.tutorMajor,
-        t.tutorYear,
-        AVG(ts.sessionRating) as averageRating,
-        COUNT(ts.sessionRating) as ratingsCount
-      FROM System_User su
-      JOIN Tutor t ON t.System_User_userID = su.userID
-      LEFT JOIN Tutor_Session ts ON ts.Tutor_System_User_userID = su.userID
-      WHERE su.userID = ?
-      GROUP BY su.userID, su.userFirstName, su.userLastName, t.tutorBiography, t.tutorQualifications, t.tutorMajor, t.tutorYear
-    `, [id]);
-    
-    if (rows.length === 0) {
-      return res.status(404).json({ message: 'Tutor not found' });
-    }
-    
-    const tutor = rows[0];
-    
-    // Get tutor subjects
-    const [subjectsRows] = await pool.execute(`
-      SELECT 
-        ts.Academic_Subject_subjectID as subjectID,
-        sub.subjectName
-      FROM Tutor_Subjects ts
-      JOIN Academic_Subject sub ON sub.subjectID = ts.Academic_Subject_subjectID
-      WHERE ts.Tutor_System_User_userID = ?
-    `, [id]);
-    
-    tutor.subjects = subjectsRows;
-    
-    // Get tutor availability
-    const [availabilityRows] = await pool.execute(`
-      SELECT 
-        dayOfWeek,
-        startTime,
-        endTime
-      FROM Tutor_Availability
-      WHERE Tutor_System_User_userID = ?
-      ORDER BY FIELD(dayOfWeek, 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun')
-    `, [id]);
-    
-    tutor.availability = availabilityRows;
-    
-    res.json(tutor);
-  } catch (e) {
-    console.error('Get tutor profile error:', e);
-    res.status(500).json({ message: 'Failed to load tutor profile' });
   }
 });
 

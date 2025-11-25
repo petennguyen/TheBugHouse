@@ -94,7 +94,7 @@ export default function AdminDashboard() {
                 <div className="text-2xl">{kpis.totalTutors ?? '-'}</div>
               </div>
               <div className="card">
-                <div className="text-xs text-gray-500">Avg Rating</div>
+                <div className="text-xs text-gray-500">Average Ratingsss</div>
                 <div className="text-2xl">
                   {kpis.avgRating ? Number(kpis.avgRating).toFixed(1) : '-'}
                 </div>

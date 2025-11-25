@@ -289,7 +289,7 @@ export default function Dashboard() {
             </div>
           </Card>
 
-          <Card title="Admin actions">
+          {/* <Card title="Admin actions">
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <Link to="/admin">
                 <button style={btn}>Open Admin panel</button>
@@ -298,7 +298,7 @@ export default function Dashboard() {
                 <button style={btnSecondary}>All sessions</button>
               </Link>
             </div>
-          </Card>
+          </Card> */}
         </>
       )}
 

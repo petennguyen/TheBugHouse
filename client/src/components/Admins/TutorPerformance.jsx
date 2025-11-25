@@ -15,7 +15,26 @@ export default function TutorPerformance() {
     setMsg('');
     try {
       const res = await api.get('/api/admin/tutors', { params: { search: q } });
-      setTutors(Array.isArray(res.data) ? res.data : (res.data.rows || []));
+      let tutorsArr = Array.isArray(res.data) ? res.data : (res.data.rows || []);
+      // Fetch feedback count for each tutor in parallel
+      const feedbackCounts = await Promise.all(
+        tutorsArr.map(async (tutor) => {
+          try {
+            const perf = await api.get(`/api/admin/tutor-performance/${tutor.userID}`);
+            return { userID: tutor.userID, feedbackCount: Array.isArray(perf.data.reviews) ? perf.data.reviews.length : 0 };
+          } catch {
+            return { userID: tutor.userID, feedbackCount: 0 };
+          }
+        })
+      );
+      // Map feedbackCount to tutors
+      tutorsArr = tutorsArr.map(tutor => {
+        const found = feedbackCounts.find(f => f.userID === tutor.userID);
+        return { ...tutor, feedbackCount: found ? found.feedbackCount : 0 };
+      });
+      // Sort by feedbackCount descending
+      tutorsArr.sort((a, b) => b.feedbackCount - a.feedbackCount);
+      setTutors(tutorsArr);
     } catch (e) {
       setMsg(e?.response?.data?.message || 'Failed to load tutors');
     } finally {

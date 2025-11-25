@@ -10,6 +10,7 @@ export default function SessionTotalsList() {
   const [startDate, setStartDate] = useState(past30);
   const [endDate, setEndDate] = useState(today);
   const [sessions, setSessions] = useState([]);
+  const [expandedIdx, setExpandedIdx] = useState(null);
 
   const fetchSessionTotals = useCallback(async () => {
     try {
@@ -69,22 +70,54 @@ export default function SessionTotalsList() {
             <tr>
               <th style={{ textAlign: "left", padding: "8px" }}>Subject</th>
               <th style={{ textAlign: "right", padding: "8px" }}>Total Sessions</th>
+              {/* <th style={{ textAlign: "left", padding: "8px" }}>Most Active Tutor(s)</th> */}
+              {/* <th style={{ textAlign: "left", padding: "8px" }}>Most Active Student(s)</th> */}
             </tr>
           </thead>
           <tbody>
             {sessions.map((item, idx) => (
-              <tr
-                key={idx}
-                style={{
-                  backgroundColor: idx % 2 === 0 ? "#fff" : "#f9f9f9",
-                  borderBottom: "1px solid #e0e0e0",
-                }}
-              >
-                <td style={{ padding: "8px" }}>
-                  {item.subjectCode ? item.subjectCode + " - " : ""}{item.subjectName}
-                </td>
-                <td style={{ padding: "8px", textAlign: "right" }}>{item.sessionCount}</td>
-              </tr>
+              <React.Fragment key={idx}>
+                <tr
+                  style={{
+                    backgroundColor: idx % 2 === 0 ? "#fff" : "#f9f9f9",
+                    borderBottom: "1px solid #e0e0e0",
+                    cursor: "pointer"
+                  }}
+                  onClick={() => setExpandedIdx(expandedIdx === idx ? null : idx)}
+                >
+                  <td style={{ padding: "8px" }}>
+                    {item.subjectCode ? item.subjectCode + " - " : ""}{item.subjectName}
+                  </td>
+                  <td style={{ padding: "8px", textAlign: "right" }}>{item.sessionCount}</td>
+                  {/* Hide the click-to-view/hide text, but keep the expand/collapse functionality */}
+                  <td style={{ padding: "8px" }}>
+                    {item.mostActiveTutors && item.mostActiveTutors.length > 0 ? "" : "—"}
+                  </td>
+                  <td style={{ padding: "8px" }}>
+                    {item.mostActiveStudents && item.mostActiveStudents.length > 0 ? "" : "—"}
+                  </td>
+                </tr>
+                {expandedIdx === idx && (
+                  <tr>
+                    <td colSpan={4} style={{ background: '#f1f5fa', padding: '12px 16px' }}>
+                      <div style={{display:'flex',gap:32}}>
+                        <div>
+                          <div style={{fontWeight:600,marginBottom:4}}>Most Active Tutor(s):</div>
+                          {item.mostActiveTutors && item.mostActiveTutors.length > 0
+                            ? item.mostActiveTutors.map((name, i) => <div key={i}>• {name}</div>)
+                            : <span style={{color:'#888'}}>No data</span>}
+                        </div>
+                        <div>
+                          <div style={{fontWeight:600,marginBottom:4}}>Most Active Student(s):</div>
+                          {item.mostActiveStudents && item.mostActiveStudents.length > 0
+                            ? item.mostActiveStudents.map((name, i) => <div key={i}>• {name}</div>)
+                            : <span style={{color:'#888'}}>No data</span>}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
             ))}
           </tbody>
         </table>
