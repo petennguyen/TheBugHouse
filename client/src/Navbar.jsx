@@ -81,6 +81,10 @@ export default function Navbar({ isLoggedIn, userFirstName, userRole, onLogout }
                 <Link to="/tutors" className={location.pathname === '/tutors' ? 'active' : ''}>
                   Find Tutors
                 </Link>
+
+                <Link to ="/apply-to-tutor" className={location.pathname === '/apply-to-tutor' ? 'active' : ''}>
+                  Apply to Tutor
+                </Link>
               </>
             )}
             
