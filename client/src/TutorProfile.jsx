@@ -43,7 +43,7 @@ const TutorProfile = () => {
   });
 
   const [subjects, setSubjects] = useState([]);
-  const [isEditing, setIsEditing] = useState(true); // Start in editing mode
+  const [isEditing, setIsEditing] = useState(false); 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
