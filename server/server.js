@@ -1,4 +1,3 @@
-
 require('dotenv').config();
 
 process.env.DB_HOST = process.env.DB_HOST || 'localhost';
@@ -340,24 +339,20 @@ app.post('/api/sessions/book-from-availability', authRequired, requireRole('Stud
 });
 
 
-app.get('/api/tutors/:id', async (req, res) => {
+app.get('/api/tutors', async (req, res) => {
   try {
-    const tutorID = req.params.id;
     const [rows] = await pool.execute(
       `SELECT su.userID, su.userFirstName, su.userLastName, su.userEmail, t.tutorBiography, t.tutorQualifications
        FROM System_User su
        LEFT JOIN Tutor t ON t.System_User_userID = su.userID
-       WHERE su.userRole = 'Tutor' AND su.userID = ?`,
-      [tutorID]
+       WHERE su.userRole = 'Tutor'`
     );
-    if (rows.length === 0) return res.status(404).json({ message: 'Tutor not found' });
-    res.json(rows[0]);
+    res.json(rows);
   } catch (err) {
-    console.error('Error fetching tutor profile:', err);
-    res.status(500).json({ message: 'Failed to fetch tutor profile' });
+    console.error('Error fetching tutors:', err);
+    res.status(500).json({ message: 'Failed to fetch tutors' });
   }
 });
-
 
 // ---- Available timeslots (filter by date & subject) ----
 app.get('/api/timeslots/available', authRequired, async (req, res) => {
@@ -544,7 +539,6 @@ app.get('/api/student/calendar', authRequired, requireRole('Student'), async (re
   }
 });
 
-
 // ---- Tutor calendar ----
 app.get('/api/tutor/calendar', authRequired, requireRole('Tutor'), async (req, res) => {
   try {
@@ -701,7 +695,6 @@ app.get('/api/sessions/completed', authRequired, async (req, res) => {
     res.status(500).json({ message: 'Failed to load completed sessions' });
   }
 });
-
 
 // ---- Tutor attendance / status ----
 app.post('/api/sessions/:sessionID/attended', authRequired, requireRole('Tutor'), async (req, res) => {
@@ -1598,7 +1591,7 @@ app.get('/api/admin/subject-session-count', authRequired, requireRole('Admin'), 
         ON ts.Academic_Subject_subjectID = a.subjectID
       WHERE ts.sessionSignInTime BETWEEN ? AND ?
       GROUP BY a.subjectID, a.subjectCode, a.subjectName
-      ORDER BY sessionCount DESC;`,
+      ORDER BY sessionCount DESC`,
       [
         startDate || defaultStart,
         endDate || defaultEnd
