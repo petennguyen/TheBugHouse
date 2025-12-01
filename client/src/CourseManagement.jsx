@@ -1,5 +1,23 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import api from './api';
+function ConfirmModal({ open, title, message, onConfirm, onCancel }) {
+  if (!open) return null;
+  return (
+    <div style={{
+      position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+      background: 'rgba(0,0,0,0.18)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center'
+    }}>
+      <div style={{ background: 'white', borderRadius: 12, boxShadow: '0 4px 32px rgba(0,0,0,0.13)', minWidth: 320, maxWidth: '90vw', padding: 32, textAlign: 'center' }}>
+        <div style={{ fontSize: 22, fontWeight: 600, marginBottom: 10 }}>{title}</div>
+        <div style={{ fontSize: 16, color: '#374151', marginBottom: 24 }}>{message}</div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 16 }}>
+          <button onClick={onCancel} style={{ padding: '8px 22px', borderRadius: 8, border: 'none', background: '#f3f4f6', color: '#374151', fontWeight: 500, fontSize: 15, cursor: 'pointer' }}>Cancel</button>
+          <button onClick={onConfirm} style={{ padding: '8px 22px', borderRadius: 8, border: 'none', background: '#ef4444', color: 'white', fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>Delete</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function MessageBox({ msg, onClose }) {
   if (!msg) return null;
@@ -41,6 +59,7 @@ function MessageBox({ msg, onClose }) {
 }
 
 export default function CourseManagement() {
+    const [confirmDelete, setConfirmDelete] = useState({ open: false, courseId: null, courseName: '' });
   const [courses, setCourses] = useState([]);
   const [newCourse, setNewCourse] = useState({ courseCode: '', courseTitle: '' });
   const [editingCourse, setEditingCourse] = useState(null);
@@ -144,7 +163,12 @@ export default function CourseManagement() {
   };
 
   const deleteCourse = async (courseId, courseName) => {
-    if (!window.confirm(`Are you sure you want to delete "${courseName}"?`)) return;
+    setConfirmDelete({ open: true, courseId, courseName });
+  };
+
+  const handleDeleteConfirm = async () => {
+    const { courseId } = confirmDelete;
+    setConfirmDelete({ open: false, courseId: null, courseName: '' });
     try {
       await api.delete(`/api/admin/courses/${courseId}`);
       setMsg('🗑️ Course deleted successfully!');
@@ -169,6 +193,13 @@ export default function CourseManagement() {
 
   return (
     <div className="min-h-screen p-4 sm:p-8 bg-gradient-to-br from-blue-50 via-white to-orange-50">
+      <ConfirmModal
+        open={confirmDelete.open}
+        title="Delete Course?"
+        message={`Are you sure you want to delete "${confirmDelete.courseName}"? This action cannot be undone.`}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setConfirmDelete({ open: false, courseId: null, courseName: '' })}
+      />
       <div className="w-full max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
