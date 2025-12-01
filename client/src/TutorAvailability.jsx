@@ -184,7 +184,7 @@ export default function TutorAvailability() {
           <div style={{ marginBottom: 12 }}>
             <input
               type="text"
-              placeholder="🔍 Search subjects..."
+              placeholder=" Search subjects..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={{

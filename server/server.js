@@ -1,3 +1,22 @@
+// Public: get a tutor's public profile by userID
+app.get('/api/tutors/:id', async (req, res) => {
+  try {
+    const tutorID = req.params.id;
+    const [rows] = await pool.execute(
+      `SELECT su.userID, su.userFirstName, su.userLastName, su.userEmail, t.tutorBiography, t.tutorQualifications
+       FROM System_User su
+       LEFT JOIN Tutor t ON t.System_User_userID = su.userID
+       WHERE su.userRole = 'Tutor' AND su.userID = ?`,
+      [tutorID]
+    );
+    if (rows.length === 0) return res.status(404).json({ message: 'Tutor not found' });
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('Error fetching tutor profile:', err);
+    res.status(500).json({ message: 'Failed to fetch tutor profile' });
+  }
+});
+
 require('dotenv').config();
 
 process.env.DB_HOST = process.env.DB_HOST || 'localhost';
@@ -444,6 +463,42 @@ app.get('/api/sessions/mine', authRequired, async (req, res) => {
   } catch (e) {
     console.error('mine sessions error', e);
     res.status(500).json({ message: 'Failed to load sessions' });
+  }
+});
+
+// Public: get tutors (optionally filter by subject)
+app.get('/api/tutors', async (req, res) => {
+  try {
+    const subject = req.query.subject;
+    let sql = `
+      SELECT su.userID, su.userFirstName, su.userLastName, su.userEmail,
+             t.tutorBiography, t.tutorQualifications
+      FROM System_User su
+      LEFT JOIN Tutor t ON t.System_User_userID = su.userID
+      WHERE su.userRole = 'Tutor'
+    `;
+    const params = [];
+    if (subject) {
+      sql += ` AND su.userID IN (
+        SELECT DISTINCT Tutor_System_User_userID
+        FROM Tutor_Session
+        WHERE Academic_Subject_subjectID = ?
+      )`;
+      params.push(subject);
+    }
+    sql += ' ORDER BY su.userLastName, su.userFirstName LIMIT 200';
+    const [rows] = await pool.execute(sql, params);
+    res.json(rows.map(r => ({
+      userID: r.userID,
+      firstName: r.userFirstName,
+      lastName: r.userLastName,
+      email: r.userEmail,
+      tutorBiography: r.tutorBiography,
+      tutorQualifications: r.tutorQualifications
+    })));
+  } catch (err) {
+    console.error('Error fetching tutors:', err);
+    res.status(500).json({ message: 'Failed to fetch tutors' });
   }
 });
 

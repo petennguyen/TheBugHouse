@@ -156,17 +156,17 @@ export default function Navbar({ isLoggedIn, userFirstName, userRole, onLogout }
                   Manage Tutor Applications
                 </Link>
 
-                {/* <Link
-                  to="/admin/tutor-performance"
+                <Link
+                  to="/admin/timeslot-generator"
                   className={
-                    location.pathname === '/admin/tutor-performance' ||
-                    location.pathname.startsWith('/admin/tutor-performance')
+                    location.pathname === '/admin/timeslot-generator' ||
+                    location.pathname.startsWith('/admin/timeslot-generator')
                       ? 'active'
                       : ''
                   }
                 >
-                  Tutor Performance Report
-                </Link> */}
+                  Manage Timeslots
+                </Link>
 
                 <Link
                   to="/admin/reports  "
